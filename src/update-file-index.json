@@ -1,0 +1,13 @@
+{
+    "name": "test-update-index",
+    "lastUpdate": "2023-11-12",
+    "checksumAlgorithm": "md5",
+
+    "files": [
+        {
+            "name": "f1",
+            "path": "/file",
+            "checksum": "1234123412341234"
+        }
+    ]
+}
