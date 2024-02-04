@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace AlphabetUpdater;
+namespace FishSyncClient;
 
 public class PathOptions
 {

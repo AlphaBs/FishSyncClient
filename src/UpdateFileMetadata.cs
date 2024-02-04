@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace AlphabetUpdater;
+namespace FishSyncClient;
 
 public class UpdateFileMetadata
 {

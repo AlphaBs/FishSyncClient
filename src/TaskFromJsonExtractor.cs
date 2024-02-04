@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 
-namespace AlphabetUpdater;
+namespace FishSyncClient;
 
 public class TaskFromJsonExtractor : ITaskFromJsonExtractor
 {

@@ -1,4 +1,4 @@
-﻿namespace AlphabetUpdater;
+﻿namespace FishSyncClient;
 
 // RootedPath 는 경로를 Root 와 SubPath 두 부분으로 나눈다.
 // 디렉토리를 나타내는 경로의 끝 문자는 항상 경로 구분자이고, 

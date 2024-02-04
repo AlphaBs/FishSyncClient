@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.002.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AlphabetUpdater", "src\AlphabetUpdater.csproj", "{B17EADE6-CCD7-4C68-9B6F-0480092B1C1E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FishSyncClient", "src\FishSyncClient.csproj", "{B17EADE6-CCD7-4C68-9B6F-0480092B1C1E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "test", "test\test.csproj", "{6D328ACF-CE7F-424D-898A-B7548BE41CBB}"
 EndProject

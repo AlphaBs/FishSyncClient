@@ -1,4 +1,4 @@
-namespace AlphabetUpdater;
+namespace FishSyncClient;
 
 public class UpdateOptions
 {
