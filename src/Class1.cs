@@ -1,33 +1,65 @@
-﻿namespace FishSyncClient;
+﻿using FishSyncClient.Syncer;
+
+namespace FishSyncClient;
 
 public class Class1
 {
     async void a()
     {
+        var root = "";
         var pathOptions = new PathOptions();
+        var server = getServerFiles();
+        var local = getLocalPaths(root, pathOptions);
 
-        var loader = new JsonUpdateIndexLoader();
-        var index = await loader.Load(File.OpenRead("update-file-index.json"));
-        var updateTasks = index.ExtractTasks();
+        var pathSyncer = new FishPathSyncer();
+        var pathSyncResult = pathSyncer.Sync(server, local); 
 
-        var localFiles = RootedPathIndex.CreateFromDirectory("./test-dir", pathOptions);
-        foreach (var task in updateTasks)
+        var duplicatedFiles = pathSyncResult.DuplicatedPaths.Cast<FishFileMetadata>();
+        var fileSyncer = new FishFileSyncer(new IFileComparer[] 
+        { 
+            new FileSizeComparer(), 
+            new MD5FileComparer(), 
+            new SHA1FileComparer() 
+        });
+        var fileSyncResult = await fileSyncer.Sync(root, duplicatedFiles);
+
+        downloadFile(root, pathSyncResult.AddedPaths.Cast<FishServerFile>());
+        downloadFile(root, fileSyncResult.UpdatedFiles.Cast<FishServerFile>());
+        deleteFile(root, pathSyncResult.DeletedPaths);
+    }
+
+    IEnumerable<FishPath> getLocalPaths(string root, PathOptions pathOptions)
+    {
+        var files = Directory.GetFiles(root, "*", SearchOption.AllDirectories);
+        foreach (var item in files)
         {
-            localFiles.Remove(task.Path);
+            var path = RootedPath.FromFullPath(root, item, pathOptions);
+            yield return new FishPath(path);
         }
-
-        var deleteTasks = localFiles.Paths.Select(f => createDeleteTask(f));
-        handleTasks(updateTasks);
-        handleTasks(deleteTasks);
     }
 
-    LinkedTask createDeleteTask(RootedPath path)
+    IEnumerable<FishServerFile> getServerFiles()
     {
-
+        return Enumerable.Empty<FishServerFile>();
     }
 
-    void handleTasks(IEnumerable<LinkedTask> tasks)
+    void downloadFile(string root, IEnumerable<FishServerFile> files)
     {
+        foreach (var file in files)
+        {
+            var fullPath = file.Path.WithRoot(root).GetFullPath();
+            var location = file.Location;
 
+            Console.WriteLine($"Download file {location} into {fullPath}");
+        }
+    }
+
+    void deleteFile(string root, IEnumerable<FishPath> paths)
+    {
+        foreach (var path in paths)
+        {
+            var fullPath = path.Path.WithRoot(root).GetFullPath();
+            Console.WriteLine("Delete " + fullPath);
+        }
     }
 }

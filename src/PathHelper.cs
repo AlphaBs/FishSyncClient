@@ -2,46 +2,30 @@ using System.Text;
 
 namespace FishSyncClient;
 
-public class PathOptions
-{
-    public PathOptions()
-    {
-        PathSeperator = Path.PathSeparator;
-    }
-
-    private char _pathSeperator;
-    public char PathSeperator
-    {
-        get => _pathSeperator;
-        set
-        {
-            if (value != '\\' && value != '/')
-                _pathSeperator = value;
-            else
-                throw new ArgumentException("Unsupported path seperator");
-        }
-    }
-
-    public bool CaseInsensitivePath { get; set; } = true;
-}
+// 정규화된 경로
+// 불필요하게 중복되는 경로 구분자가 없어야 한다
+// 디렉토리를 나타내는 경로의 끝 문자는 항상 경로 구분자이고, 
+// 파일을 나타내는 경로의 끝 문자는 경로 구분자가 될 수 없다.
 
 public static class PathHelper
 {
     public static string NormalizeDirectoryPath(string path, PathOptions options)
     {
-        return NormalizePath(path, options) + options.PathSeperator;
+        path = NormalizePath(path, options);
+        if (!path.EndsWith(options.PathSeperator))
+            path += options.PathSeperator;
+        return path;
     }
 
     public static string NormalizePath(string path, PathOptions options)
     {
-        path = path.TrimStart().Trim(options.PathSeperator);
         path = removeDuplicatedCharacter(path, options.PathSeperator);
         if (options.CaseInsensitivePath)
             path = path.ToLowerInvariant();
-        return path;
+        return path; 
     }
 
-    private static string removeDuplicatedCharacter(string input, char replaceCh)
+    private static string removeDuplicatedCharacter(ReadOnlySpan<char> input, char replaceCh)
     {
         var sb = new StringBuilder(input.Length);
         var findCh = false;
@@ -64,14 +48,22 @@ public static class PathHelper
         return sb.ToString();
     }
 
-    public static string GetRelativePathFromAbsolutePath(string absPath, string rootPath, PathOptions options)
+    public static string GetRelativePathFromDirectory(string absPath, string rootPath, PathOptions options)
     {
         absPath = NormalizePath(absPath, options);
-        if (!absPath.StartsWith(rootPath))
-            throw new ArgumentException("The absPath should start with rootPath");
-        return absPath.Substring(rootPath.Length + 1);
-    }
+        if (string.IsNullOrEmpty(rootPath))
+            return absPath;
 
-    public static HashSet<string> ToNormalizedSet(IEnumerable<string> path, PathOptions options) 
-        => new HashSet<string>(path.Select(p => NormalizePath(p, options)));
+        if (!rootPath.EndsWith(options.PathSeperator))
+            throw new ArgumentException("rootPath is not a directory");
+        rootPath = NormalizePath(rootPath, options);
+
+        if (!absPath.StartsWith(rootPath))
+            throw new ArgumentException("absPath should start with rootPath");
+
+        if (absPath.Length == rootPath.Length)
+            return string.Empty;
+        else
+            return absPath.Substring(rootPath.Length);
+    }
 }
