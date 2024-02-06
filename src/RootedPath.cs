@@ -60,7 +60,7 @@ public struct RootedPath
     public string Root { get; }
     public string SubPath { get; }
 
-    public bool IsRooted => Root.Equals(string.Empty);
+    public bool IsRooted => !string.IsNullOrEmpty(Root);
     public bool IsDirectory => SubPath.EndsWith('/') || SubPath.Equals(string.Empty);
 
     public RootedPath WithRoot(string newRoot)
@@ -70,44 +70,36 @@ public struct RootedPath
 
     public string GetFullPath()
     {
-        if (string.IsNullOrEmpty(Root))
+        if (!IsRooted)
             throw new InvalidOperationException("Root was not set");
         return Path.Combine(Root, SubPath);
     }
 
     public override string ToString()
     {
-        return GetFullPath();
+        if (IsRooted)
+            return GetFullPath();
+        else
+            return SubPath;
     }
 
     public override int GetHashCode()
     {
-        return GetFullPath().GetHashCode();
+        return ToString().GetHashCode();
     }
 
     public override bool Equals(object obj)
     {
-        if (obj is string strObj)
-        {
-            return GetFullPath() == strObj;
-        }
-        else if (obj is RootedPath pathObj)
-        {
-            return this == pathObj;
-        }
-        else 
-        {
-            return false;
-        }
+        return obj.ToString() == this.ToString();
     }
 
     public static bool operator ==(RootedPath a, RootedPath b)
     {
-        return a.GetFullPath() == b.GetFullPath();
+        return a.ToString() == b.ToString();
     }
 
     public static bool operator !=(RootedPath a, RootedPath b)
     {
-        return a.GetFullPath() != b.GetFullPath();
+        return a.ToString() != b.ToString();
     }
 }

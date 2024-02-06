@@ -12,14 +12,14 @@ public class FishPathSyncTests
     {
         // Given
         var sut = new FishPathSyncer();
-        
+
         // When
         var result = sut.Sync(
-            source: CreatePaths("file1", "file2", "file3", "file4"), 
-            target: CreatePaths("file3", "file4", "file5", "file6"));
+            source: CreateSourcePaths("file1", "file2", "file3", "file4"),
+            target: CreateTargetPaths("file3", "file4", "file5", "file6"));
 
         // Then
-        var expected = CreatePaths("file3", "file4");
+        var expected = CreateSourcePaths("file3", "file4");
         AssertEqualPathCollection(expected, result.DuplicatedPaths);
     }
 
@@ -30,9 +30,9 @@ public class FishPathSyncTests
         var sourceInstance = new FishPath(RootedPath.Create("root", "duplicated", pathOptions));
         var targetInstance = new FishPath(RootedPath.Create("root", "duplicated", pathOptions));
         var sut = new FishPathSyncer();
-        
+
         // When
-        var result = sut.Sync(new []{sourceInstance}, new[]{targetInstance});
+        var result = sut.Sync(new[] { sourceInstance }, new[] { targetInstance });
 
         // Then
         Assert.True(ReferenceEquals(sourceInstance, result.DuplicatedPaths[0]));
@@ -44,14 +44,14 @@ public class FishPathSyncTests
     {
         // Given
         var sut = new FishPathSyncer();
-        
+
         // When
         var result = sut.Sync(
-            source: CreatePaths("file1", "file2", "file3", "file4"), 
-            target: CreatePaths("file3", "file4", "file5", "file6"));
+            source: CreateSourcePaths("file1", "file2", "file3", "file4"),
+            target: CreateTargetPaths("file3", "file4", "file5", "file6"));
 
         // Then
-        var expected = CreatePaths("file1", "file2");
+        var expected = CreateSourcePaths("file1", "file2");
         AssertEqualPathCollection(expected, result.AddedPaths);
     }
 
@@ -62,9 +62,9 @@ public class FishPathSyncTests
         var sourceInstance = new FishPath(RootedPath.Create("root", "added", pathOptions));
         var targetInstance = new FishPath(RootedPath.Create("root", "file", pathOptions));
         var sut = new FishPathSyncer();
-        
+
         // When
-        var result = sut.Sync(new []{sourceInstance}, new[]{targetInstance});
+        var result = sut.Sync(new[] { sourceInstance }, new[] { targetInstance });
 
         // Then
         Assert.True(ReferenceEquals(sourceInstance, result.AddedPaths[0]));
@@ -76,14 +76,14 @@ public class FishPathSyncTests
     {
         // Given
         var sut = new FishPathSyncer();
-        
+
         // When
         var result = sut.Sync(
-            source: CreatePaths("file1", "file2", "file3", "file4"), 
-            target: CreatePaths("file3", "file4", "file5", "file6"));
+            source: CreateSourcePaths("file1", "file2", "file3", "file4"),
+            target: CreateTargetPaths("file3", "file4", "file5", "file6"));
 
         // Then
-        var expected = CreatePaths("file5", "file6");
+        var expected = CreateTargetPaths("file5", "file6");
         AssertEqualPathCollection(expected, result.DeletedPaths);
     }
 
@@ -94,9 +94,9 @@ public class FishPathSyncTests
         var sourceInstance = new FishPath(RootedPath.Create("root", "file", pathOptions));
         var targetInstance = new FishPath(RootedPath.Create("root", "deleted", pathOptions));
         var sut = new FishPathSyncer();
-        
+
         // When
-        var result = sut.Sync(new []{sourceInstance}, new[]{targetInstance});
+        var result = sut.Sync(new[] { sourceInstance }, new[] { targetInstance });
 
         // Then
         Assert.True(ReferenceEquals(targetInstance, result.DeletedPaths[0]));
@@ -108,14 +108,14 @@ public class FishPathSyncTests
     {
         // Given
         var sut = new FishPathSyncer(
-            CreatePaths("file2").Select(p => p.Path.GetFullPath()), 
+            CreateSourcePaths("file2").Select(p => p.Path),
             new PathOptions());
 
         // When
         var result = sut.Sync(
-            source: CreatePaths("file1", "file2"),
-            target: CreatePaths("file2", "file3"));
-        
+            source: CreateSourcePaths("file1", "file2"),
+            target: CreateTargetPaths("file2", "file3"));
+
         // Then
         Assert.Empty(result.DuplicatedPaths);
     }
@@ -125,24 +125,34 @@ public class FishPathSyncTests
     {
         // Given
         var sut = new FishPathSyncer(
-            CreatePaths("file3").Select(p => p.Path.GetFullPath()), 
+            CreateSourcePaths("file3").Select(p => p.Path),
             new PathOptions());
 
         // When
         var result = sut.Sync(
-            source: CreatePaths("file1", "file2"),
-            target: CreatePaths("file2", "file3"));
-        
+            source: CreateSourcePaths("file1", "file2"),
+            target: CreateTargetPaths("file2", "file3"));
+
         // Then
         Assert.Empty(result.DeletedPaths);
     }
 
-    private static FishPath[] CreatePaths(params string[] paths)
+    private static FishPath[] CreateSourcePaths(params string[] paths)
+    {
+        return CreatePathsFromRoot("source", paths);
+    }
+
+    private static FishPath[] CreateTargetPaths(params string[] paths)
+    {
+        return CreatePathsFromRoot("target", paths);
+    }
+
+    private static FishPath[] CreatePathsFromRoot(string root, params string[] paths)
     {
         var list = new List<FishPath>();
         foreach (var path in paths)
         {
-            list.Add(new FishPath(RootedPath.Create("root", path, pathOptions)));
+            list.Add(new FishPath(RootedPath.Create(root, path, pathOptions)));
         }
         return list.ToArray();
     }
