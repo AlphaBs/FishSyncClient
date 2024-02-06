@@ -1,7 +1,7 @@
 ﻿
 using System.Security.Cryptography;
 
-namespace FishSyncClient;
+namespace FishSyncClient.FileComparers;
 
 public class SHA1FileComparer : IFileComparer
 {
@@ -10,7 +10,7 @@ public class SHA1FileComparer : IFileComparer
     public ValueTask<bool> CompareFile(string path, FishFileMetadata file)
     {
         if (file.ChecksumAlgorithm != AlgorithmName)
-            return new ValueTask<bool>(true);
+            throw new InvalidOperationException("Not supported algorithm");
 
         using var fileStream = File.OpenRead(path);
         using var sha1 = SHA1.Create();

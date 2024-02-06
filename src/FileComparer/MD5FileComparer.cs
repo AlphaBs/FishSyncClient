@@ -1,6 +1,6 @@
 ﻿using System.Security.Cryptography;
 
-namespace FishSyncClient;
+namespace FishSyncClient.FileComparers;
 
 public class MD5FileComparer : IFileComparer
 {
@@ -9,7 +9,7 @@ public class MD5FileComparer : IFileComparer
     public ValueTask<bool> CompareFile(string path, FishFileMetadata file)
     {
         if (file.ChecksumAlgorithm != AlgorithmName)
-            return new ValueTask<bool>(true);
+            throw new InvalidOperationException("Not supported algorithm");
 
         using var fileStream = File.OpenRead(path);
         using var md5 = MD5.Create();

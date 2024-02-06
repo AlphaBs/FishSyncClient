@@ -1,4 +1,4 @@
-﻿namespace FishSyncClient;
+﻿namespace FishSyncClient.FileComparers;
 
 public interface IFileComparer
 {
