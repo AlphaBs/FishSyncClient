@@ -20,20 +20,18 @@ public static class PathHelper
 
     public static string NormalizePath(string path, PathOptions options)
     {
-        path = path.Replace(options.AltPathSeperator, options.PathSeperator);
-        path = removeDuplicatedCharacter(path, options.PathSeperator);
-        if (options.CaseInsensitivePath)
-            path = path.ToLowerInvariant();
-        return path; 
-    }
-
-    private static string removeDuplicatedCharacter(ReadOnlySpan<char> input, char replaceCh)
-    {
-        var sb = new StringBuilder(input.Length);
+        var sb = new StringBuilder(path.Length);
         var findCh = false;
-        foreach (var nextCh in input)
+        foreach (var _ch in path)
         {
-            if (nextCh == replaceCh)
+            var ch = _ch;
+
+            // replace AltPathSeperator -> PathSeperator
+            if (ch == options.AltPathSeperator)
+                ch = options.PathSeperator;
+
+            // skip redundant consecutive path separators
+            if (ch == options.PathSeperator)
             {
                 if (findCh)
                     continue;
@@ -45,7 +43,11 @@ public static class PathHelper
                 findCh = false;
             }
 
-            sb.Append(nextCh);
+            // case insensitivity
+            if (options.CaseInsensitivePath)
+                ch = char.ToLowerInvariant(ch);
+
+            sb.Append(ch);
         }
         return sb.ToString();
     }

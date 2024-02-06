@@ -2,6 +2,7 @@
 using FishSyncClient.Server;
 using FishSyncClient.Server.Alphabet;
 using FishSyncClient.Syncer;
+using FishSyncClient.Versions;
 
 namespace FishSyncClient.Cli;
 
