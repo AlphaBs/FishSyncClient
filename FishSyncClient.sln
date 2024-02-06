@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "benchmark", "benchmark\benc
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FishSyncClientTest", "test\FishSyncClientTest.csproj", "{D3AED40B-549F-4698-92CF-08FA68B7AEF2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cli", "cli\cli.csproj", "{A9146847-4DFD-48DF-8F18-A0AB598A0B25}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{D3AED40B-549F-4698-92CF-08FA68B7AEF2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D3AED40B-549F-4698-92CF-08FA68B7AEF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D3AED40B-549F-4698-92CF-08FA68B7AEF2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A9146847-4DFD-48DF-8F18-A0AB598A0B25}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A9146847-4DFD-48DF-8F18-A0AB598A0B25}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A9146847-4DFD-48DF-8F18-A0AB598A0B25}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A9146847-4DFD-48DF-8F18-A0AB598A0B25}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
