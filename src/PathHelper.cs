@@ -3,9 +3,10 @@ using System.Text;
 namespace FishSyncClient;
 
 // 정규화된 경로
-// 불필요하게 중복되는 경로 구분자가 없어야 한다
+// 불필요하게 중복되는 경로 구분자가 없어야 한다.
 // 디렉토리를 나타내는 경로의 끝 문자는 항상 경로 구분자이고, 
 // 파일을 나타내는 경로의 끝 문자는 경로 구분자가 될 수 없다.
+// 경로 구분자는 한 가지로 통일해야 한다. 
 
 public static class PathHelper
 {
@@ -19,6 +20,7 @@ public static class PathHelper
 
     public static string NormalizePath(string path, PathOptions options)
     {
+        path = path.Replace(options.AltPathSeperator, options.PathSeperator);
         path = removeDuplicatedCharacter(path, options.PathSeperator);
         if (options.CaseInsensitivePath)
             path = path.ToLowerInvariant();

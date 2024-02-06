@@ -13,6 +13,7 @@ public class RootedPathTests
     [InlineData("/root/", "subpath/", "/root/subpath/")]
     [InlineData("/root/", "/subpath/", "/root/subpath/")]
     [InlineData("//root///", "//subpath//", "/root/subpath/")]
+    [InlineData("//root\\//\\", "//with\\alt\\path//\\//", "/root/with/alt/path/")]
     public void normalize_fullpath(string root, string subpath, string expectedFullPath)
     {
         var rootedPath = RootedPath.Create(root, subpath, new PathOptions());
