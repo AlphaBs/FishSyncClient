@@ -1,6 +1,8 @@
-﻿namespace FishSyncClient.Syncer;
+﻿using FishSyncClient.FileComparers;
 
-public class FishFileSyncer
+namespace FishSyncClient.Syncer;
+
+public class FishFileSyncer : IFishFileSyncer
 {
     private readonly IEnumerable<IFileComparer> _comparers;
 
@@ -9,20 +11,29 @@ public class FishFileSyncer
         _comparers = comparers;
     }
 
-    public async ValueTask<FishFileSyncResult> Sync(string root, IEnumerable<FishFileMetadata> files)
+    public async ValueTask<FishFileSyncResult> Sync(
+        string root, 
+        IEnumerable<FishFileMetadata> files,
+        IProgress<FishFileProgressEventArgs>? progress)
     {
         var updated = new List<FishFileMetadata>();
         var identical = new List<FishFileMetadata>();
 
-        foreach (var file in files)
+        var filesArr = files.ToArray();
+        for (int i = 0; i < filesArr.Length; i++)
         {
+            var file = filesArr[i];
+            progress?.Report(new FishFileProgressEventArgs(i + 1, filesArr.Length, file.Path));
+
             var result = await compareFile(root, file);
             if (result)
-                updated.Add(file);
-            else
                 identical.Add(file);
+            else
+                updated.Add(file);
         }
 
+        if (filesArr.Any())
+            progress?.Report(new FishFileProgressEventArgs(filesArr.Length, filesArr.Length, filesArr.Last().Path));
         return new FishFileSyncResult(updated.ToArray(), identical.ToArray());
     }
 
