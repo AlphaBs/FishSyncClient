@@ -1,4 +1,5 @@
 - [x] 경로 구분자 하나만 사용하도록 PathHelper 수정
-- [] updateblacklists 에서 디렉토리도 설정 가능하게 수정
+- [x] updateblacklists 에서 디렉토리도 설정 가능하게 수정
 - [x] 버전 확인
-- [x] string -> ReadOnlySpan<char> 적용
+- [] string -> ReadOnlySpan<char> 적용
+- [] API 단순화 

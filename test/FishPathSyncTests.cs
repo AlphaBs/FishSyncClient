@@ -108,8 +108,7 @@ public class FishPathSyncTests
     {
         // Given
         var sut = new FishPathSyncer(
-            CreateSourcePaths("file2").Select(p => p.Path),
-            new PathOptions());
+            CreateSourcePaths("file2").Select(p => p.Path));
 
         // When
         var result = sut.Sync(
@@ -125,8 +124,7 @@ public class FishPathSyncTests
     {
         // Given
         var sut = new FishPathSyncer(
-            CreateSourcePaths("file3").Select(p => p.Path),
-            new PathOptions());
+            CreateSourcePaths("file3").Select(p => p.Path));
 
         // When
         var result = sut.Sync(

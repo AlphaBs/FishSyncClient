@@ -1,17 +1,30 @@
-﻿namespace FishSyncClient.Syncer;
+﻿using Ganss.Text;
+
+namespace FishSyncClient.Syncer;
 
 public class FishPathSyncer
 {
-    private readonly HashSet<string> _updateBlackFiles;
+    private readonly HashSet<string> _updateExcludeFiles = new();
+    private readonly AhoCorasick _updateExcludeDirs = new();
 
-    public FishPathSyncer()
+    public FishPathSyncer() : this(Enumerable.Empty<RootedPath>())
     {
-        _updateBlackFiles = new();
+        
     }
 
-    public FishPathSyncer(IEnumerable<RootedPath> updateBlacklists, PathOptions pathOptions)
+    public FishPathSyncer(IEnumerable<RootedPath> updateExcludes)
     {
-        _updateBlackFiles = new HashSet<string>(updateBlacklists.Select(p => p.SubPath));
+        foreach (var path in updateExcludes)
+        {
+            if (path.IsDirectory)
+            {
+                _updateExcludeFiles.Add(path.SubPath);
+            }
+            else
+            {
+                _updateExcludeDirs.Add(path.SubPath);
+            }
+        }
     }
 
     public FishPathSyncResult Sync(IEnumerable<FishPath> source, IEnumerable<FishPath> target)
@@ -35,13 +48,15 @@ public class FishPathSyncer
         }
 
         var duplicated = intersects
-            .Where(path => !_updateBlackFiles.Contains(path.Path.SubPath))
+            .Where(path => !_updateExcludeDirs.Search(path.Path.SubPath).Any())
+            .Where(path => !_updateExcludeFiles.Contains(path.Path.SubPath))
             .ToArray();
         var added = sourceDict
             .Select(kv => kv.Value)
             .ToArray();
         var deleted = targetDict
-            .Where(kv => !_updateBlackFiles.Contains(kv.Key))
+            .Where(kv => !_updateExcludeDirs.Search(kv.Key).Any())
+            .Where(kv => !_updateExcludeFiles.Contains(kv.Key))
             .Select(kv => kv.Value)
             .ToArray();
 
