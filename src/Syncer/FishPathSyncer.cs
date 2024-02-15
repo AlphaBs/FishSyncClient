@@ -18,11 +18,11 @@ public class FishPathSyncer
         {
             if (path.IsDirectory)
             {
-                _updateExcludeFiles.Add(path.SubPath);
+                _updateExcludeDirs.Add(path.SubPath);
             }
             else
             {
-                _updateExcludeDirs.Add(path.SubPath);
+                _updateExcludeFiles.Add(path.SubPath);
             }
         }
     }
