@@ -27,15 +27,10 @@ public class SequentialFileDownloader : IFishServerFileDownloader
             var file = filesArr[i];
             var dest = file.Path.WithRoot(root).GetFullPath();
         
-            long lastFileSize = file.Size;
-            long lastProgressed = 0;
-            var progressDelta = new SyncProgress<ByteProgress>(p =>
+            var progress = new ByteProgressDelta(file.Size, p =>
             {
-                totalBytes += p.TotalBytes - lastFileSize;
-                progressedBytes += p.ProgressedBytes - lastProgressed;
-                lastFileSize = p.TotalBytes;
-                lastProgressed = p.ProgressedBytes;
-
+                totalBytes += p.TotalBytes;
+                progressedBytes += p.ProgressedBytes;
                 byteProgress?.Report(new ByteProgress
                 {
                     TotalBytes = totalBytes,
@@ -48,7 +43,7 @@ public class SequentialFileDownloader : IFishServerFileDownloader
                 file.Location.ToString(), 
                 file.Size,
                 dest,
-                progressDelta);
+                progress);
         }
 
         if (filesArr.Any())
