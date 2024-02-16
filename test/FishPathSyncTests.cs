@@ -104,72 +104,37 @@ public class FishPathSyncTests
     }
 
     [Fact]
-    public void black_duplicated_files()
+    public void exclude_duplicated_files()
     {
         // Given
         var sut = new FishPathSyncer(
-            CreateSourcePaths("file2").Select(p => p.Path));
+            new [] { "file2", "file3*", "files/**" });
 
         // When
         var result = sut.Sync(
-            source: CreateSourcePaths("file1", "file2", "file22"),
-            target: CreateTargetPaths("file2", "file22", "file3"));
+            CreateSourcePaths("file1", "file2", "file222", "file34", "files/a/b/c"),
+            CreateTargetPaths(         "file2", "file222", "file34", "files/a/b/c", "file5"));
 
         // Then
-        // a syncer must compare the full paths of the files. paths that start with a blacklisted file path are not always blacklisted files.
-        var expected = CreateSourcePaths("file22");
+        var expected = CreateSourcePaths("file222");
         AssertEqualPathCollection(expected, result.DuplicatedPaths);
     }
 
     [Fact]
-    public void black_duplicated_dirs()
+    public void exclude_deleted_files()
     {
         // Given
         var sut = new FishPathSyncer(
-            CreateSourcePaths("files/").Select(p => p.Path));
+            new [] { "file2", "file3*", "files/**" });
 
         // When
         var result = sut.Sync(
-            source: CreateSourcePaths("file1", "files/file2/test", "file3"),
-            target: CreateTargetPaths("files/file2/test", "file3", "files/file4"));
+            source: CreateSourcePaths("file1"),
+            target: CreateTargetPaths("file2", "file222", "file34", "files/a/b/c"));
 
         // Then
-        var expected = CreateSourcePaths("file3");
-        AssertEqualPathCollection(expected, result.DuplicatedPaths);
-    }
-
-    [Fact]
-    public void black_deleted_files()
-    {
-        // Given
-        var sut = new FishPathSyncer(
-            CreateSourcePaths("file3").Select(p => p.Path));
-
-        // When
-        var result = sut.Sync(
-            source: CreateSourcePaths("file1", "file2"),
-            target: CreateTargetPaths("file2", "file3", "file33"));
-
-        // Then
-        // a syncer must compare the full paths of the files. paths that start with a blacklisted file path are not always blacklisted files.
-        var expected = CreateTargetPaths("file33");
+        var expected = CreateTargetPaths("file222");
         AssertEqualPathCollection(expected, result.DeletedPaths);
-    }
-
-    [Fact]
-    public void black_deleted_dirs()
-    {
-        // Given
-        var sut = new FishPathSyncer(
-            CreateSourcePaths("files/").Select(p => p.Path));
-
-        // When
-        var result = sut.Sync(
-            source: CreateSourcePaths("file1", "files/file2/test", "file3"),
-            target: CreateTargetPaths("files/file2/test", "file3", "files/file4"));
-
-        // Then
-        Assert.Empty(result.DeletedPaths);
     }
 
     private static FishPath[] CreateSourcePaths(params string[] paths)

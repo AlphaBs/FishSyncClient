@@ -1,30 +1,19 @@
-﻿using Ganss.Text;
+﻿using DotNet.Globbing;
 
 namespace FishSyncClient.Syncer;
 
 public class FishPathSyncer
 {
-    private readonly HashSet<string> _updateExcludeFiles = new();
-    private readonly AhoCorasick _updateExcludeDirs = new();
-
-    public FishPathSyncer() : this(Enumerable.Empty<RootedPath>())
+    private readonly Glob[] _excludes;
+    
+    public FishPathSyncer() : this(Enumerable.Empty<string>())
     {
         
     }
 
-    public FishPathSyncer(IEnumerable<RootedPath> updateExcludes)
+    public FishPathSyncer(IEnumerable<string> updateExcludes)
     {
-        foreach (var path in updateExcludes)
-        {
-            if (path.IsDirectory)
-            {
-                _updateExcludeDirs.Add(path.SubPath);
-            }
-            else
-            {
-                _updateExcludeFiles.Add(path.SubPath);
-            }
-        }
+        _excludes = updateExcludes.Select(pattern => Glob.Parse(pattern)).ToArray();
     }
 
     public FishPathSyncResult Sync(IEnumerable<FishPath> source, IEnumerable<FishPath> target)
@@ -48,18 +37,21 @@ public class FishPathSyncer
         }
 
         var duplicated = intersects
-            .Where(path => !_updateExcludeDirs.Search(path.Path.SubPath).Any())
-            .Where(path => !_updateExcludeFiles.Contains(path.Path.SubPath))
+            .Where(p => !isExcludedPath(p.Path))
+            .ToArray();
+        var deleted = targetDict
+            .Select(kv => kv.Value)
+            .Where(p => !isExcludedPath(p.Path))
             .ToArray();
         var added = sourceDict
             .Select(kv => kv.Value)
             .ToArray();
-        var deleted = targetDict
-            .Where(kv => !_updateExcludeDirs.Search(kv.Key).Any())
-            .Where(kv => !_updateExcludeFiles.Contains(kv.Key))
-            .Select(kv => kv.Value)
-            .ToArray();
 
         return new FishPathSyncResult(added, duplicated, deleted);
+    }
+
+    private bool isExcludedPath(RootedPath path)
+    {
+        return _excludes.Any(glob => glob.IsMatch(path.SubPath));
     }
 }
