@@ -2,18 +2,12 @@
 
 namespace FishSyncClient.Syncer;
 
-public class FishFileSyncer : IFishFileSyncer
+public class FishFileSyncer
 {
-    private readonly IEnumerable<IFileComparer> _comparers;
-
-    public FishFileSyncer(IEnumerable<IFileComparer> comparers)
-    {
-        _comparers = comparers;
-    }
-
     public async ValueTask<FishFileSyncResult> Sync(
         string root, 
         IEnumerable<FishFileMetadata> files,
+        IFileComparer comparer,
         IProgress<FishFileProgressEventArgs>? progress)
     {
         var updated = new List<FishFileMetadata>();
@@ -25,8 +19,10 @@ public class FishFileSyncer : IFishFileSyncer
             var file = filesArr[i];
             progress?.Report(new FishFileProgressEventArgs(i + 1, filesArr.Length, file.Path));
 
-            var result = await compareFile(root, file);
-            if (result)
+            var fullPath = file.Path.WithRoot(root).GetFullPath();
+            var isIdenticalFile = await comparer.CompareFile(fullPath, file);
+
+            if (isIdenticalFile)
                 identical.Add(file);
             else
                 updated.Add(file);
@@ -36,16 +32,16 @@ public class FishFileSyncer : IFishFileSyncer
             progress?.Report(new FishFileProgressEventArgs(filesArr.Length, filesArr.Length, filesArr.Last().Path));
         return new FishFileSyncResult(updated.ToArray(), identical.ToArray());
     }
+}
 
-    private async ValueTask<bool> compareFile(string root, FishFileMetadata file)
+public class FishFileSyncResult
+{
+    public FishFileSyncResult(FishFileMetadata[] updated, FishFileMetadata[] identical)
     {
-        var fullPath = file.Path.WithRoot(root).GetFullPath();
-        foreach (var comparer in _comparers)
-        {
-            var result = await comparer.CompareFile(fullPath, file);
-            if (!result)
-                return false;
-        }
-        return true;
+        UpdatedFiles = updated;
+        IdenticalFiles = identical;
     }
+
+    public FishFileMetadata[] UpdatedFiles { get; }
+    public FishFileMetadata[] IdenticalFiles { get; }
 }
