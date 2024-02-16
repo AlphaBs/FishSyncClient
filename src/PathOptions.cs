@@ -6,5 +6,4 @@ public class PathOptions
     public char AltPathSeperator { get; set; } = '\\';
 
     public bool CaseInsensitivePath { get; set; } = true;
-    public bool AllowDottedPath { get; set; } = false;
 }

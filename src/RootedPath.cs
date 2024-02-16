@@ -61,7 +61,7 @@ public struct RootedPath
     public string SubPath { get; }
 
     public bool IsRooted => !string.IsNullOrEmpty(Root);
-    public bool IsDirectory => SubPath.EndsWith('/') || SubPath.Equals(string.Empty);
+    public bool IsDirectory => SubPath.EndsWith(_options.PathSeperator) || SubPath.Equals(string.Empty);
 
     public RootedPath WithRoot(string newRoot)
     {
@@ -72,7 +72,7 @@ public struct RootedPath
     {
         if (!IsRooted)
             throw new InvalidOperationException("Root was not set");
-        return Path.Combine(Root, SubPath);
+        return PathHelper.NormalizePath(Root + SubPath, _options);
     }
 
     public override string ToString()

@@ -20,6 +20,8 @@ public static class PathHelper
 
     public static string NormalizePath(string path, PathOptions options)
     {
+        // https://source.dot.net/#System.Private.CoreLib/src/libraries/Common/src/System/IO/PathInternal.cs,d035753e01aa9ae2
+        
         var sb = new StringBuilder(path.Length);
         var findCh = false;
         foreach (var _ch in path)
@@ -62,12 +64,24 @@ public static class PathHelper
             throw new ArgumentException("rootPath is not a directory");
         rootPath = NormalizePath(rootPath, options);
 
-        if (!absPath.StartsWith(rootPath))
+        if (!IsRootDirectory(rootPath, absPath, options))
             throw new ArgumentException("absPath should start with rootPath");
 
         if (absPath.Length == rootPath.Length)
             return string.Empty;
         else
             return absPath.Substring(rootPath.Length);
+    }
+
+    public static bool IsRootDirectory(string rootDir, string filePath, PathOptions options)
+    {
+        var comparisonType = options.CaseInsensitivePath
+             ? StringComparison.OrdinalIgnoreCase
+             : StringComparison.Ordinal;
+
+        int rootDirLength = rootDir.Length;
+        return filePath.StartsWith(rootDir, comparisonType) &&
+            (rootDir[rootDirLength - 1] == options.PathSeperator ||
+            filePath.IndexOf(options.PathSeperator, rootDirLength) == rootDirLength);
     }
 }
