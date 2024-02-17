@@ -1,7 +1,6 @@
 ﻿using FishSyncClient.Downloader;
 using FishSyncClient.Server;
 using FishSyncClient.Server.Alphabet;
-using FishSyncClient.Syncer;
 using FishSyncClient.Versions;
 
 namespace FishSyncClient.Cli;
@@ -26,34 +25,16 @@ public class Program
         var fileProgress = new SyncProgress<FishFileProgressEventArgs>(p => 
             Console.WriteLine($"{p.ProgressedFiles}/{p.TotalFiles} {p.CurrentFile.SubPath}"));
 
-        ByteProgress lastByteProgress = new ByteProgress();
+        var lastByteProgress = new ByteProgress();
         var byteProgress = new SyncProgress<ByteProgress>(p => lastByteProgress = p);
 
-        var serverMetadata = await getServerFiles();
-        if (serverMetadata.Files == null)
-            throw new Exception();
-        var serverVersion = serverMetadata.Files.LastUpdate.ToString("o");
-        var newVersion = await versionManager.CheckNewVersion(serverVersion);
-        Console.WriteLine("newVersion? " + newVersion);
-
-        var server = AlphabetFileUpdateServer.ToFishServerFiles(serverMetadata.Files, _pathOptions);
-        var local = getLocalPaths(root);
-
-        var pathSyncer = new FishPathSyncer();
-        var pathSyncResult = pathSyncer.Sync(server, local);
-        var duplicatedFiles = pathSyncResult.DuplicatedPaths.Cast<FishFileMetadata>();
-
-        var fileSyncer = newVersion
-            ? FishFileSyncerFactory.CreateWithChecksumComparer()
-            : FishFileSyncerFactory.CreateWithSizeComparer();
-        var fileSyncResult = await fileSyncer.Sync(root, duplicatedFiles, fileProgress);
-
-        var downloadFiles = Enumerable.Concat(
-            pathSyncResult.AddedPaths.Cast<FishServerFile>(),
-            fileSyncResult.UpdatedFiles.Cast<FishServerFile>());
+        var alphabetServer = await getServerFiles();
+        var alphabetSyncer = new AlphabetSyncer(versionManager, _pathOptions);
+        var syncResult = await alphabetSyncer.Sync(
+            alphabetServer, getLocalPaths(root), fileProgress, default);
 
         var downloader = new SequentialFileDownloader(_httpClient);
-        var downloadTask = downloader.DownloadFiles(root, downloadFiles, fileProgress, byteProgress, default);
+        var downloadTask = downloader.DownloadFiles(root, syncResult.UpdatedFiles, fileProgress, byteProgress, default);
 
         while (!downloadTask.IsCompleted)
         {
@@ -61,17 +42,26 @@ public class Program
             await Task.Delay(1000);
         }
 
-        foreach (var delete in pathSyncResult.DeletedPaths)
+        foreach (var delete in syncResult.DeletedFiles)
         {
             var path = delete.Path.WithRoot(root).GetFullPath();
             Console.WriteLine($"Delete {path}");
             File.Delete(path);
         }
 
-        if (newVersion)
-            await versionManager.UpdateVersion(serverVersion);
+        if (!syncResult.IsLatestVersion)
+            await versionManager.UpdateVersion(syncResult.Version);
 
         Console.WriteLine("Done");
+    }
+
+    private async Task<LauncherMetadata> getServerFiles()
+    {
+        var metadata = await AlphabetFileUpdateServer.GetLauncherMetadata(
+            _httpClient, 
+            new Uri("http://15.165.76.11/launcher/files-al2.json"));
+
+        return metadata;
     }
 
     IEnumerable<FishPath> getLocalPaths(string root)
@@ -88,14 +78,6 @@ public class Program
         }
     }
 
-    async Task<LauncherMetadata> getServerFiles()
-    {
-        var metadata = await AlphabetFileUpdateServer.GetLauncherMetadata(
-            _httpClient, 
-            new Uri("http://15.165.76.11/launcher/files-al2.json"));
-
-        return metadata;
-    }
 
     void printDownloadFile(string root, IEnumerable<FishServerFile> files)
     {

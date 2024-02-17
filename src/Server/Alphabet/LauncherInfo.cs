@@ -9,4 +9,5 @@ public class LauncherInfo
     public string? LauncherServer { get; set; }
     public string[]? WhitelistFiles { get; set; }
     public string[]? WhitelistDirs { get; set; }
+    public string[]? IncludeFiles { get; set; }
 }
