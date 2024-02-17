@@ -26,7 +26,7 @@ public class VersionManager : IVersionManager
         }
     }
 
-    public async Task<bool> CheckNewVersion(string sourceVersion)
+    public async Task<bool> CheckNewVersion(string? sourceVersion)
     {
         var currentVersion = await GetCurrentVersion();
         return currentVersion != sourceVersion;
