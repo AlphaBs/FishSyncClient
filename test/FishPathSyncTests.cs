@@ -20,7 +20,8 @@ public class FishPathSyncTests
 
         // Then
         var expected = CreateSourcePaths("file3", "file4");
-        AssertEqualPathCollection(expected, result.DuplicatedPaths);
+        var actual = result.DuplicatedPaths.Select(st => st.Source).ToArray();
+        AssertEqualPathCollection(expected, actual);
     }
 
     [Fact]
@@ -35,8 +36,8 @@ public class FishPathSyncTests
         var result = sut.Sync(new[] { sourceInstance }, new[] { targetInstance });
 
         // Then
-        Assert.True(ReferenceEquals(sourceInstance, result.DuplicatedPaths[0]));
-        Assert.False(ReferenceEquals(targetInstance, result.DuplicatedPaths[0]));
+        Assert.True(ReferenceEquals(sourceInstance, result.DuplicatedPaths[0].Source));
+        Assert.False(ReferenceEquals(targetInstance, result.DuplicatedPaths[0].Source));
     }
 
     [Fact]
@@ -117,7 +118,8 @@ public class FishPathSyncTests
 
         // Then
         var expected = CreateSourcePaths("file222");
-        AssertEqualPathCollection(expected, result.DuplicatedPaths);
+        var actual = result.DuplicatedPaths.Select(st => st.Source).ToArray();
+        AssertEqualPathCollection(expected, actual);
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 
 using DotNet.Globbing;
+using FishSyncClient.Files;
 
 namespace FishSyncClient.FileComparers;
 
@@ -23,14 +24,14 @@ public class CompositeFileComparerWithGlob : IFileComparer
         });
     }
 
-    public async ValueTask<bool> CompareFile(string path, FishFileMetadata file)
+    public async ValueTask<bool> CompareFile(FishPathPair pair)
     {
         foreach (var globComparerPair in _globComparerPairs)
         {
-            var isMatch = globComparerPair.Glob.IsMatch(file.Path.SubPath);
+            var isMatch = globComparerPair.Glob.IsMatch(pair.Source.Path.SubPath);
             if (isMatch)
             {
-                return await globComparerPair.FileComparer.CompareFile(path, file);
+                return await globComparerPair.FileComparer.CompareFile(pair);
             }
         }
         return true;

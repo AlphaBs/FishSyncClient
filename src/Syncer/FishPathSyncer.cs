@@ -1,4 +1,5 @@
 ﻿using DotNet.Globbing;
+using FishSyncClient.Files;
 
 namespace FishSyncClient.Syncer;
 
@@ -21,23 +22,23 @@ public class FishPathSyncer
         var sourceDict = source.ToDictionary(s => s.Path.SubPath, s => s);
         var targetDict = target.ToDictionary(t => t.Path.SubPath, t => t);
 
-        var intersects = new List<FishPath>();
+        var intersects = new List<FishPathPair>();
         foreach (var sourceKv in sourceDict)
         {
-            if (targetDict.Remove(sourceKv.Key))
+            if (targetDict.TryGetValue(sourceKv.Key, out var targetValue))
             {
-                intersects.Add(sourceKv.Value);
+                intersects.Add(new FishPathPair(sourceKv.Value, targetValue));
             }
         }
 
         foreach (var intersect in intersects)
         {
-            sourceDict.Remove(intersect.Path.SubPath);
-            targetDict.Remove(intersect.Path.SubPath);
+            sourceDict.Remove(intersect.Source.Path.SubPath);
+            targetDict.Remove(intersect.Target.Path.SubPath);
         }
 
         var duplicated = intersects
-            .Where(p => !isExcludedPath(p.Path))
+            .Where(p => !isExcludedPath(p.Source.Path))
             .ToArray();
         var deleted = targetDict
             .Select(kv => kv.Value)
@@ -58,7 +59,7 @@ public class FishPathSyncer
 
 public class FishPathSyncResult
 {
-    public FishPathSyncResult(FishPath[] added, FishPath[] duplicated, FishPath[] deleted)
+    public FishPathSyncResult(FishPath[] added, FishPathPair[] duplicated, FishPath[] deleted)
     {
         AddedPaths = added;
         DuplicatedPaths = duplicated;
@@ -66,6 +67,6 @@ public class FishPathSyncResult
     }
 
     public FishPath[] AddedPaths { get; }
-    public FishPath[] DuplicatedPaths { get; }
+    public FishPathPair[] DuplicatedPaths { get; }
     public FishPath[] DeletedPaths { get; }
 }

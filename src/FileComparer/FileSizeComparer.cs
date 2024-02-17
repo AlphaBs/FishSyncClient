@@ -1,14 +1,30 @@
-﻿namespace FishSyncClient.FileComparers;
+﻿using FishSyncClient.Files;
+
+namespace FishSyncClient.FileComparers;
 
 public class FileSizeComparer : IFileComparer
 {
-    public ValueTask<bool> CompareFile(string path, FishFileMetadata file)
+    public ValueTask<bool> CompareFile(FishPathPair pair)
     {
-        if (file.Size <= 0)
-            return new ValueTask<bool>(true);
+        var sourceSize = getSize(pair.Source);
+        var targetSize = getSize(pair.Target);
+        return new ValueTask<bool>(sourceSize == targetSize);
+    }
 
-        var fileInfo = new FileInfo(path);
-        var result = fileInfo.Length == file.Size;
-        return new ValueTask<bool>(result);
+    private long getSize(FishPath path)
+    {
+        if (path is FishFileMetadata metadata)
+        {
+            return metadata.Size;
+        }
+        else if (path.Path.IsRooted)
+        {
+            var fileInfo = new FileInfo(path.Path.GetFullPath());
+            return fileInfo.Length;
+        }
+        else
+        {
+            return 0;
+        }
     }
 }

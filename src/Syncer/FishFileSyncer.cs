@@ -1,27 +1,25 @@
 ﻿using FishSyncClient.FileComparers;
+using FishSyncClient.Files;
 
 namespace FishSyncClient.Syncer;
 
 public class FishFileSyncer
 {
     public async ValueTask<FishFileSyncResult> Sync(
-        string root, 
-        IEnumerable<FishFileMetadata> files,
+        IEnumerable<FishPathPair> files,
         IFileComparer comparer,
         IProgress<FishFileProgressEventArgs>? progress)
     {
-        var updated = new List<FishFileMetadata>();
-        var identical = new List<FishFileMetadata>();
+        var updated = new List<FishPathPair>();
+        var identical = new List<FishPathPair>();
 
         var filesArr = files.ToArray();
         for (int i = 0; i < filesArr.Length; i++)
         {
             var file = filesArr[i];
-            progress?.Report(new FishFileProgressEventArgs(i + 1, filesArr.Length, file.Path));
+            progress?.Report(new FishFileProgressEventArgs(i + 1, filesArr.Length, file.Source.Path));
 
-            var fullPath = file.Path.WithRoot(root).GetFullPath();
-            var isIdenticalFile = await comparer.CompareFile(fullPath, file);
-
+            var isIdenticalFile = await comparer.CompareFile(file);
             if (isIdenticalFile)
                 identical.Add(file);
             else
@@ -29,19 +27,19 @@ public class FishFileSyncer
         }
 
         if (filesArr.Any())
-            progress?.Report(new FishFileProgressEventArgs(filesArr.Length, filesArr.Length, filesArr.Last().Path));
+            progress?.Report(new FishFileProgressEventArgs(filesArr.Length, filesArr.Length, filesArr.Last().Source.Path));
         return new FishFileSyncResult(updated.ToArray(), identical.ToArray());
     }
 }
 
 public class FishFileSyncResult
 {
-    public FishFileSyncResult(FishFileMetadata[] updated, FishFileMetadata[] identical)
+    public FishFileSyncResult(FishPathPair[] updated, FishPathPair[] identical)
     {
         UpdatedFiles = updated;
         IdenticalFiles = identical;
     }
 
-    public FishFileMetadata[] UpdatedFiles { get; }
-    public FishFileMetadata[] IdenticalFiles { get; }
+    public FishPathPair[] UpdatedFiles { get; }
+    public FishPathPair[] IdenticalFiles { get; }
 }

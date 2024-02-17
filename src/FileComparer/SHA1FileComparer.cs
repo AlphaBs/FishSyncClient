@@ -1,22 +1,23 @@
 ﻿
 using System.Security.Cryptography;
+using FishSyncClient.Files;
 
 namespace FishSyncClient.FileComparers;
 
-public class SHA1FileComparer : IFileComparer
+public class SHA1FileComparer : ChecksumComparerBase
 {
     public static readonly string AlgorithmName = "sha1";
 
-    public ValueTask<bool> CompareFile(string path, FishFileMetadata file)
+    protected override string ComputeChecksum(string fullPath)
     {
-        if (file.ChecksumAlgorithm != AlgorithmName)
-            throw new InvalidOperationException("Not supported algorithm");
-
-        using var fileStream = File.OpenRead(path);
+        using var fileStream = File.OpenRead(fullPath);
         using var sha1 = SHA1.Create();
         var checksum = sha1.ComputeHash(fileStream);
+        return HashHelper.ToHexString(checksum);
+    }
 
-        var result = HashHelper.ToHexString(checksum) == file.Checksum;
-        return new ValueTask<bool>(result);
+    protected override bool IsSupportedAlgorithmName(string algorithmName)
+    {
+        return algorithmName == AlgorithmName;
     }
 }
