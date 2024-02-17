@@ -13,6 +13,22 @@ public class AlphabetFileUpdateServer
             ?? new LauncherMetadata();
     }
 
+    public static FishServerSyncIndex ToFishServerSyncIndex(LauncherMetadata metadata, PathOptions options)
+    {
+        var excludeFiles = metadata.Launcher?.WhitelistFiles ?? Enumerable.Empty<string>();
+        var excludeDirs = metadata.Launcher?.WhitelistDirs ?? Enumerable.Empty<string>();
+        var excludePatterns = excludeDirs.Select(dir => dir + "/**").Concat(excludeFiles);
+
+        return new FishServerSyncIndex
+        {
+            Name = metadata.Launcher?.Name,
+            Version = metadata.Files?.LastUpdate.ToString("O"),
+            Files = ToFishServerFiles(metadata.Files ?? new(), options).ToArray(),
+            PathSyncExcludes = excludePatterns.ToArray(),
+            FileSyncIncludes = metadata.Launcher?.IncludeFiles ?? Array.Empty<string>()
+        };
+    }
+
     public static IEnumerable<FishServerFile> ToFishServerFiles(UpdateFileCollection updateFiles, PathOptions options)
     {
         if (updateFiles.Files == null)

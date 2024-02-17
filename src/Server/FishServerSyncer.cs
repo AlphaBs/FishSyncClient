@@ -1,47 +1,41 @@
 using FishSyncClient.FileComparers;
 using FishSyncClient.Versions;
 
-namespace FishSyncClient.Server.Alphabet;
+namespace FishSyncClient.Server;
 
-public class AlphabetSyncer
+public class FishServerSyncer
 {
     private readonly IVersionManager _versionManager;
     private readonly PathOptions _pathOptions;
 
-    public AlphabetSyncer(
+    public FishServerSyncer(
         IVersionManager versionManager, 
         PathOptions pathOptions) =>
         (_versionManager, _pathOptions) = 
         (versionManager, pathOptions);
 
-    public async Task<AlphabetSyncResult> Sync(
-        LauncherMetadata server,
+    public async Task<FishServerSyncResult> Sync(
+        FishServerSyncIndex server,
         IEnumerable<FishPath> targets,
         IProgress<FishFileProgressEventArgs>? progress,
         CancellationToken cancellationToken)
     {
-        if (server.Files == null)
-            throw new ArgumentException();
-
-        var serverVersion = server.Files.LastUpdate.ToString("o");
-        var newVersion = await _versionManager.CheckNewVersion(serverVersion);
-
-        var serverFiles = AlphabetFileUpdateServer.ToFishServerFiles(server.Files, _pathOptions);
-        var comparer = createComparer(newVersion, server.Launcher?.IncludeFiles ?? Enumerable.Empty<string>());
+        var newVersion = await _versionManager.CheckNewVersion(server.Version);
 
         var syncer = new FishSyncer();
-        var syncResult = await syncer.Sync(serverFiles, targets, comparer, new FishSyncOptions
+        var comparer = createComparer(newVersion, server.FileSyncIncludes ?? Enumerable.Empty<string>());
+        var syncResult = await syncer.Sync(server.Files, targets, comparer, new FishSyncOptions
         {
-            UpdateExcludes = server.Launcher?.WhitelistFiles ?? Enumerable.Empty<string>(),
+            UpdateExcludes = server.PathSyncExcludes,
             PathOptions = _pathOptions,
             Progress = progress,
             CancellationToken = default
         });
 
         var updatedFiles = syncResult.UpdatedFiles.Cast<FishServerFile>().ToArray();
-        return new AlphabetSyncResult(
+        return new FishServerSyncResult(
             newVersion, 
-            serverVersion, 
+            server.Version, 
             updatedFiles, 
             syncResult.DeletedFiles);
     }
@@ -66,11 +60,11 @@ public class AlphabetSyncer
 
 }
 
-public class AlphabetSyncResult
+public class FishServerSyncResult
 {
-    public AlphabetSyncResult(
+    public FishServerSyncResult(
         bool isLatest, 
-        string version,
+        string? version,
         FishServerFile[] updatedFiles, 
         FishPath[] deletedFiles)
     {
@@ -81,7 +75,7 @@ public class AlphabetSyncResult
     }
 
     public bool IsLatestVersion { get; }
-    public string Version { get; }
+    public string? Version { get; }
     public FishServerFile[] UpdatedFiles { get; }
     public FishPath[] DeletedFiles { get; }
 }

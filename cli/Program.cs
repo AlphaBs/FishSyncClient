@@ -1,6 +1,5 @@
 ﻿using FishSyncClient.Downloader;
 using FishSyncClient.Server;
-using FishSyncClient.Server.Alphabet;
 using FishSyncClient.Versions;
 
 namespace FishSyncClient.Cli;
@@ -28,10 +27,10 @@ public class Program
         var lastByteProgress = new ByteProgress();
         var byteProgress = new SyncProgress<ByteProgress>(p => lastByteProgress = p);
 
-        var alphabetServer = await getServerFiles();
-        var alphabetSyncer = new AlphabetSyncer(versionManager, _pathOptions);
-        var syncResult = await alphabetSyncer.Sync(
-            alphabetServer, getLocalPaths(root), fileProgress, default);
+        var serverIndex = await getServerIndex();
+        var serverSyncer = new FishServerSyncer(versionManager, _pathOptions);
+        var syncResult = await serverSyncer.Sync(
+            serverIndex, getLocalPaths(root), fileProgress, default);
 
         var downloader = new SequentialFileDownloader(_httpClient);
         var downloadTask = downloader.DownloadFiles(root, syncResult.UpdatedFiles, fileProgress, byteProgress, default);
@@ -50,18 +49,17 @@ public class Program
         }
 
         if (!syncResult.IsLatestVersion)
-            await versionManager.UpdateVersion(syncResult.Version);
+            await versionManager.UpdateVersion(syncResult.Version ?? "");
 
         Console.WriteLine("Done");
     }
 
-    private async Task<LauncherMetadata> getServerFiles()
+    private async Task<FishServerSyncIndex> getServerIndex()
     {
         var metadata = await AlphabetFileUpdateServer.GetLauncherMetadata(
             _httpClient, 
             new Uri("http://15.165.76.11/launcher/files-al2.json"));
-
-        return metadata;
+        return AlphabetFileUpdateServer.ToFishServerSyncIndex(metadata, _pathOptions);
     }
 
     IEnumerable<FishPath> getLocalPaths(string root)
