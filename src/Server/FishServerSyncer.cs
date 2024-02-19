@@ -48,7 +48,7 @@ public class FishServerSyncer
             {
                 comparer.Add(includePattern, FileComparerFactory.CreateChecksumComparer());
             }
-            comparer.Add("**", FileComparerFactory.CreateChecksumComparer());
+            comparer.Add("**", FileComparerFactory.CreateSizeComparer());
             return comparer;
         }
     }
