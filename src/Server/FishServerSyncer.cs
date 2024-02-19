@@ -6,13 +6,9 @@ namespace FishSyncClient.Server;
 public class FishServerSyncer
 {
     private readonly IVersionManager _versionManager;
-    private readonly PathOptions _pathOptions;
 
-    public FishServerSyncer(
-        IVersionManager versionManager, 
-        PathOptions pathOptions) =>
-        (_versionManager, _pathOptions) = 
-        (versionManager, pathOptions);
+    public FishServerSyncer(IVersionManager versionManager) =>
+        _versionManager = versionManager;
 
     public async Task<FishServerSyncResult> Sync(
         FishServerSyncIndex server,
@@ -27,7 +23,6 @@ public class FishServerSyncer
         var syncResult = await syncer.Sync(server.Files, targets, comparer, new FishSyncOptions
         {
             UpdateExcludes = server.PathSyncExcludes,
-            PathOptions = _pathOptions,
             Progress = progress,
             CancellationToken = default
         });

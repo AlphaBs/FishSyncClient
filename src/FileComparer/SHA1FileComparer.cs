@@ -1,6 +1,4 @@
-﻿
-using System.Security.Cryptography;
-using FishSyncClient.Files;
+﻿using System.Security.Cryptography;
 
 namespace FishSyncClient.FileComparers;
 

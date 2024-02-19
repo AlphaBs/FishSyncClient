@@ -6,7 +6,6 @@ namespace FishSyncClient;
 public class FishSyncOptions
 {
     public IEnumerable<string> UpdateExcludes { get; set; } = Enumerable.Empty<string>();
-    public PathOptions PathOptions { get; set; } = new();
     public IProgress<FishFileProgressEventArgs>? Progress { get; set; }
     public CancellationToken CancellationToken { get; set; }
 }
