@@ -1,13 +1,14 @@
 ﻿namespace FishSyncClient;
 
-public record FishPath
+public record SyncFile
 {
-    public FishPath(RootedPath path)
+    public SyncFile(RootedPath path)
     {
         Path = path;
     }
 
     public RootedPath Path { get; }
+    public SyncFileMetadata? Metadata { get; set; }
 
     public override string ToString()
     {

@@ -17,17 +17,17 @@ public class FishPathSyncer
         _excludes = updateExcludes.Select(pattern => Glob.Parse(pattern)).ToArray();
     }
 
-    public FishPathSyncResult Sync(IEnumerable<FishPath> source, IEnumerable<FishPath> target)
+    public FishPathSyncResult Sync(IEnumerable<SyncFile> source, IEnumerable<SyncFile> target)
     {
         var sourceDict = source.ToDictionary(s => s.Path.SubPath, s => s);
         var targetDict = target.ToDictionary(t => t.Path.SubPath, t => t);
 
-        var intersects = new List<FishPathPair>();
+        var intersects = new List<SyncFilePair>();
         foreach (var sourceKv in sourceDict)
         {
             if (targetDict.TryGetValue(sourceKv.Key, out var targetValue))
             {
-                intersects.Add(new FishPathPair(sourceKv.Value, targetValue));
+                intersects.Add(new SyncFilePair(sourceKv.Value, targetValue));
             }
         }
 
@@ -59,14 +59,14 @@ public class FishPathSyncer
 
 public class FishPathSyncResult
 {
-    public FishPathSyncResult(FishPath[] added, FishPathPair[] duplicated, FishPath[] deleted)
+    public FishPathSyncResult(SyncFile[] added, SyncFilePair[] duplicated, SyncFile[] deleted)
     {
         AddedPaths = added;
         DuplicatedPaths = duplicated;
         DeletedPaths = deleted;
     }
 
-    public FishPath[] AddedPaths { get; }
-    public FishPathPair[] DuplicatedPaths { get; }
-    public FishPath[] DeletedPaths { get; }
+    public SyncFile[] AddedPaths { get; }
+    public SyncFilePair[] DuplicatedPaths { get; }
+    public SyncFile[] DeletedPaths { get; }
 }

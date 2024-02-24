@@ -12,7 +12,7 @@ public class FishServerSyncer
 
     public async Task<FishServerSyncResult> Sync(
         FishServerSyncIndex server,
-        IEnumerable<FishPath> targets,
+        IEnumerable<SyncFile> targets,
         IProgress<FishFileProgressEventArgs>? progress,
         CancellationToken cancellationToken)
     {
@@ -27,7 +27,7 @@ public class FishServerSyncer
             CancellationToken = default
         });
 
-        var updatedFiles = syncResult.UpdatedFiles.Cast<FishServerFile>().ToArray();
+        var updatedFiles = syncResult.UpdatedFiles.Cast<ServerSyncFile>().ToArray();
         return new FishServerSyncResult(
             newVersion, 
             server.Version, 
@@ -60,8 +60,8 @@ public class FishServerSyncResult
     public FishServerSyncResult(
         bool isLatest, 
         string? version,
-        FishServerFile[] updatedFiles, 
-        FishPath[] deletedFiles)
+        ServerSyncFile[] updatedFiles, 
+        SyncFile[] deletedFiles)
     {
         IsLatestVersion = isLatest;
         Version = version;
@@ -71,6 +71,6 @@ public class FishServerSyncResult
 
     public bool IsLatestVersion { get; }
     public string? Version { get; }
-    public FishServerFile[] UpdatedFiles { get; }
-    public FishPath[] DeletedFiles { get; }
+    public ServerSyncFile[] UpdatedFiles { get; }
+    public SyncFile[] DeletedFiles { get; }
 }

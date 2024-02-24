@@ -21,7 +21,6 @@ public class AlphabetFileUpdateServer
 
         return new FishServerSyncIndex
         {
-            Name = metadata.Launcher?.Name,
             Version = metadata.Files?.LastUpdate.ToString("O"),
             Files = ToFishServerFiles(metadata.Files ?? new(), options).ToArray(),
             SyncExcludes = excludePatterns.ToArray(),
@@ -29,7 +28,7 @@ public class AlphabetFileUpdateServer
         };
     }
 
-    public static IEnumerable<FishServerFile> ToFishServerFiles(UpdateFileCollection updateFiles, PathOptions options)
+    public static IEnumerable<ServerSyncFile> ToFishServerFiles(UpdateFileCollection updateFiles, PathOptions options)
     {
         if (updateFiles.Files == null)
             yield break;
@@ -43,14 +42,17 @@ public class AlphabetFileUpdateServer
             if (string.IsNullOrEmpty(file.Path))
                 continue;
 
-            yield return new FishServerFile(
-                path: RootedPath.FromSubPath(file.Path, options),
-                size: file.Size,
-                checksum: file.Hash,
-                checksumAlgorithm: checksumAlgorithm,
-                uploaded: DateTimeOffset.MinValue,
-                location: new Uri(file.Url)
-            );
+            yield return new ServerSyncFile(RootedPath.FromSubPath(file.Path, options))
+            {
+                Metadata = new SyncFileMetadata
+                {
+                    Size = file.Size,
+                    Checksum = file.Hash,
+                    ChecksumAlgorithm = checksumAlgorithm,
+                },
+                Uploaded = DateTimeOffset.MinValue,
+                Location = new Uri(file.Url)
+            };
         }
     }
 }

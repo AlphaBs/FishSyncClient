@@ -13,8 +13,8 @@ public class FishSyncOptions
 public class FishSyncer
 {
     public async Task<FishSyncResult> Sync(
-        IEnumerable<FishPath> sources, 
-        IEnumerable<FishPath> targets, 
+        IEnumerable<SyncFile> sources, 
+        IEnumerable<SyncFile> targets, 
         IFileComparer comparer,
         FishSyncOptions options)
     {
@@ -38,13 +38,13 @@ public class FishSyncer
 public class FishSyncResult
 {
     public FishSyncResult(
-        FishPath[] updatedFiles, 
-        FishPath[] identicalFiles, 
-        FishPath[] deletedFiles) =>
+        SyncFile[] updatedFiles, 
+        SyncFile[] identicalFiles, 
+        SyncFile[] deletedFiles) =>
         (UpdatedFiles, IdenticalFiles, DeletedFiles) = 
         (updatedFiles, identicalFiles, deletedFiles);
 
-    public FishPath[] UpdatedFiles { get; }
-    public FishPath[] IdenticalFiles { get;}
-    public FishPath[] DeletedFiles { get; }
+    public SyncFile[] UpdatedFiles { get; }
+    public SyncFile[] IdenticalFiles { get;}
+    public SyncFile[] DeletedFiles { get; }
 }

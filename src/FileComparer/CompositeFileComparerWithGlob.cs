@@ -24,7 +24,7 @@ public class CompositeFileComparerWithGlob : IFileComparer
         });
     }
 
-    public async ValueTask<bool> CompareFile(FishPathPair pair)
+    public async ValueTask<bool> CompareFile(SyncFilePair pair)
     {
         foreach (var globComparerPair in _globComparerPairs)
         {

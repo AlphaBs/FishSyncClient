@@ -6,12 +6,12 @@ namespace FishSyncClient.Syncer;
 public class FishFileSyncer
 {
     public async ValueTask<FishFileSyncResult> Sync(
-        IEnumerable<FishPathPair> files,
+        IEnumerable<SyncFilePair> files,
         IFileComparer comparer,
         IProgress<FishFileProgressEventArgs>? progress)
     {
-        var updated = new List<FishPathPair>();
-        var identical = new List<FishPathPair>();
+        var updated = new List<SyncFilePair>();
+        var identical = new List<SyncFilePair>();
 
         var filesArr = files.ToArray();
         for (int i = 0; i < filesArr.Length; i++)
@@ -34,12 +34,12 @@ public class FishFileSyncer
 
 public class FishFileSyncResult
 {
-    public FishFileSyncResult(FishPathPair[] updated, FishPathPair[] identical)
+    public FishFileSyncResult(SyncFilePair[] updated, SyncFilePair[] identical)
     {
         UpdatedFiles = updated;
         IdenticalFiles = identical;
     }
 
-    public FishPathPair[] UpdatedFiles { get; }
-    public FishPathPair[] IdenticalFiles { get; }
+    public SyncFilePair[] UpdatedFiles { get; }
+    public SyncFilePair[] IdenticalFiles { get; }
 }

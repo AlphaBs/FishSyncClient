@@ -20,7 +20,7 @@ public class FileChecksumComparerTests
         var sut = CreateComparer();
     
         // When
-        var comparer = sut.GetComparer(new FishPathPair(
+        var comparer = sut.GetComparer(new SyncFilePair(
             CreateSubFileWithChecksumAlgorithm("1"),
             CreateSubFileWithChecksumAlgorithm("1")
         ));
@@ -36,7 +36,7 @@ public class FileChecksumComparerTests
         var sut = CreateComparer();
 
         // When
-        var comparer = sut.GetComparer(new FishPathPair(
+        var comparer = sut.GetComparer(new SyncFilePair(
             CreateSubFileWithChecksumAlgorithm("1"),
             CreateSubFileWithChecksumAlgorithm("2")
         ));
@@ -52,7 +52,7 @@ public class FileChecksumComparerTests
         var sut = CreateComparer();
     
         // When
-        var comparer = sut.GetComparer(new FishPathPair(
+        var comparer = sut.GetComparer(new SyncFilePair(
             CreateRootedFileWithChecksumAlgorithm("1"),
             CreateSubFileWithChecksumAlgorithm("2")
         ));
@@ -68,7 +68,7 @@ public class FileChecksumComparerTests
         var sut = CreateComparer();
     
         // When
-        var comparer = sut.GetComparer(new FishPathPair(
+        var comparer = sut.GetComparer(new SyncFilePair(
             CreateRootedFileWithChecksumAlgorithm("1"),
             CreateRootedFileWithChecksumAlgorithm("???")
         ));
@@ -84,7 +84,7 @@ public class FileChecksumComparerTests
         var sut = CreateComparer();
     
         // When
-        var comparer = sut.GetComparer(new FishPathPair(
+        var comparer = sut.GetComparer(new SyncFilePair(
             CreateSubFileWithChecksumAlgorithm("1"),
             CreateRootedFile()
         ));
@@ -100,7 +100,7 @@ public class FileChecksumComparerTests
         var sut = CreateComparer();
 
         // When
-        var comparer = sut.GetComparer(new FishPathPair(
+        var comparer = sut.GetComparer(new SyncFilePair(
             CreateRootedFile(),
             CreateRootedFile()
         ));
@@ -116,7 +116,7 @@ public class FileChecksumComparerTests
         var sut = CreateComparer();
 
         // When
-        var comparer = sut.GetComparer(new FishPathPair(
+        var comparer = sut.GetComparer(new SyncFilePair(
             CreateSubFileWithChecksumAlgorithm("???"),
             CreateSubFileWithChecksumAlgorithm("??????")
         ));
@@ -134,26 +134,34 @@ public class FileChecksumComparerTests
         return comparer;
     }
 
-    private static FishFileMetadata CreateRootedFileWithChecksumAlgorithm(string alg)
+    private static SyncFile CreateRootedFileWithChecksumAlgorithm(string alg)
     {
-        return new FishFileMetadata(
-            path: RootedPath.Create("root", "file", pathOptions),
-            size: 0,
-            checksum: alg,
-            checksumAlgorithm: alg);
+        return new SyncFile(RootedPath.Create("root", "file", pathOptions))
+        {
+            Metadata = new SyncFileMetadata
+            {
+                Size = 0,
+                Checksum = alg,
+                ChecksumAlgorithm = alg
+            }
+        };
     }
 
-    private static FishFileMetadata CreateSubFileWithChecksumAlgorithm(string alg)
+    private static SyncFile CreateSubFileWithChecksumAlgorithm(string alg)
     {
-        return new FishFileMetadata(
-            path: RootedPath.FromSubPath("file", pathOptions),
-            size: 0,
-            checksum: alg,
-            checksumAlgorithm: alg);
+        return new SyncFile(RootedPath.FromSubPath("file", pathOptions))
+        {
+            Metadata = new SyncFileMetadata
+            {
+                Size = 0,
+                Checksum = alg,
+                ChecksumAlgorithm = alg
+            }
+        };
     }
 
-    private static FishPath CreateRootedFile()
+    private static SyncFile CreateRootedFile()
     {
-        return new FishPath(RootedPath.Create("root", "file", pathOptions));
+        return new SyncFile(RootedPath.Create("root", "file", pathOptions));
     }
 }

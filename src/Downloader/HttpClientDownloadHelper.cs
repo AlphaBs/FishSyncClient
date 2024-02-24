@@ -80,7 +80,7 @@ internal static class HttpClientDownloadHelper
             totalRead += bytesRead;
             progress?.Report(new ByteProgress
             {
-                TotalBytes = contentLength,
+                TotalBytes = Math.Max(contentLength, totalRead),
                 ProgressedBytes = totalRead
             });
         }

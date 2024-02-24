@@ -28,7 +28,7 @@ public class Program
         var byteProgress = new SyncProgress<ByteProgress>(p => lastByteProgress = p);
 
         var serverIndex = await getServerIndex();
-        var serverSyncer = new FishServerSyncer(versionManager, _pathOptions);
+        var serverSyncer = new FishServerSyncer(versionManager);
         var syncResult = await serverSyncer.Sync(
             serverIndex, getLocalPaths(root), fileProgress, default);
 
@@ -62,7 +62,7 @@ public class Program
         return AlphabetFileUpdateServer.ToFishServerSyncIndex(metadata, _pathOptions);
     }
 
-    IEnumerable<FishPath> getLocalPaths(string root)
+    IEnumerable<SyncFile> getLocalPaths(string root)
     {
         if (!Directory.Exists(root))
             yield break;
@@ -72,12 +72,12 @@ public class Program
         {
             var path = RootedPath.FromFullPath(root, item, _pathOptions);
             Console.WriteLine($"Local {path.SubPath}");
-            yield return new FishPath(path);
+            yield return new SyncFile(path);
         }
     }
 
 
-    void printDownloadFile(string root, IEnumerable<FishServerFile> files)
+    void printDownloadFile(string root, IEnumerable<ServerSyncFile> files)
     {
         foreach (var file in files)
         {
@@ -87,7 +87,7 @@ public class Program
         }
     }
 
-    void printDeleteFile(string root, IEnumerable<FishPath> paths)
+    void printDeleteFile(string root, IEnumerable<SyncFile> paths)
     {
         foreach (var path in paths)
         {

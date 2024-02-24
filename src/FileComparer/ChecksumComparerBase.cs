@@ -4,24 +4,23 @@ namespace FishSyncClient.FileComparers;
 
 public abstract class ChecksumComparerBase : IFileComparer
 {
-    public ValueTask<bool> CompareFile(FishPathPair pair)
+    public ValueTask<bool> CompareFile(SyncFilePair pair)
     {
         var sourceChecksum = getChecksum(pair.Source);
         var targetChecksum = getChecksum(pair.Target);
         return new ValueTask<bool>(sourceChecksum == targetChecksum);
     }
 
-    private string? getChecksum(FishPath path)
+    private string? getChecksum(SyncFile file)
     {
-        if (path is FishFileMetadata metadata &&
-            IsSupportedAlgorithmName(metadata.ChecksumAlgorithm ?? "") &&
-            !string.IsNullOrEmpty(metadata.Checksum))
+        if (IsSupportedAlgorithmName(file.Metadata?.ChecksumAlgorithm ?? "") &&
+            !string.IsNullOrEmpty(file.Metadata?.Checksum))
         {
-            return metadata.Checksum;
+            return file.Metadata.Checksum;
         }
-        else if (path.Path.IsRooted)
+        else if (file.Path.IsRooted)
         {
-            return ComputeChecksum(path.Path.GetFullPath());
+            return ComputeChecksum(file.Path.GetFullPath());
         }
         else
         {
