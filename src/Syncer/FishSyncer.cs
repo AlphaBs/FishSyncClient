@@ -5,7 +5,7 @@ namespace FishSyncClient;
 
 public class FishSyncOptions
 {
-    public IEnumerable<string> UpdateExcludes { get; set; } = Enumerable.Empty<string>();
+    public IEnumerable<string> SyncExcludes { get; set; } = Enumerable.Empty<string>();
     public IProgress<FishFileProgressEventArgs>? Progress { get; set; }
     public CancellationToken CancellationToken { get; set; }
 }
@@ -18,7 +18,7 @@ public class FishSyncer
         IFileComparer comparer,
         FishSyncOptions options)
     {
-        var pathSyncer = new FishPathSyncer(options.UpdateExcludes);
+        var pathSyncer = new FishPathSyncer(options.SyncExcludes);
         var pathSyncResult = pathSyncer.Sync(sources, targets);
         
         var fileSyncer = new FishFileSyncer();

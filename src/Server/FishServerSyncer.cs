@@ -19,10 +19,10 @@ public class FishServerSyncer
         var newVersion = await _versionManager.CheckNewVersion(server.Version);
 
         var syncer = new FishSyncer();
-        var comparer = createComparer(newVersion, server.FileSyncIncludes ?? Enumerable.Empty<string>());
+        var comparer = createComparer(newVersion, server.SyncIncludes ?? Enumerable.Empty<string>());
         var syncResult = await syncer.Sync(server.Files, targets, comparer, new FishSyncOptions
         {
-            UpdateExcludes = server.PathSyncExcludes,
+            SyncExcludes = server.SyncExcludes,
             Progress = progress,
             CancellationToken = default
         });
