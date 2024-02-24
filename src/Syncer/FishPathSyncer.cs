@@ -1,22 +1,9 @@
-﻿using DotNet.Globbing;
-using FishSyncClient.Files;
+﻿using FishSyncClient.Files;
 
 namespace FishSyncClient.Syncer;
 
 public class FishPathSyncer
 {
-    private readonly Glob[] _excludes;
-    
-    public FishPathSyncer() : this(Enumerable.Empty<string>())
-    {
-        
-    }
-
-    public FishPathSyncer(IEnumerable<string> updateExcludes)
-    {
-        _excludes = updateExcludes.Select(pattern => Glob.Parse(pattern)).ToArray();
-    }
-
     public FishPathSyncResult Sync(IEnumerable<SyncFile> source, IEnumerable<SyncFile> target)
     {
         var sourceDict = source.ToDictionary(s => s.Path.SubPath, s => s);
@@ -38,22 +25,15 @@ public class FishPathSyncer
         }
 
         var duplicated = intersects
-            .Where(p => !isExcludedPath(p.Source.Path))
             .ToArray();
         var deleted = targetDict
             .Select(kv => kv.Value)
-            .Where(p => !isExcludedPath(p.Path))
             .ToArray();
         var added = sourceDict
             .Select(kv => kv.Value)
             .ToArray();
 
         return new FishPathSyncResult(added, duplicated, deleted);
-    }
-
-    private bool isExcludedPath(RootedPath path)
-    {
-        return _excludes.Any(glob => glob.IsMatch(path.SubPath));
     }
 }
 

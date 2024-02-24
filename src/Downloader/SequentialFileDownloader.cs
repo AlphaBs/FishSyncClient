@@ -11,8 +11,8 @@ public class SequentialFileDownloader : IFishServerFileDownloader
 
     public async ValueTask DownloadFiles(
         string root,
-        IEnumerable<ServerSyncFile> serverFiles, 
-        IProgress<FishFileProgressEventArgs>? fileProgress, 
+        IEnumerable<ServerSyncFile> serverFiles,
+        IProgress<FishFileProgressEventArgs>? fileProgress,
         IProgress<ByteProgress>? byteProgress,
         CancellationToken cancellationToken)
     {
@@ -26,7 +26,7 @@ public class SequentialFileDownloader : IFishServerFileDownloader
 
             var file = filesArr[i];
             var dest = file.Path.WithRoot(root).GetFullPath();
-        
+
             var progress = new ByteProgressDelta(file.Metadata?.Size ?? 0, p =>
             {
                 totalBytes += p.TotalBytes;
@@ -38,12 +38,15 @@ public class SequentialFileDownloader : IFishServerFileDownloader
                 });
             });
 
-            await HttpClientDownloadHelper.DownloadFileAsync(
-                _httpClient, 
-                file.Location.ToString(), 
-                file.Metadata?.Size ?? 0,
-                dest,
-                progress);
+            if (file.Location != null)
+            {
+                await HttpClientDownloadHelper.DownloadFileAsync(
+                    _httpClient,
+                    file.Location.ToString(),
+                    file.Metadata?.Size ?? 0,
+                    dest,
+                    progress);
+            }
         }
 
         if (filesArr.Any())

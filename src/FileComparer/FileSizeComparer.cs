@@ -4,7 +4,7 @@ namespace FishSyncClient.FileComparers;
 
 public class FileSizeComparer : IFileComparer
 {
-    public ValueTask<bool> CompareFile(SyncFilePair pair)
+    public ValueTask<bool> AreEqual(SyncFilePair pair)
     {
         var sourceSize = getSize(pair.Source);
         var targetSize = getSize(pair.Target);

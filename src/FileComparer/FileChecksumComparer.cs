@@ -68,11 +68,11 @@ public class FileChecksumComparer : IFileComparer
         }
     }
 
-    public async ValueTask<bool> CompareFile(SyncFilePair pair)
+    public async ValueTask<bool> AreEqual(SyncFilePair pair)
     {
         var comparer = GetComparer(pair) ?? DefaultComparer;
         if (comparer == null)
             throw new InvalidOperationException("Unsupported Algorithm");
-        return await comparer.CompareFile(pair);
+        return await comparer.AreEqual(pair);
     }
 }

@@ -4,5 +4,5 @@ namespace FishSyncClient.FileComparers;
 
 public interface IFileComparer
 {
-    ValueTask<bool> CompareFile(SyncFilePair pair);
+    ValueTask<bool> AreEqual(SyncFilePair pair);
 }

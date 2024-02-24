@@ -20,9 +20,9 @@ public class FishServerSyncer
 
         var syncer = new FishSyncer();
         var comparer = createComparer(newVersion, server.SyncIncludes ?? Enumerable.Empty<string>());
-        var syncResult = await syncer.Sync(server.Files, targets, comparer, new FishSyncOptions
+        var syncResult = await syncer.Sync(server.Files, targets, comparer, new SyncOptions
         {
-            SyncExcludes = server.SyncExcludes,
+            Excludes = server.SyncExcludes,
             Progress = progress,
             CancellationToken = default
         });

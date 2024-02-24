@@ -6,28 +6,28 @@ namespace FishSyncClient.Syncer;
 public class FishFileSyncer
 {
     public async ValueTask<FishFileSyncResult> Sync(
-        IEnumerable<SyncFilePair> files,
+        IEnumerable<SyncFilePair> pairs,
         IFileComparer comparer,
         IProgress<FishFileProgressEventArgs>? progress)
     {
         var updated = new List<SyncFilePair>();
         var identical = new List<SyncFilePair>();
 
-        var filesArr = files.ToArray();
-        for (int i = 0; i < filesArr.Length; i++)
+        var pairArr = pairs.ToArray();
+        for (int i = 0; i < pairArr.Length; i++)
         {
-            var file = filesArr[i];
-            progress?.Report(new FishFileProgressEventArgs(i + 1, filesArr.Length, file.Source.Path));
+            var pair = pairArr[i];
+            progress?.Report(new FishFileProgressEventArgs(i + 1, pairArr.Length, pair.Source.Path));
 
-            var isIdenticalFile = await comparer.CompareFile(file);
-            if (isIdenticalFile)
-                identical.Add(file);
+            var areEqual = await comparer.AreEqual(pair);
+            if (areEqual)
+                identical.Add(pair);
             else
-                updated.Add(file);
+                updated.Add(pair);
         }
 
-        if (filesArr.Any())
-            progress?.Report(new FishFileProgressEventArgs(filesArr.Length, filesArr.Length, filesArr.Last().Source.Path));
+        if (pairArr.Any())
+            progress?.Report(new FishFileProgressEventArgs(pairArr.Length, pairArr.Length, pairArr.Last().Source.Path));
         return new FishFileSyncResult(updated.ToArray(), identical.ToArray());
     }
 }

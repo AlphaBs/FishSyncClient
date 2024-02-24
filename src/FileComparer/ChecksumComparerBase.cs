@@ -4,7 +4,7 @@ namespace FishSyncClient.FileComparers;
 
 public abstract class ChecksumComparerBase : IFileComparer
 {
-    public ValueTask<bool> CompareFile(SyncFilePair pair)
+    public ValueTask<bool> AreEqual(SyncFilePair pair)
     {
         var sourceChecksum = getChecksum(pair.Source);
         var targetChecksum = getChecksum(pair.Target);

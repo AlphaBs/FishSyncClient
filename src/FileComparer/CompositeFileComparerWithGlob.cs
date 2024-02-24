@@ -24,14 +24,14 @@ public class CompositeFileComparerWithGlob : IFileComparer
         });
     }
 
-    public async ValueTask<bool> CompareFile(SyncFilePair pair)
+    public async ValueTask<bool> AreEqual(SyncFilePair pair)
     {
         foreach (var globComparerPair in _globComparerPairs)
         {
             var isMatch = globComparerPair.Glob.IsMatch(pair.Source.Path.SubPath);
             if (isMatch)
             {
-                return await globComparerPair.FileComparer.CompareFile(pair);
+                return await globComparerPair.FileComparer.AreEqual(pair);
             }
         }
         return true;
