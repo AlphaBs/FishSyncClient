@@ -8,7 +8,7 @@ internal static class HttpClientDownloadHelper
 
     public static async Task DownloadFileAsync(
         HttpClient httpClient,
-        string url, 
+        Uri url, 
         long size, 
         string path,
         IProgress<ByteProgress>? progress = null, 
@@ -31,7 +31,7 @@ internal static class HttpClientDownloadHelper
 
     public static async Task DownloadFileAsync(
         HttpClient httpClient,
-        string url, 
+        Uri url, 
         long size,
         Stream destination,
         IProgress<ByteProgress>? progress = null, 

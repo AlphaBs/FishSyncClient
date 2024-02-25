@@ -4,7 +4,7 @@ public interface IFishServerFileDownloader
 {
     ValueTask DownloadFiles(
         string root,
-        IEnumerable<ServerSyncFile> serverFiles,
+        IReadOnlyCollection<ServerSyncFile> serverFiles,
         IProgress<FishFileProgressEventArgs>? fileProgress,
         IProgress<ByteProgress>? byteProgress,
         CancellationToken cancellationToken);

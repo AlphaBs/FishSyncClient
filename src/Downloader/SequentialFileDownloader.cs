@@ -11,45 +11,49 @@ public class SequentialFileDownloader : IFishServerFileDownloader
 
     public async ValueTask DownloadFiles(
         string root,
-        IEnumerable<ServerSyncFile> serverFiles,
+        IReadOnlyCollection<ServerSyncFile> serverFiles,
         IProgress<FishFileProgressEventArgs>? fileProgress,
         IProgress<ByteProgress>? byteProgress,
         CancellationToken cancellationToken)
     {
-        var filesArr = serverFiles.ToArray();
-        long totalBytes = filesArr.Select(f => f.Metadata?.Size ?? 0).Sum();
+        long totalBytes = serverFiles.Select(f => f.Metadata?.Size ?? 0).Sum();
         long progressedBytes = 0;
 
-        for (int i = 0; i < filesArr.Length; i++)
+        int progressed = 0;
+        RootedPath lastFilePath = new();
+
+        foreach (var file in serverFiles)
         {
-            fileProgress?.Report(new FishFileProgressEventArgs(i, filesArr.Length, filesArr[i].Path));
-
-            var file = filesArr[i];
-            var dest = file.Path.WithRoot(root).GetFullPath();
-
-            var progress = new ByteProgressDelta(file.Metadata?.Size ?? 0, p =>
-            {
-                totalBytes += p.TotalBytes;
-                progressedBytes += p.ProgressedBytes;
-                byteProgress?.Report(new ByteProgress
-                {
-                    TotalBytes = totalBytes,
-                    ProgressedBytes = progressedBytes
-                });
-            });
+            fileProgress?.Report(new FishFileProgressEventArgs(
+                progressed, serverFiles.Count, lastFilePath = file.Path));
 
             if (file.Location != null)
             {
+                var progress = new ByteProgressDelta(file.Metadata?.Size ?? 0, p =>
+                {
+                    totalBytes += p.TotalBytes;
+                    progressedBytes += p.ProgressedBytes;
+                    byteProgress?.Report(new ByteProgress
+                    {
+                        TotalBytes = totalBytes,
+                        ProgressedBytes = progressedBytes
+                    });
+                });
+
+                var dest = file.Path.WithRoot(root).GetFullPath();
                 await HttpClientDownloadHelper.DownloadFileAsync(
                     _httpClient,
-                    file.Location.ToString(),
+                    file.Location,
                     file.Metadata?.Size ?? 0,
                     dest,
-                    progress);
+                    progress,
+                    cancellationToken);
             }
+
+            progressed++;
         }
 
-        if (filesArr.Any())
-            fileProgress?.Report(new FishFileProgressEventArgs(filesArr.Length, filesArr.Length, filesArr.Last().Path));
+        if (progressed > 0)
+            fileProgress?.Report(new FishFileProgressEventArgs(progressed, serverFiles.Count, lastFilePath));
     }
 }

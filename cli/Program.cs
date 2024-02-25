@@ -35,7 +35,7 @@ public class Program
         var syncResult = await serverSyncer.Sync(
             serverIndex, getLocalPaths(root), fileProgress, default);
 
-        var downloader = new SequentialFileDownloader(_httpClient);
+        var downloader = new ParallelFileDownloader(_httpClient);
         var downloadTask = downloader.DownloadFiles(root, syncResult.UpdatedFiles, fileProgress, byteProgress, default);
 
         while (!downloadTask.IsCompleted)
