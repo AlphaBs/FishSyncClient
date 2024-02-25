@@ -13,7 +13,7 @@ public class FishSyncerTests : FishFileTestBase
         // Given
         var sut = new FishSyncer();
         var mockComparer = new Mock<IFileComparer>();
-        mockComparer.Setup(comparer => comparer.AreEqual(It.IsAny<SyncFilePair>()))
+        mockComparer.Setup(comparer => comparer.AreEqual(It.IsAny<SyncFilePair>(), default))
             .Returns(new ValueTask<bool>(false));
 
         // When
@@ -38,7 +38,7 @@ public class FishSyncerTests : FishFileTestBase
         // Given
         var sut = new FishSyncer();
         var mockComparer = new Mock<IFileComparer>();
-        mockComparer.Setup(comparer => comparer.AreEqual(It.IsAny<SyncFilePair>()))
+        mockComparer.Setup(comparer => comparer.AreEqual(It.IsAny<SyncFilePair>(), default))
             .Returns(new ValueTask<bool>(false));
 
         // When
@@ -63,7 +63,7 @@ public class FishSyncerTests : FishFileTestBase
         // Given
         var sut = new FishSyncer();
         var mockComparer = new Mock<IFileComparer>();
-        mockComparer.Setup(comparer => comparer.AreEqual(It.IsAny<SyncFilePair>()))
+        mockComparer.Setup(comparer => comparer.AreEqual(It.IsAny<SyncFilePair>(), default))
             .Returns(new ValueTask<bool>(false));
 
         // When
@@ -88,7 +88,7 @@ public class FishSyncerTests : FishFileTestBase
         // Given
         var sut = new FishSyncer();
         var mockComparer = new Mock<IFileComparer>();
-        mockComparer.Setup(comparer => comparer.AreEqual(It.IsAny<SyncFilePair>()))
+        mockComparer.Setup(comparer => comparer.AreEqual(It.IsAny<SyncFilePair>(), default))
             .Returns(new ValueTask<bool>(false));
 
         // When

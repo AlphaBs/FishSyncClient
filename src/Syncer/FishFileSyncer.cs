@@ -8,7 +8,8 @@ public class FishFileSyncer
     public async ValueTask<FishFileSyncResult> Sync(
         IEnumerable<SyncFilePair> pairs,
         IFileComparer comparer,
-        IProgress<FishFileProgressEventArgs>? progress)
+        IProgress<FishFileProgressEventArgs>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         var updated = new List<SyncFilePair>();
         var identical = new List<SyncFilePair>();
@@ -16,10 +17,12 @@ public class FishFileSyncer
         var pairArr = pairs.ToArray();
         for (int i = 0; i < pairArr.Length; i++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var pair = pairArr[i];
             progress?.Report(new FishFileProgressEventArgs(i + 1, pairArr.Length, pair.Source.Path));
 
-            var areEqual = await comparer.AreEqual(pair);
+            var areEqual = await comparer.AreEqual(pair, cancellationToken);
             if (areEqual)
                 identical.Add(pair);
             else

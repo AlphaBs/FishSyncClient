@@ -13,18 +13,18 @@ public class FishServerSyncer
     public async Task<FishServerSyncResult> Sync(
         FishServerSyncIndex server,
         IEnumerable<SyncFile> targets,
-        IProgress<FishFileProgressEventArgs>? progress,
-        CancellationToken cancellationToken)
+        IProgress<FishFileProgressEventArgs>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         var newVersion = await _versionManager.CheckNewVersion(server.Version);
 
         var syncer = new FishSyncer();
-        var comparer = createComparer(newVersion, server.SyncIncludes ?? Enumerable.Empty<string>());
+        var comparer = createComparer(newVersion, server.SyncIncludes);
         var syncResult = await syncer.Sync(server.Files, targets, comparer, new SyncOptions
         {
             Excludes = server.SyncExcludes,
             Progress = progress,
-            CancellationToken = default
+            CancellationToken = cancellationToken
         });
 
         var updatedFiles = syncResult.UpdatedFiles.Cast<ServerSyncFile>().ToArray();

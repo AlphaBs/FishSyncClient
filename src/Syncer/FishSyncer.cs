@@ -47,7 +47,11 @@ public class FishSyncer
             var pathSyncResult = pathSyncer.Sync(sources, targets);
 
             var fileSyncer = new FishFileSyncer();
-            var fileSyncResult = await fileSyncer.Sync(pathSyncResult.DuplicatedPaths, comparer, _options.Progress);
+            var fileSyncResult = await fileSyncer.Sync(
+                pairs: pathSyncResult.DuplicatedPaths, 
+                comparer: comparer, 
+                progress: _options.Progress, 
+                cancellationToken: _options.CancellationToken);
 
             var updatedFiles = Enumerable.Concat(
                 pathSyncResult.AddedPaths,

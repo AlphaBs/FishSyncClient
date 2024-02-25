@@ -13,7 +13,7 @@
 - [ ] 배열에서 다른 인터페이스로 전환 
 - [x] Fish prefix 전부 제거하기 
 - [x] FishPath -> SyncFile, FishFileMetdata -> SyncFileMetadata, FishServerFile -> SyncServerFile
-- [ ] CancellationToken 지원 
+- [x] CancellationToken 지원 
 
 # Update Process
 
