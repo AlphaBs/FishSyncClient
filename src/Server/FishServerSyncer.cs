@@ -6,9 +6,12 @@ namespace FishSyncClient.Server;
 public class FishServerSyncer
 {
     private readonly IVersionManager _versionManager;
+    private readonly IFileComparerFactory _comparerFactory;
 
-    public FishServerSyncer(IVersionManager versionManager) =>
-        _versionManager = versionManager;
+    public FishServerSyncer(
+        IVersionManager versionManager, 
+        IFileComparerFactory comparerFactory) =>
+        (_versionManager, _comparerFactory) = (versionManager, comparerFactory);
 
     public async Task<FishServerSyncResult> Sync(
         FishServerSyncIndex server,
@@ -22,6 +25,7 @@ public class FishServerSyncer
         var comparer = createComparer(newVersion, server.SyncIncludes);
         var syncResult = await syncer.Sync(server.Files, targets, comparer, new SyncOptions
         {
+            Includes = server.SyncIncludes,
             Excludes = server.SyncExcludes,
             Progress = progress,
             CancellationToken = cancellationToken
@@ -39,16 +43,16 @@ public class FishServerSyncer
     {
         if (isNewVersion)
         {
-            return FileComparerFactory.CreateChecksumComparer();
+            return _comparerFactory.CreateFullComparer();
         }
         else
         {
             var comparer = new CompositeFileComparerWithGlob();
             foreach (var includePattern in includePatterns)
             {
-                comparer.Add(includePattern, FileComparerFactory.CreateChecksumComparer());
+                comparer.Add(includePattern, _comparerFactory.CreateFullComparer());
             }
-            comparer.Add("**", FileComparerFactory.CreateSizeComparer());
+            comparer.Add("**", _comparerFactory.CreateFastComparer());
             return comparer;
         }
     }

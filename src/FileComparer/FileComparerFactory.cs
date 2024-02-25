@@ -1,8 +1,14 @@
 namespace FishSyncClient.FileComparers;
 
-public static class FileComparerFactory
+public interface IFileComparerFactory
 {
-    public static IFileComparer CreateChecksumComparer()
+    IFileComparer CreateFullComparer();
+    IFileComparer CreateFastComparer();
+}
+
+public class DefaultFileComparerFactory : IFileComparerFactory
+{
+    public IFileComparer CreateFullComparer()
     {
         var comparer = new FileChecksumComparer();
         comparer.AddAlgorithm(MD5FileComparer.AlgorithmName, new MD5FileComparer());
@@ -10,7 +16,7 @@ public static class FileComparerFactory
         return comparer;
     }
 
-    public static IFileComparer CreateSizeComparer()
+    public IFileComparer CreateFastComparer()
     {
         return new FileSizeComparer();
     }
