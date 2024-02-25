@@ -18,14 +18,12 @@ public class SequentialFileDownloader : IFishServerFileDownloader
     {
         long totalBytes = serverFiles.Select(f => f.Metadata?.Size ?? 0).Sum();
         long progressedBytes = 0;
-
         int progressed = 0;
-        RootedPath lastFilePath = new();
 
         foreach (var file in serverFiles)
         {
             fileProgress?.Report(new FishFileProgressEventArgs(
-                progressed, serverFiles.Count, lastFilePath = file.Path));
+                FishFileProgressEventType.Start, progressed, serverFiles.Count, file.Path));
 
             if (file.Location != null)
             {
@@ -51,9 +49,8 @@ public class SequentialFileDownloader : IFishServerFileDownloader
             }
 
             progressed++;
+            fileProgress?.Report(new FishFileProgressEventArgs(
+                FishFileProgressEventType.Done, progressed, serverFiles.Count, file.Path));
         }
-
-        if (progressed > 0)
-            fileProgress?.Report(new FishFileProgressEventArgs(progressed, serverFiles.Count, lastFilePath));
     }
 }

@@ -30,13 +30,12 @@ public class ParallelFileSyncer : IFishFileSyncer
     {
         var identicalFiles = new ConcurrentBag<SyncFilePair>();
         var updatedFiles = new ConcurrentBag<SyncFilePair>();
-
         var progressed = 0;
-        RootedPath lastFilePath = new();
 
         var executor = new ActionBlock<SyncFilePair>(async pair => 
         {
-            progress?.Report(new FishFileProgressEventArgs(progressed, pairs.Count, pair.Source.Path));
+            progress?.Report(new FishFileProgressEventArgs(
+                FishFileProgressEventType.Start, progressed, pairs.Count, pair.Source.Path));
 
             var areEqual = await comparer.AreEqual(pair, cancellationToken);
             if (areEqual)
@@ -45,7 +44,8 @@ public class ParallelFileSyncer : IFishFileSyncer
                 updatedFiles.Add(pair);
 
             Interlocked.Increment(ref progressed);
-            lastFilePath = pair.Source.Path;
+            progress?.Report(new FishFileProgressEventArgs(
+                FishFileProgressEventType.Done, progressed, pairs.Count, pair.Source.Path));
 
         }, new ExecutionDataflowBlockOptions
         {
@@ -60,8 +60,6 @@ public class ParallelFileSyncer : IFishFileSyncer
 
         executor.Complete();
         await executor.Completion;
-
-        progress?.Report(new FishFileProgressEventArgs(progressed, pairs.Count, lastFilePath));
 
         // convert concurrent collection to non-concurrent collection, 
         // for efficient accessing to its elements

@@ -1,4 +1,5 @@
-﻿using FishSyncClient.Downloader;
+﻿using System.Globalization;
+using FishSyncClient.Downloader;
 using FishSyncClient.FileComparers;
 using FishSyncClient.Server;
 using FishSyncClient.Syncer;
@@ -19,28 +20,34 @@ public class Program
 
     async Task Start()
     {
-        var root = Environment.GetEnvironmentVariable("APPDATA") + "/ICY_ONLINE/game";
-        var versionPath = Environment.GetEnvironmentVariable("APPDATA") + "/ICY_ONLINE/version.dat";
+        var root = "/tmp/fishsync";
+        var versionPath = "/tmp/fishsync.version.txt";
         var versionManager = new VersionManager(versionPath);
 
         var fileProgress = new SyncProgress<FishFileProgressEventArgs>(p => 
-            Console.WriteLine($"{p.ProgressedFiles}/{p.TotalFiles} {p.CurrentFile.SubPath}"));
+            Console.WriteLine($"[{p.EventType}] {p.ProgressedFiles}/{p.TotalFiles} {p.CurrentFile.SubPath}"));
 
         var lastByteProgress = new ByteProgress();
         var byteProgress = new SyncProgress<ByteProgress>(p => lastByteProgress = p);
 
         var serverIndex = await getServerIndex();
-        var fileSyncer = new ParallelFileSyncer();
-        var serverSyncer = new FishServerSyncer(versionManager, new DefaultFileComparerFactory(), fileSyncer);
+        var serverSyncer = new FishServerSyncer(
+            versionManager, new DefaultFileComparerFactory(), new ParallelFileSyncer());
         var syncResult = await serverSyncer.Sync(
             serverIndex, getLocalPaths(root), fileProgress, default);
+
+        foreach (var update in syncResult.UpdatedFiles)
+        {
+            Console.WriteLine($"Update {update.Path.SubPath}");
+        }
 
         var downloader = new ParallelFileDownloader(_httpClient);
         var downloadTask = downloader.DownloadFiles(root, syncResult.UpdatedFiles, fileProgress, byteProgress, default);
 
         while (!downloadTask.IsCompleted)
         {
-            Console.WriteLine((int)lastByteProgress.GetPercentage() + "%");
+            var percent = lastByteProgress.GetPercentage().ToString("F");
+            Console.WriteLine($"{percent}% ({lastByteProgress.ProgressedBytes} / {lastByteProgress.TotalBytes})");
             await Task.Delay(1000);
         }
 

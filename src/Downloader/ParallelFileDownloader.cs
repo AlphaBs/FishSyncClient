@@ -32,13 +32,13 @@ public class ParallelFileDownloader : IFishServerFileDownloader
     {
         var progressStorage = new ThreadLocal<ByteProgress>(
             () => new ByteProgress(), true);
-        var progressed = 0;
-        RootedPath lastFilePath = new();
+        var totalBytes = serverFiles.Select(file => file.Metadata?.Size ?? 0).Sum();
+        var progressedFiles = 0;
 
         var executor = new ActionBlock<ServerSyncFile>(async file =>
         {
             fileProgress?.Report(new FishFileProgressEventArgs(
-                progressed, serverFiles.Count, file.Path));
+                FishFileProgressEventType.Start, progressedFiles, serverFiles.Count, file.Path));
             
             if (file.Location != null)
             {
@@ -62,9 +62,10 @@ public class ParallelFileDownloader : IFishServerFileDownloader
                     cancellationToken);
             }
 
-            Interlocked.Increment(ref progressed);
-            lastFilePath = file.Path;
-            
+            Interlocked.Increment(ref progressedFiles);
+            fileProgress?.Report(new FishFileProgressEventArgs(
+                FishFileProgressEventType.Done, progressedFiles, serverFiles.Count, file.Path));
+
         }, new ExecutionDataflowBlockOptions
         {
             MaxDegreeOfParallelism = _maxDegreeOfParallelism,
@@ -79,25 +80,24 @@ public class ParallelFileDownloader : IFishServerFileDownloader
 
         while (!executor.Completion.IsCompleted)
         {
-            await Task.Delay(1000);
+            await Task.WhenAny(executor.Completion, Task.Delay(1000));
 
-            long totalBytes = 0;
-            long progressedBytes = 0;
+            long aggregatedTotalBytes = totalBytes;
+            long aggregatedProgressedBytes = 0;
 
             foreach (var progress in progressStorage.Values)
             {
-                totalBytes += progress.TotalBytes;
-                progressedBytes += progress.ProgressedBytes;
+                aggregatedTotalBytes += progress.TotalBytes;
+                aggregatedProgressedBytes += progress.ProgressedBytes;
             }
 
             byteProgress?.Report(new ByteProgress
             {
-                TotalBytes = totalBytes,
-                ProgressedBytes = progressedBytes
+                TotalBytes = aggregatedTotalBytes,
+                ProgressedBytes = aggregatedProgressedBytes
             });
         }
 
         await executor.Completion;
-        fileProgress?.Report(new FishFileProgressEventArgs(progressed, serverFiles.Count, lastFilePath));
     }
 }

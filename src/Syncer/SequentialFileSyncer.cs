@@ -15,11 +15,11 @@ public class SequentialFileSyncer : IFishFileSyncer
         var identical = new List<SyncFilePair>();
 
         int progressed = 0;
-        RootedPath lastFilePath = new(); 
         foreach (var pair in pairs)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            progress?.Report(new FishFileProgressEventArgs(progressed, pairs.Count, lastFilePath = pair.Source.Path));
+            progress?.Report(new FishFileProgressEventArgs(
+                FishFileProgressEventType.Start, progressed, pairs.Count, pair.Source.Path));
 
             var areEqual = await comparer.AreEqual(pair, cancellationToken);
             if (areEqual)
@@ -28,10 +28,10 @@ public class SequentialFileSyncer : IFishFileSyncer
                 updated.Add(pair);
 
             progressed++;
+            progress?.Report(new FishFileProgressEventArgs(
+                FishFileProgressEventType.Done, progressed, pairs.Count, pair.Source.Path));
         }
 
-        if (progressed > 0)
-            progress?.Report(new FishFileProgressEventArgs(pairs.Count, pairs.Count, lastFilePath));
         return new FishFileSyncResult(updated.ToArray(), identical.ToArray());
     }
 }
