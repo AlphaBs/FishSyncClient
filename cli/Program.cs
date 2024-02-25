@@ -1,6 +1,7 @@
 ﻿using FishSyncClient.Downloader;
 using FishSyncClient.FileComparers;
 using FishSyncClient.Server;
+using FishSyncClient.Syncer;
 using FishSyncClient.Versions;
 
 namespace FishSyncClient.Cli;
@@ -29,7 +30,8 @@ public class Program
         var byteProgress = new SyncProgress<ByteProgress>(p => lastByteProgress = p);
 
         var serverIndex = await getServerIndex();
-        var serverSyncer = new FishServerSyncer(versionManager, new DefaultFileComparerFactory());
+        var fileSyncer = new ParallelFileSyncer();
+        var serverSyncer = new FishServerSyncer(versionManager, new DefaultFileComparerFactory(), fileSyncer);
         var syncResult = await serverSyncer.Sync(
             serverIndex, getLocalPaths(root), fileProgress, default);
 

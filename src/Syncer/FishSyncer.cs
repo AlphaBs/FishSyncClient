@@ -14,23 +14,30 @@ public class SyncOptions
 
 public class FishSyncer
 {
+    private readonly IFishFileSyncer _fileSyncer;
+
+    public FishSyncer(IFishFileSyncer fileSyncer) => 
+        _fileSyncer = fileSyncer;
+
     public Task<FishSyncResult> Sync(
         IEnumerable<SyncFile> sources,
         IEnumerable<SyncFile> targets,
         IFileComparer comparer,
         SyncOptions options)
     {
-        return new SyncProcessor(options).Sync(sources, targets, comparer); 
+        return new SyncProcessor(_fileSyncer, options).Sync(sources, targets, comparer); 
     }
 
     class SyncProcessor
     {
+        private readonly IFishFileSyncer _fileSyncer;
         private readonly Glob[] _includesPatterns;
         private readonly Glob[] _excludesPatterns;
         private readonly SyncOptions _options;
 
-        public SyncProcessor(SyncOptions options) 
+        public SyncProcessor(IFishFileSyncer fileSyncer, SyncOptions options) 
         {
+            _fileSyncer = fileSyncer;
             _options = options;
             _includesPatterns = parsePatternsToGlobs(options.Includes);
             _excludesPatterns = parsePatternsToGlobs(options.Excludes);
@@ -46,8 +53,7 @@ public class FishSyncer
             var pathSyncer = new FishPathSyncer();
             var pathSyncResult = pathSyncer.Sync(sources, targets);
 
-            var fileSyncer = new FishFileSyncer();
-            var fileSyncResult = await fileSyncer.Sync(
+            var fileSyncResult = await _fileSyncer.Sync(
                 pairs: pathSyncResult.DuplicatedPaths, 
                 comparer: comparer, 
                 progress: _options.Progress, 

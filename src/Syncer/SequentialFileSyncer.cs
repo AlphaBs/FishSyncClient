@@ -3,7 +3,7 @@ using FishSyncClient.Files;
 
 namespace FishSyncClient.Syncer;
 
-public class FishFileSyncer
+public class SequentialFileSyncer : IFishFileSyncer
 {
     public async ValueTask<FishFileSyncResult> Sync(
         IReadOnlyCollection<SyncFilePair> pairs,
@@ -35,8 +35,3 @@ public class FishFileSyncer
         return new FishFileSyncResult(updated.ToArray(), identical.ToArray());
     }
 }
-
-public record FishFileSyncResult(
-    IReadOnlyCollection<SyncFilePair> UpdatedFiles,
-    IReadOnlyCollection<SyncFilePair> IdenticalFiles
-);

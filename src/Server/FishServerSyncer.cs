@@ -1,4 +1,5 @@
 using FishSyncClient.FileComparers;
+using FishSyncClient.Syncer;
 using FishSyncClient.Versions;
 
 namespace FishSyncClient.Server;
@@ -7,11 +8,14 @@ public class FishServerSyncer
 {
     private readonly IVersionManager _versionManager;
     private readonly IFileComparerFactory _comparerFactory;
+    private readonly IFishFileSyncer _fileSyncer;
 
     public FishServerSyncer(
         IVersionManager versionManager, 
-        IFileComparerFactory comparerFactory) =>
-        (_versionManager, _comparerFactory) = (versionManager, comparerFactory);
+        IFileComparerFactory comparerFactory,
+        IFishFileSyncer fileSyncer) =>
+        (_versionManager, _comparerFactory, _fileSyncer) = 
+        (versionManager, comparerFactory, fileSyncer);
 
     public async Task<FishServerSyncResult> Sync(
         FishServerSyncIndex server,
@@ -21,7 +25,7 @@ public class FishServerSyncer
     {
         var newVersion = await _versionManager.CheckNewVersion(server.Version);
 
-        var syncer = new FishSyncer();
+        var syncer = new FishSyncer(_fileSyncer);
         var comparer = createComparer(newVersion, server.SyncIncludes);
         var syncResult = await syncer.Sync(server.Files, targets, comparer, new SyncOptions
         {

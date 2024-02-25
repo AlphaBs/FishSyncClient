@@ -14,7 +14,7 @@
 - [x] Fish prefix 전부 제거하기 
 - [x] FishPath -> SyncFile, FishFileMetdata -> SyncFileMetadata, FishServerFile -> SyncServerFile
 - [x] CancellationToken 지원 
-- [ ] 멀티스레드 지원
+- [x] 멀티스레드 지원
 
 # Update Process
 

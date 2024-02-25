@@ -1,6 +1,7 @@
 using FishSyncClient;
 using FishSyncClient.FileComparers;
 using FishSyncClient.Files;
+using FishSyncClient.Syncer;
 using Moq;
 
 namespace FishSyncClientTest;
@@ -11,7 +12,7 @@ public class FishSyncerTests : FishFileTestBase
     public async Task exclude_files_which_match_exclude_patterns_from_updated_files()
     {
         // Given
-        var sut = new FishSyncer();
+        var sut = CreateSyncer();
         var mockComparer = new Mock<IFileComparer>();
         mockComparer.Setup(comparer => comparer.AreEqual(It.IsAny<SyncFilePair>(), default))
             .Returns(new ValueTask<bool>(false));
@@ -36,7 +37,7 @@ public class FishSyncerTests : FishFileTestBase
     public async Task exclude_files_which_does_not_match_include_patterns_from_updated_files()
     {
         // Given
-        var sut = new FishSyncer();
+        var sut = CreateSyncer();
         var mockComparer = new Mock<IFileComparer>();
         mockComparer.Setup(comparer => comparer.AreEqual(It.IsAny<SyncFilePair>(), default))
             .Returns(new ValueTask<bool>(false));
@@ -61,7 +62,7 @@ public class FishSyncerTests : FishFileTestBase
     public async Task exclude_files_which_match_exclude_patterns_from_deleted_files()
     {
         // Given
-        var sut = new FishSyncer();
+        var sut = CreateSyncer();
         var mockComparer = new Mock<IFileComparer>();
         mockComparer.Setup(comparer => comparer.AreEqual(It.IsAny<SyncFilePair>(), default))
             .Returns(new ValueTask<bool>(false));
@@ -86,7 +87,7 @@ public class FishSyncerTests : FishFileTestBase
     public async Task exclude_files_which_does_not_match_include_patterns_from_deleted_files()
     {
         // Given
-        var sut = new FishSyncer();
+        var sut = CreateSyncer();
         var mockComparer = new Mock<IFileComparer>();
         mockComparer.Setup(comparer => comparer.AreEqual(It.IsAny<SyncFilePair>(), default))
             .Returns(new ValueTask<bool>(false));
@@ -105,5 +106,10 @@ public class FishSyncerTests : FishFileTestBase
         var expected = CreateTargetPaths("file2", "file34", "files/a/b/c");
         var actual = result.DeletedFiles.ToArray();
         AssertEqualPathCollection(expected, actual);
+    }
+
+    public static FishSyncer CreateSyncer()
+    {
+        return new FishSyncer(new SequentialFileSyncer());
     }
 }
