@@ -59,22 +59,9 @@ public class FishServerSyncer
 
 }
 
-public class FishServerSyncResult
-{
-    public FishServerSyncResult(
-        bool isLatest, 
-        string? version,
-        ServerSyncFile[] updatedFiles, 
-        SyncFile[] deletedFiles)
-    {
-        IsLatestVersion = isLatest;
-        Version = version;
-        UpdatedFiles = updatedFiles;
-        DeletedFiles = deletedFiles;
-    }
-
-    public bool IsLatestVersion { get; }
-    public string? Version { get; }
-    public ServerSyncFile[] UpdatedFiles { get; }
-    public SyncFile[] DeletedFiles { get; }
-}
+public record FishServerSyncResult(
+    bool IsLatestVersion,
+    string? Version,
+    IReadOnlyCollection<ServerSyncFile> UpdatedFiles,
+    IReadOnlyCollection<SyncFile> DeletedFiles
+);

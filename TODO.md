@@ -10,10 +10,11 @@
 - [x] Alphabet 이랑 FishServer 랑 공통되는 부분만 따로 뽑아내기
 - [ ] RootedPath 절대경로?
 - [x] ServerSyncer 에서 SyncIncludes 이랑 DeletedFiles 합치기
-- [ ] 배열에서 다른 인터페이스로 전환 
+- [x] 배열에서 다른 인터페이스로 전환 
 - [x] Fish prefix 전부 제거하기 
 - [x] FishPath -> SyncFile, FishFileMetdata -> SyncFileMetadata, FishServerFile -> SyncServerFile
 - [x] CancellationToken 지원 
+- [ ] 멀티스레드 지원
 
 # Update Process
 

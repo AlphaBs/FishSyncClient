@@ -6,7 +6,7 @@ namespace FishSyncClient.Syncer;
 public class FishFileSyncer
 {
     public async ValueTask<FishFileSyncResult> Sync(
-        IEnumerable<SyncFilePair> pairs,
+        IReadOnlyCollection<SyncFilePair> pairs,
         IFileComparer comparer,
         IProgress<FishFileProgressEventArgs>? progress = null,
         CancellationToken cancellationToken = default)
@@ -14,35 +14,29 @@ public class FishFileSyncer
         var updated = new List<SyncFilePair>();
         var identical = new List<SyncFilePair>();
 
-        var pairArr = pairs.ToArray();
-        for (int i = 0; i < pairArr.Length; i++)
+        int progressed = 0;
+        RootedPath lastFilePath = new(); 
+        foreach (var pair in pairs)
         {
             cancellationToken.ThrowIfCancellationRequested();
-
-            var pair = pairArr[i];
-            progress?.Report(new FishFileProgressEventArgs(i + 1, pairArr.Length, pair.Source.Path));
+            progress?.Report(new FishFileProgressEventArgs(progressed, pairs.Count, lastFilePath = pair.Source.Path));
 
             var areEqual = await comparer.AreEqual(pair, cancellationToken);
             if (areEqual)
                 identical.Add(pair);
             else
                 updated.Add(pair);
+
+            progressed++;
         }
 
-        if (pairArr.Any())
-            progress?.Report(new FishFileProgressEventArgs(pairArr.Length, pairArr.Length, pairArr.Last().Source.Path));
+        if (progressed > 0)
+            progress?.Report(new FishFileProgressEventArgs(pairs.Count, pairs.Count, lastFilePath));
         return new FishFileSyncResult(updated.ToArray(), identical.ToArray());
     }
 }
 
-public class FishFileSyncResult
-{
-    public FishFileSyncResult(SyncFilePair[] updated, SyncFilePair[] identical)
-    {
-        UpdatedFiles = updated;
-        IdenticalFiles = identical;
-    }
-
-    public SyncFilePair[] UpdatedFiles { get; }
-    public SyncFilePair[] IdenticalFiles { get; }
-}
+public record FishFileSyncResult(
+    IReadOnlyCollection<SyncFilePair> UpdatedFiles,
+    IReadOnlyCollection<SyncFilePair> IdenticalFiles
+);

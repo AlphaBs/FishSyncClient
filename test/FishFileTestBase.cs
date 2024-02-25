@@ -31,7 +31,7 @@ public class FishFileTestBase
         return list.ToArray();
     }
 
-    public void AssertEqualPathCollection(SyncFile[] expected, SyncFile[] actual)
+    public void AssertEqualPathCollection(IEnumerable<SyncFile> expected, IEnumerable<SyncFile> actual)
     {
         Assert.Equal(expected.Select(f => f.Path.ToString()), actual.Select(f => f.Path.ToString()));
     }

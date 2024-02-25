@@ -37,16 +37,8 @@ public class FishPathSyncer
     }
 }
 
-public class FishPathSyncResult
-{
-    public FishPathSyncResult(SyncFile[] added, SyncFilePair[] duplicated, SyncFile[] deleted)
-    {
-        AddedPaths = added;
-        DuplicatedPaths = duplicated;
-        DeletedPaths = deleted;
-    }
-
-    public SyncFile[] AddedPaths { get; }
-    public SyncFilePair[] DuplicatedPaths { get; }
-    public SyncFile[] DeletedPaths { get; }
-}
+public record FishPathSyncResult(
+    IReadOnlyCollection<SyncFile> AddedPaths,
+    IReadOnlyCollection<SyncFilePair> DuplicatedPaths,
+    IReadOnlyCollection<SyncFile> DeletedPaths
+);

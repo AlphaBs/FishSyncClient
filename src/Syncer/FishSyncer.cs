@@ -71,16 +71,8 @@ public class FishSyncer
     }
 }
 
-public class FishSyncResult
-{
-    public FishSyncResult(
-        SyncFile[] updatedFiles,
-        SyncFile[] identicalFiles,
-        SyncFile[] deletedFiles) =>
-        (UpdatedFiles, IdenticalFiles, DeletedFiles) =
-        (updatedFiles, identicalFiles, deletedFiles);
-
-    public SyncFile[] UpdatedFiles { get; }
-    public SyncFile[] IdenticalFiles { get; }
-    public SyncFile[] DeletedFiles { get; }
-}
+public record FishSyncResult(
+    IReadOnlyCollection<SyncFile> UpdatedFiles,
+    IReadOnlyCollection<SyncFile> IdenticalFiles,
+    IReadOnlyCollection<SyncFile> DeletedFiles
+);
