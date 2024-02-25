@@ -2,13 +2,13 @@
 
 .NET Client for FiSH Server (File Syncing and Hosting Server)
 
+- [ ] string -> ReadOnlySpan<char> 적용
+- [ ] RootedPath 절대경로? -> 어짜피 SubPath 로 비교하기 때문에 문제는 없는데 .. 같은거 끼여들어가면 문제가 생길수도 있을거같은데 생각해봐야함
 - [x] 경로 구분자 하나만 사용하도록 PathHelper 수정
 - [x] updateblacklists 에서 디렉토리도 설정 가능하게 수정
 - [x] 버전 확인
-- [ ] string -> ReadOnlySpan<char> 적용
 - [x] FishFileComparer 양쪽 모두 FishPath 사용 가능하게 수정, 동시에 root 인수 제거 
 - [x] Alphabet 이랑 FishServer 랑 공통되는 부분만 따로 뽑아내기
-- [ ] RootedPath 절대경로?
 - [x] ServerSyncer 에서 SyncIncludes 이랑 DeletedFiles 합치기
 - [x] 배열에서 다른 인터페이스로 전환 
 - [x] Fish prefix 전부 제거하기 
@@ -66,15 +66,15 @@
         - 추가된 파일, **다운로드 대상**
     - sources 와 targets 모두 존재하는 경로 (중복 파일)
         - SyncExcludes 패턴과 비교
-            - 패턴과 일치하는 경로는 파일을 비교하지 않음 (`options.txt`, `saves/**`, `screenshots/**` 등)
+            - 패턴과 일치하는 경로는 파일을 비교하지 않음 (`config.txt`, `configs/**`, `userfiles/**` 등)
             - 패턴과 일치하지 않는 경로들은 파일 비교 대상
                 1. source 버전과 target 버전 비교
                     - target 버전이 source 버전과 일치하는 경우
                         - SyncInclude 패턴과 비교
-                            - 패턴과 일치하는 경로는 `ChecksumComparer` 사용하여 파일 비교 (`mods/**` 처럼 무결성 유지가 중요한 파일들)
-                            - 패턴과 일치하지 않는 경로는 빠른 파일 비교를 위하여 `SizeComparer` 사용하여 파일 비교
+                            - 패턴과 일치하는 경로는 `FullComparer` 사용하여 파일 비교 (`importantfiles/**` 처럼 무결성 유지가 중요한 파일들)
+                            - 패턴과 일치하지 않는 경로는 빠른 파일 비교를 위하여 `FastComparer` 사용하여 파일 비교
                     - target 버전이 source 와 일치하지 않는 경우, 즉 source 버전이 업데이트 된 경우
-                        - 모든 파일을 `ChecksumComparer` 을 사용하여 파일 비교
+                        - 모든 파일을 `FullComparer` 을 사용하여 파일 비교
                 2. 선택한 Comparer 를 이용하여 파일 비교 수행
                     - 같은 파일은 유지
                     - 다른 파일은 새로 업데이트된 파일, **업데이트 대상**
@@ -82,10 +82,10 @@
         - source 버전과 target 버전 비교
             - target 버전이 source 버전과 일치하는 경우
                 - SyncIncludes 패턴과 비교
-                    - 패턴과 일치하는 경로는 **삭제 대상** (`mods/**` 처럼 무결성 유지가 중요한 파일들)
+                    - 패턴과 일치하는 경로는 **삭제 대상** (`importantfiles/**` 처럼 무결성 유지가 중요한 파일들)
                     - 패턴과 일치하지 않는 경우는 삭제하지 않음 (버전이 바뀔 때 삭제)
             - target 버전이 source 버전과 일치하지 않는 경우
                 - SyncExcludes 패턴과 비교
-                    - 패턴과 일치하는 경로는 삭제하지 않음 (`options.txt`, `saves/**`, `screenshots/**` 등)
+                    - 패턴과 일치하는 경로는 삭제하지 않음 (`config.txt`, `configs/**`, `userfiles/**` 등)
                     - 패턴과 일치하지 않는 경로는 **삭제 대상**
 2. target 의 버전을 source 의 버전으로 설정
