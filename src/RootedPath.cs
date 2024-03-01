@@ -12,6 +12,7 @@ namespace FishSyncClient;
 //   3) 대상이 디렉토리를 나타내며 동시에 대상이 Root 와 같은 경로를 가질 때, 
 //      Root 는 대상의 경로를 그대로 가지고 SubPath 는 빈 문자열을 가진다.
 // SubPath 의 첫 문자는 경로 구분자가 될 수 없다.
+// SubPath 에는 상대 경로 문자 (. 혹은 ..) 가 들어갈 수 없다. 
 // Root 와 SubPath 는 정규화된 경로를 유지해야 한다.
 
 public struct RootedPath
@@ -72,7 +73,7 @@ public struct RootedPath
     {
         if (!IsRooted)
             throw new InvalidOperationException("Root was not set");
-        return PathHelper.NormalizePath(Root + SubPath, _options);
+        return Root + SubPath;
     }
 
     public override string ToString()

@@ -18,40 +18,60 @@ public static class PathHelper
         return path;
     }
 
-    public static string NormalizePath(string path, PathOptions options)
+    public static string NormalizePath(ReadOnlySpan<char> path, PathOptions options)
     {
         // https://source.dot.net/#System.Private.CoreLib/src/libraries/Common/src/System/IO/PathInternal.cs,d035753e01aa9ae2
-        
+
         var sb = new StringBuilder(path.Length);
-        var findCh = false;
-        foreach (var _ch in path)
+        for (int i = -1; i < path.Length; i++)
         {
-            var ch = _ch;
+            char c = (i < 0) ? '/' : path[i];
+
+            if (IsPathSeparator(c, options) && i + 1 < path.Length)
+            {
+                // skip redundant consecutive path separators
+                // e.g. "parent//child" -> "parent/child"
+                if (IsPathSeparator(path[i + 1], options))
+                    continue;
+
+                // skip . path
+                // e.g. "parent/./child" -> "parent/child"
+                if ((i + 2 == path.Length || IsPathSeparator(path[i + 2], options)) && path[i + 1] == '.')
+                {
+                    i++;
+                    continue;
+                }
+
+                // handle .. path
+                // e.g. "parent/child/../grandchild" => "parent/grandchild"
+                if (i + 2 < path.Length &&
+                    (i + 3 == path.Length || IsPathSeparator(path[i + 3], options)) &&
+                    path[i + 1] == '.' &&
+                    path[i + 2] == '.')
+                {
+                    throw new ArgumentException("The path contains relative parent segment.");
+                }
+            }
+
+            if (i < 0)
+                continue;
 
             // replace AltPathSeperator -> PathSeperator
-            if (ch == options.AltPathSeperator)
-                ch = options.PathSeperator;
-
-            // skip redundant consecutive path separators
-            if (ch == options.PathSeperator)
-            {
-                if (findCh)
-                    continue;
-                else
-                    findCh = true;
-            }
-            else
-            {
-                findCh = false;
-            }
-
+            if (c == options.AltPathSeperator)
+                c = options.PathSeperator;
             // case insensitivity
-            if (options.CaseInsensitivePath)
-                ch = char.ToLowerInvariant(ch);
+            else if (options.CaseInsensitivePath)
+                c = char.ToLowerInvariant(c);
 
-            sb.Append(ch);
+            sb.Append(c);
         }
+
         return sb.ToString();
+    }
+
+    public static bool IsPathSeparator(char ch, PathOptions pathOptions)
+    {
+        return ch == pathOptions.PathSeperator || ch == pathOptions.AltPathSeperator;
     }
 
     public static string GetRelativePathFromDirectory(string absPath, string rootPath, PathOptions options)
