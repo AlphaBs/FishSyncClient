@@ -62,6 +62,22 @@ public class FileChecksumComparerTests
     }
 
     [Fact]
+    public void choose_algorithm_of_non_rooted_path_reversed()
+    {
+        // Given
+        var sut = CreateComparer();
+    
+        // When
+        var comparer = sut.GetComparer(new SyncFilePair(
+            CreateSubFileWithChecksumAlgorithm("1"),
+            CreateRootedFileWithChecksumAlgorithm("2")
+        ));
+
+        // Then
+        Assert.Equal(FirstComparerMock, comparer);
+    }
+
+    [Fact]
     public void choose_existing_comparer()
     {
         // Given
