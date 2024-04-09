@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\FishSyncClient.csproj" />
+    <ProjectReference Include="../src/FishSyncClient.Pull/FishSyncClient.Pull.csproj" />
   </ItemGroup>
 
 </Project>

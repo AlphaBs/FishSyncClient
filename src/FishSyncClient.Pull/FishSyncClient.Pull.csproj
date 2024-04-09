@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <LangVersion>10.0</LangVersion>
+    <LangVersion>12</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,5 +15,9 @@
     </PackageReference>
     <PackageReference Include="System.Text.Json" Version="7.0.3" />
     <PackageReference Include="System.Threading.Tasks.Dataflow" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FishSyncClient.Common\FishSyncClient.Common.csproj" />
   </ItemGroup>
 </Project>
