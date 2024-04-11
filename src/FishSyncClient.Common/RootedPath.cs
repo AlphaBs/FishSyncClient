@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace FishSyncClient;
+namespace FishSyncClient.Common;
 
 // RootedPath 는 경로를 Root 와 SubPath 두 부분으로 나눈다.
 //   1) Root 가 대상의 상위 경로 중 일부인 경우,

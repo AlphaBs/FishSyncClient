@@ -1,4 +1,4 @@
-namespace FishSyncClient;
+namespace FishSyncClient.Common;
 
 public class PathOptions
 {

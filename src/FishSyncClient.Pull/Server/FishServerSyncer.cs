@@ -1,3 +1,4 @@
+using FishSyncClient.Common;
 using FishSyncClient.FileComparers;
 using FishSyncClient.Syncer;
 using FishSyncClient.Versions;

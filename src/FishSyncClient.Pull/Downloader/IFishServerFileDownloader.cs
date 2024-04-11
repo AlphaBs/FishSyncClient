@@ -1,3 +1,5 @@
+using FishSyncClient.Common;
+
 namespace FishSyncClient.Downloader;
 
 public interface IFishServerFileDownloader

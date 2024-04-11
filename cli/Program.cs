@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+﻿using FishSyncClient.Common;
 using FishSyncClient.Downloader;
 using FishSyncClient.FileComparers;
 using FishSyncClient.Server;

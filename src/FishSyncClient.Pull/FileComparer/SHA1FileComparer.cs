@@ -1,4 +1,4 @@
-﻿using System.Security.Cryptography;
+﻿using FishSyncClient.Common;
 
 namespace FishSyncClient.FileComparers;
 
@@ -9,9 +9,7 @@ public class SHA1FileComparer : ChecksumComparerBase
     protected override string ComputeChecksum(string fullPath)
     {
         using var fileStream = File.OpenRead(fullPath);
-        using var sha1 = SHA1.Create();
-        var checksum = sha1.ComputeHash(fileStream);
-        return HashHelper.ToHexString(checksum);
+        return ChecksumAlgorithms.ComputeSHA1(fileStream);
     }
 
     protected override bool IsSupportedAlgorithmName(string algorithmName)

@@ -1,4 +1,5 @@
 using System.Threading.Tasks.Dataflow;
+using FishSyncClient.Common;
 
 namespace FishSyncClient.Downloader;
 

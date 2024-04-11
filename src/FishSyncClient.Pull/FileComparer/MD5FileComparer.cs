@@ -1,4 +1,4 @@
-﻿using System.Security.Cryptography;
+﻿using FishSyncClient.Common;
 
 namespace FishSyncClient.FileComparers;
 
@@ -9,9 +9,7 @@ public class MD5FileComparer : ChecksumComparerBase
     protected override string ComputeChecksum(string fullPath)
     {
         using var fileStream = File.OpenRead(fullPath);
-        using var md5 = MD5.Create();
-        var checksum = md5.ComputeHash(fileStream);
-        return HashHelper.ToHexString(checksum);
+        return ChecksumAlgorithms.ComputeMD5(fileStream);
     }
 
     protected override bool IsSupportedAlgorithmName(string algorithmName)

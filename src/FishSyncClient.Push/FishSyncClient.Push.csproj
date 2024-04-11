@@ -9,4 +9,12 @@
   <ItemGroup>
     <ProjectReference Include="..\FishSyncClient.Common\FishSyncClient.Common.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="PolySharp" Version="1.14.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="System.Text.Json" Version="8.0.3" />
+  </ItemGroup>
 </Project>

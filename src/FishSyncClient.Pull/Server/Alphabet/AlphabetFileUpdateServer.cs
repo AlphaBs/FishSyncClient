@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FishSyncClient.Common;
 using FishSyncClient.Server.Alphabet;
 
 namespace FishSyncClient.Server;

@@ -1,4 +1,6 @@
-﻿namespace FishSyncClient;
+﻿using FishSyncClient.Common;
+
+namespace FishSyncClient;
 
 public record SyncFile
 {

@@ -1,4 +1,4 @@
-namespace FishSyncClient.Downloader;
+namespace FishSyncClient.Cli;
 
 public class SyncProgress<T> : IProgress<T>
 {

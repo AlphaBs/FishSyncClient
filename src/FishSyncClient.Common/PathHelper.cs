@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace FishSyncClient;
+namespace FishSyncClient.Common;
 
 // 정규화된 경로
 // 불필요하게 중복되는 경로 구분자가 없어야 한다.
