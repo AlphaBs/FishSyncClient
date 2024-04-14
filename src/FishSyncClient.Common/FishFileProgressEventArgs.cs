@@ -9,16 +9,16 @@ public enum FishFileProgressEventType
 
 public class FishFileProgressEventArgs
 {
-    public FishFileProgressEventArgs(FishFileProgressEventType type, int progressed, int total, RootedPath current)
+    public FishFileProgressEventArgs(FishFileProgressEventType type, int progressed, int total, string current)
     {
         EventType = type;
         ProgressedFiles = progressed;
         TotalFiles = total;
-        CurrentFile = current;
+        CurrentFileName = current;
     }
 
     public FishFileProgressEventType EventType { get; }
     public int ProgressedFiles { get; }
     public int TotalFiles { get; }
-    public RootedPath CurrentFile { get; }
+    public string CurrentFileName { get; }
 }

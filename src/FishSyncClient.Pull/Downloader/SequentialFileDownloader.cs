@@ -1,3 +1,5 @@
+using FishSyncClient.Common;
+
 namespace FishSyncClient.Downloader;
 
 public class SequentialFileDownloader : IFishServerFileDownloader
@@ -23,7 +25,7 @@ public class SequentialFileDownloader : IFishServerFileDownloader
         foreach (var file in serverFiles)
         {
             fileProgress?.Report(new FishFileProgressEventArgs(
-                FishFileProgressEventType.Start, progressed, serverFiles.Count, file.Path));
+                FishFileProgressEventType.Start, progressed, serverFiles.Count, file.Path.SubPath));
 
             if (file.Location != null)
             {
@@ -50,7 +52,7 @@ public class SequentialFileDownloader : IFishServerFileDownloader
 
             progressed++;
             fileProgress?.Report(new FishFileProgressEventArgs(
-                FishFileProgressEventType.Done, progressed, serverFiles.Count, file.Path));
+                FishFileProgressEventType.Done, progressed, serverFiles.Count, file.Path.SubPath));
         }
     }
 }

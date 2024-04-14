@@ -7,7 +7,7 @@ public record BucketSyncResult
     [property:JsonPropertyName("isSuccess")]
     bool IsSuccess,
 
-    [property:JsonPropertyName("actions")]
+    [property:JsonPropertyName("requiredActions")]
     IReadOnlyList<BucketSyncAction> Actions,
 
     [property:JsonPropertyName("updatedAt")]

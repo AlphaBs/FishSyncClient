@@ -2,6 +2,11 @@
 
   <ItemGroup>
     <ProjectReference Include="../src/FishSyncClient.Pull/FishSyncClient.Pull.csproj" />
+    <ProjectReference Include="../src/FishSyncClient.Push/FishSyncClient.Push.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommandLineParser" Version="2.9.1" />
   </ItemGroup>
 
   <PropertyGroup>

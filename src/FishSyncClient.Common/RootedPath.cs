@@ -47,6 +47,18 @@ public struct RootedPath
         return Create(string.Empty, subpath, options);
     }
 
+    public static IEnumerable<RootedPath> FromDirectory(string root, PathOptions options)
+    {
+        if (!Directory.Exists(root))
+            yield break;
+
+        var files = Directory.GetFiles(root, "*", SearchOption.AllDirectories);
+        foreach (var item in files)
+        {
+            yield return FromFullPath(root, item, options);
+        }
+    }
+
     private readonly PathOptions _options;
 
     private RootedPath(string root, string subpath, PathOptions options)

@@ -1,4 +1,5 @@
-﻿using FishSyncClient.FileComparers;
+﻿using FishSyncClient.Common;
+using FishSyncClient.FileComparers;
 using FishSyncClient.Files;
 
 namespace FishSyncClient.Syncer;
@@ -19,7 +20,7 @@ public class SequentialFileSyncer : IFishFileSyncer
         {
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Report(new FishFileProgressEventArgs(
-                FishFileProgressEventType.Start, progressed, pairs.Count, pair.Source.Path));
+                FishFileProgressEventType.Start, progressed, pairs.Count, pair.Source.Path.SubPath));
 
             var areEqual = await comparer.AreEqual(pair, cancellationToken);
             if (areEqual)
@@ -29,7 +30,7 @@ public class SequentialFileSyncer : IFishFileSyncer
 
             progressed++;
             progress?.Report(new FishFileProgressEventArgs(
-                FishFileProgressEventType.Done, progressed, pairs.Count, pair.Source.Path));
+                FishFileProgressEventType.Done, progressed, pairs.Count, pair.Source.Path.SubPath));
         }
 
         return new FishFileSyncResult(updated.ToArray(), identical.ToArray());

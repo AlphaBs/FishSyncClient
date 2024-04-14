@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Threading.Tasks.Dataflow;
+using FishSyncClient.Common;
 using FishSyncClient.FileComparers;
 using FishSyncClient.Files;
 
@@ -35,7 +36,7 @@ public class ParallelFileSyncer : IFishFileSyncer
         var executor = new ActionBlock<SyncFilePair>(async pair => 
         {
             progress?.Report(new FishFileProgressEventArgs(
-                FishFileProgressEventType.Start, progressed, pairs.Count, pair.Source.Path));
+                FishFileProgressEventType.Start, progressed, pairs.Count, pair.Source.Path.SubPath));
 
             var areEqual = await comparer.AreEqual(pair, cancellationToken);
             if (areEqual)
@@ -45,7 +46,7 @@ public class ParallelFileSyncer : IFishFileSyncer
 
             Interlocked.Increment(ref progressed);
             progress?.Report(new FishFileProgressEventArgs(
-                FishFileProgressEventType.Done, progressed, pairs.Count, pair.Source.Path));
+                FishFileProgressEventType.Done, progressed, pairs.Count, pair.Source.Path.SubPath));
 
         }, new ExecutionDataflowBlockOptions
         {

@@ -39,7 +39,7 @@ public class ParallelFileDownloader : IFishServerFileDownloader
         var executor = new ActionBlock<ServerSyncFile>(async file =>
         {
             fileProgress?.Report(new FishFileProgressEventArgs(
-                FishFileProgressEventType.Start, progressedFiles, serverFiles.Count, file.Path));
+                FishFileProgressEventType.Start, progressedFiles, serverFiles.Count, file.Path.SubPath));
             
             if (file.Location != null)
             {
@@ -65,7 +65,7 @@ public class ParallelFileDownloader : IFishServerFileDownloader
 
             Interlocked.Increment(ref progressedFiles);
             fileProgress?.Report(new FishFileProgressEventArgs(
-                FishFileProgressEventType.Done, progressedFiles, serverFiles.Count, file.Path));
+                FishFileProgressEventType.Done, progressedFiles, serverFiles.Count, file.Path.SubPath));
 
         }, new ExecutionDataflowBlockOptions
         {

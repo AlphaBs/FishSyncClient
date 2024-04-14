@@ -1,8 +1,8 @@
-namespace FishSyncClient.Downloader;
+namespace FishSyncClient.Common;
 
 // To implement System.Net.WebClient.DownloadFileTaskAsync
 // https://source.dot.net/#System.Net.WebClient/System/Net/WebClient.cs,c2224e40a6960929
-internal static class HttpClientDownloadHelper
+public static class HttpClientDownloadHelper
 {
     private const int DefaultDownloadBufferLength = 65536;
 

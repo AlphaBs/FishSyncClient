@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "cli": {
+      "commandName": "Project",
+      "commandLineArgs": "push first --root \"C:\\fishsync\" --server \"https://localhost:7128/api\""
+    }
+  }
+}

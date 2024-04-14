@@ -15,6 +15,7 @@ FiSH Server 의 REST API 구현
 
 ## Pull
 
+- [ ] 파일 다운로드 후 체크섬 확인
 - [ ] E2E 테스트 아직 충분히 안해봄
 - [x] string -> ReadOnlySpan<char> 적용
 - [x] RootedPath 절대경로? -> 어짜피 SubPath 로 비교하기 때문에 문제는 없는데 .. 같은거 끼여들어가면 문제가 생길수도 있을거같은데 생각해봐야함 -> . 경로는 normalize 에서 처리가능, .. 경로는 예외 발생하고 제약사항 만들어서 해결
