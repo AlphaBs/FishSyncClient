@@ -1,8 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="../src/FishSyncClient.Pull/FishSyncClient.Pull.csproj" />
-    <ProjectReference Include="../src/FishSyncClient.Push/FishSyncClient.Push.csproj" />
+    <ProjectReference Include="../src//FishSyncClient.csproj" />
   </ItemGroup>
 
   <ItemGroup>

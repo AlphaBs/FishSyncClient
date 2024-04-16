@@ -1,5 +1,4 @@
-﻿using FishSyncClient.Common;
-using FishSyncClient.Downloader;
+﻿using FishSyncClient.Downloader;
 using FishSyncClient.FileComparers;
 using FishSyncClient.Server;
 using FishSyncClient.Syncer;
