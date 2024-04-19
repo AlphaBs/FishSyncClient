@@ -1,6 +1,6 @@
-namespace FishSyncClient;
+namespace FishSyncClient.Internals;
 
-public class SyncProgress<T> : IProgress<T>
+internal class SyncProgress<T> : IProgress<T>
 {
     private readonly Action<T> _action;
 

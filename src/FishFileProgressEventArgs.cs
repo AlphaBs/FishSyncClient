@@ -3,8 +3,11 @@ namespace FishSyncClient;
 public enum FishFileProgressEventType
 {
     None,
-    Start,
-    Done
+    StartCompare,
+    DoneCompare,
+    StartSync,
+    DoneSync,
+
 }
 
 public class FishFileProgressEventArgs

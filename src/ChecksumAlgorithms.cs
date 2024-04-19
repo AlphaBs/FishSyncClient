@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using FishSyncClient.Progress;
 
 namespace FishSyncClient;
 

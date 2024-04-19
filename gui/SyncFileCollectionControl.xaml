@@ -14,9 +14,10 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="20"/>
+            <RowDefinition Height="20"/>
             <RowDefinition/>
         </Grid.RowDefinitions>
-        
+
         <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Grid.ColumnSpan="2">
             <Label x:Name="lbName" Padding="0" d:Content="로컬"/>
             <Label Padding="0" Margin="3,0" Content="전체 파일 수: "/>
@@ -24,8 +25,13 @@
             <Label Padding="0" Margin="3,0" Content=", 총 용량 : "/>
             <Label x:Name="lbTotalSize" Padding="0" Content="0"/>
         </StackPanel>
-        
-        <ListView x:Name="lvFiles" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" d:ItemsSource="{d:SampleData ItemCount=5}">
+
+        <Grid Grid.Row="1">
+            <ProgressBar x:Name="pbProgress" Value="0"/>
+            <Label x:Name="lbProgress" Content="대기" Padding="0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+        </Grid>
+
+        <ListView x:Name="lvFiles" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" d:ItemsSource="{d:SampleData ItemCount=5}">
             <ListView.View>
                 <GridView>
                     <GridViewColumn DisplayMemberBinding="{Binding Path=Name}" Header="경로" Width="300"/>

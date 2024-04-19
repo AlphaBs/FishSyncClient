@@ -24,8 +24,8 @@ public class AlphabetFileUpdateServer
         {
             Version = metadata.Files?.LastUpdate.ToString("O"),
             Files = ToFishServerFiles(metadata.Files ?? new(), httpClient, options).ToArray(),
-            SyncExcludes = excludePatterns.ToArray(),
-            SyncIncludes = metadata.Launcher?.IncludeFiles ?? ["**"]
+            Excludes = excludePatterns.ToArray(),
+            Includes = metadata.Launcher?.IncludeFiles ?? ["**"]
         };
     }
 

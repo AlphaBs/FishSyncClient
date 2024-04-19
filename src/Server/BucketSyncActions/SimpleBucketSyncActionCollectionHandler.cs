@@ -1,5 +1,6 @@
 using System.Threading.Tasks.Dataflow;
 using FishSyncClient.Files;
+using FishSyncClient.Progress;
 
 namespace FishSyncClient.Server.BucketSyncActions;
 

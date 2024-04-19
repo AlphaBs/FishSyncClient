@@ -2,6 +2,7 @@ using DotNet.Globbing;
 using FishSyncClient.Files;
 using FishSyncClient.FileComparers;
 using FishSyncClient.Syncer;
+using FishSyncClient.Progress;
 
 namespace FishSyncClient;
 
@@ -9,7 +10,8 @@ public class SyncOptions
 {
     public IEnumerable<string> Includes { get; set; } = ["**"];
     public IEnumerable<string> Excludes { get; set; } = Enumerable.Empty<string>();
-    public IProgress<FishFileProgressEventArgs>? Progress { get; set; }
+    public IProgress<FishFileProgressEventArgs>? FileProgress { get; set; }
+    public IProgress<SyncFileByteProgress>? ByteProgress { get; set; }
     public CancellationToken CancellationToken { get; set; }
 }
 
@@ -24,9 +26,11 @@ public class FishSyncer
         IEnumerable<SyncFile> sources,
         IEnumerable<SyncFile> targets,
         IFileComparer comparer,
-        SyncOptions options)
+        SyncOptions? options)
     {
-        return new SyncProcessor(_fileSyncer, options).Sync(sources, targets, comparer); 
+        options ??= new();
+        return new SyncProcessor(_fileSyncer, options)
+            .Sync(sources, targets, comparer); 
     }
 
     class SyncProcessor
@@ -49,7 +53,10 @@ public class FishSyncer
             return patterns.Select(pattern => Glob.Parse(pattern)).ToArray();
         }
 
-        public async Task<FishSyncResult> Sync(IEnumerable<SyncFile> sources, IEnumerable<SyncFile> targets, IFileComparer comparer)
+        public async Task<FishSyncResult> Sync(
+            IEnumerable<SyncFile> sources, 
+            IEnumerable<SyncFile> targets, 
+            IFileComparer comparer)
         {
             var pathSyncer = new FishPathSyncer();
             var pathSyncResult = pathSyncer.Sync(sources, targets);
@@ -57,8 +64,8 @@ public class FishSyncer
             var fileSyncResult = await _fileSyncer.Sync(
                 pairs: pathSyncResult.DuplicatedPaths, 
                 comparer: comparer, 
-                fileProgress: _options.Progress, 
-                byteProgress: null,
+                fileProgress: _options.FileProgress, 
+                byteProgress: _options.ByteProgress,
                 cancellationToken: _options.CancellationToken);
 
             return new FishSyncResult(
@@ -78,7 +85,7 @@ public class FishSyncer
 
 public record FishSyncResult(
     IReadOnlyCollection<SyncFile> AddedFiles,
-    IReadOnlyCollection<SyncFilePair> UpdatedFiles,
-    IReadOnlyCollection<SyncFilePair> IdenticalFiles,
+    IReadOnlyCollection<SyncFilePair> UpdatedFilePairs,
+    IReadOnlyCollection<SyncFilePair> IdenticalFilePairs,
     IReadOnlyCollection<SyncFile> DeletedFiles
 );

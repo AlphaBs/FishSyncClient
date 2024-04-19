@@ -1,5 +1,6 @@
 ﻿using FishSyncClient.Downloader;
 using FishSyncClient.FileComparers;
+using FishSyncClient.Progress;
 using FishSyncClient.Server;
 using FishSyncClient.Syncer;
 using FishSyncClient.Versions;

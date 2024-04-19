@@ -7,6 +7,7 @@ public class Config
 {
     public string? Root { get; set; } 
     public string? Host { get; set; }
+    public string? BucketId { get; set; }
 }
 
 public class ConfigManager

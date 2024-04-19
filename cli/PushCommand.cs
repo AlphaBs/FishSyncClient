@@ -1,6 +1,7 @@
 using System.Text.Json;
 using CommandLine;
 using FishSyncClient.Common;
+using FishSyncClient.Progress;
 using FishSyncClient.Push;
 
 namespace FishSyncClient.Cli;

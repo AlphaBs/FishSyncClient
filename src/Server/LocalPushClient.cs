@@ -1,6 +1,6 @@
 namespace FishSyncClient.Server;
 
-public class PushClient
+public class LocalPushClient
 {
     public BucketSyncFile CreateSyncFile(RootedPath path)
     {

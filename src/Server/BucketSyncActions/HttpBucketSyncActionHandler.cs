@@ -1,4 +1,6 @@
 ﻿using FishSyncClient.Files;
+using FishSyncClient.Internals;
+using FishSyncClient.Progress;
 using System.Diagnostics;
 using System.Net.Http.Headers;
 
@@ -48,24 +50,14 @@ public class HttpBucketSyncActionHandler : IBucketSyncActionHandler
         }
         reqMessage.Content = reqContent;
 
-        var sendTask = _httpClient.SendAsync(reqMessage);
         var totalBytes = file.Metadata?.Size ?? 0;
-        while (!sendTask.IsCompleted)
-        {
-            progress?.Report(new ByteProgress
-            {
-                TotalBytes = totalBytes,
-                ProgressedBytes = readStream.Position
-            });
-            await Task.WhenAny(Task.Delay(100), sendTask);
-        }
-        var res = await sendTask;
-        progress?.Report(new ByteProgress // report 100%
-        {
-            TotalBytes = totalBytes,
-            ProgressedBytes = totalBytes
-        });
+        progress?.Report(new ByteProgress { TotalBytes = totalBytes, ProgressedBytes = 0 });
 
+        var sendTask = _httpClient.SendAsync(reqMessage);
+        await StreamProgressHelper.MonitorStreamPosition(sendTask, readStream, 0, 100, new SyncProgress<long>(delta =>
+            progress?.Report(new ByteProgress { TotalBytes = 0, ProgressedBytes = delta })));
+
+        var res = await sendTask;
         var resStr = await res.Content.ReadAsStringAsync();
         if (!res.IsSuccessStatusCode)
             throw new InvalidOperationException(resStr);

@@ -1,11 +1,11 @@
 ﻿using FishSyncClient.FileComparers;
 using FishSyncClient.Files;
+using FishSyncClient.Progress;
 using FishSyncClient.Server;
 using FishSyncClient.Server.BucketSyncActions;
 using FishSyncClient.Syncer;
+using FishSyncClient.Versions;
 using Microsoft.Win32;
-using System;
-using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Text.Json;
@@ -30,7 +30,7 @@ public partial class MainWindow : Window
     }
 
     ConfigManager configManager = new("config.json");
-    CancellationTokenSource? cancellationTokenSource;
+    CancellationTokenSource cancellationTokenSource = new();
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
@@ -39,6 +39,7 @@ public partial class MainWindow : Window
 
         txtHost.Text = configManager.Config.Host;
         txtRoot.Text = configManager.Config.Root;
+        txtBucketId.Text = configManager.Config.BucketId;
 
         sourceSyncFiles.CollectionName = "로컬";
         targetSyncFiles.CollectionName = "서버";
@@ -48,8 +49,26 @@ public partial class MainWindow : Window
     {
         configManager.Config.Host = txtHost.Text;
         configManager.Config.Root = txtRoot.Text;
+        configManager.Config.BucketId = txtBucketId.Text;
 
         await configManager.SaveConfig();
+    }
+
+    private void appendLog(string message)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            txtLogs.AppendText(message);
+            txtLogs.AppendText("\n");
+
+            if (cbScrollLog.IsChecked ?? false)
+                txtLogs.ScrollToEnd();
+        });
+    }
+
+    private void cbScrollLog_Checked(object sender, RoutedEventArgs e)
+    {
+        txtLogs.ScrollToEnd();
     }
 
     private void btnOpen_Click(object sender, RoutedEventArgs e)
@@ -58,52 +77,40 @@ public partial class MainWindow : Window
         folderDialog.Multiselect = false;
         folderDialog.ShowDialog();
         txtRoot.Text = folderDialog.FolderName;
-        btnLoad_Click(this, e);
     }
 
-    private async void btnLoad_Click(object sender, RoutedEventArgs e)
+    private async Task loadFiles(CancellationToken cancellationToken)
     {
-        try
+        var root = txtRoot.Text;
+        var host = txtHost.Text;
+        var id = txtBucketId.Text;
+
+        var sourceTask = loadSource(root, cancellationToken);
+        var targetTask = loadTarget(host, id, cancellationToken);
+
+        await Task.WhenAll(sourceTask, targetTask);
+        await sourceTask; // get exception
+        await targetTask; // get exception
+    }
+
+    private async Task loadSource(string root, CancellationToken cancellationToken)
+    {
+        sourceSyncFiles.Clear();
+        await Task.Run(() =>
         {
-            var root = txtRoot.Text;
-            var host = txtHost.Text;
+            var pushClient = new LocalPushClient();
+            var files = RootedPath.FromDirectory(root, new PathOptions()).Select(createLocalSyncFile);
+            addFiles(root, files, sourceSyncFiles, cancellationToken);
+        });
+    }
 
-            cancellationTokenSource = new CancellationTokenSource();
-            var cancellationToken = cancellationTokenSource.Token;
-
-            setUIEnables(false);
-            btnCancelLoad.Visibility = Visibility.Visible;
-
-            sourceSyncFiles.Clear();
-            targetSyncFiles.Clear();
-
-            var sourceTask = Task.Run(() =>
-            {
-                var pushClient = new PushClient();
-                var files = RootedPath.FromDirectory(root, new PathOptions()).Select(createLocalSyncFile);
-                addFiles(root, files, sourceSyncFiles, cancellationToken);
-            });
-
-            var targetTask = async() =>
-            {
-                var apiClient = new FishApiClient(host, _httpClient);
-                var files = await apiClient.GetBucketFiles("first", cancellationToken);
-                var syncFiles = files.Files?.Select(createFishSyncFile) ?? [];
-                addFiles(host, syncFiles, targetSyncFiles, cancellationToken);
-            };
-
-            await Task.WhenAll(sourceTask, targetTask());
-        }
-        catch (Exception ex)
-        {
-            Logger.Instance.LogInformation("[로드] 예외 발생 " + ex.ToString());
-            MessageBox.Show(ex.ToString());
-        }
-        finally
-        {
-            setUIEnables(true);
-            btnCancelLoad.Visibility = Visibility.Collapsed;
-        }
+    private async Task loadTarget(string host, string id, CancellationToken cancellationToken)
+    {
+        targetSyncFiles.Clear();
+        var apiClient = new FishApiClient(host, _httpClient);
+        var files = await apiClient.GetBucketFiles(id, cancellationToken);
+        var syncFiles = files.Files?.Select(createFishSyncFile) ?? [];
+        addFiles(host, syncFiles, targetSyncFiles, cancellationToken);
     }
 
     private SyncFile createLocalSyncFile(RootedPath path)
@@ -157,42 +164,33 @@ public partial class MainWindow : Window
         Logger.Instance.LogInformation($"[로드] {name} 불러오기 완료. 총 갯수 {control.TotalFiles}, 용량 {control.TotalBytes:##,#} bytes");
     }
 
-    private void btnCancelLoad_Click(object sender, RoutedEventArgs e)
-    {
-        cancellationTokenSource?.Cancel();
-    }
-
-    private void appendLog(string message)
-    {
-        Dispatcher.Invoke(() =>
-        {
-            txtLogs.AppendText(message);
-            txtLogs.AppendText("\n");
-
-            if (cbScrollLog.IsChecked ?? false)
-                txtLogs.ScrollToEnd();
-        });
-    }
-
     private async void btnCompare_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            setUIEnables(true);
+            setUIEnables(false);
+
+            cancellationTokenSource = new();
+            var cancellationToken = cancellationTokenSource.Token;
+            await loadFiles(cancellationToken);
 
             var sources = sourceSyncFiles.GetFiles();
             var targets = targetSyncFiles.GetFiles();
 
-            var syncer = new FishSyncer(new DryFileSyncer());
-            var result = await syncer.Sync(sources, targets, _fileComparerFactory.CreateFullComparer(), new SyncOptions());
+            var syncer = new FishSyncer(new SequentialFileSyncer());
+            var result = await syncer.Sync(
+                sources, 
+                targets, 
+                _fileComparerFactory.CreateFullComparer(), 
+                new SyncOptions());
 
-            foreach (var identical in result.IdenticalFiles)
+            foreach (var identical in result.IdenticalFilePairs)
             {
                 sourceSyncFiles.SetStatus(identical.Source, "동일");
                 targetSyncFiles.SetStatus(identical.Target, "동일");
             }
 
-            foreach (var updated in result.UpdatedFiles)
+            foreach (var updated in result.UpdatedFilePairs)
             {
                 sourceSyncFiles.SetStatus(updated.Source, "업데이트");
                 targetSyncFiles.SetStatus(updated.Target, "업데이트");
@@ -200,19 +198,19 @@ public partial class MainWindow : Window
 
             foreach (var added in result.AddedFiles)
             {
-                sourceSyncFiles.SetStatus(added, "추가");
+                sourceSyncFiles.SetStatus(added, "로컬");
             }
 
             foreach (var deleted in result.DeletedFiles)
             {
-                targetSyncFiles.SetStatus(deleted, "삭제");
+                targetSyncFiles.SetStatus(deleted, "서버");
             }
 
             MessageBox.Show($"비교 결과: \n" +
-                $"동일한 파일 {result.IdenticalFiles.Count}개\n" +
-                $"바뀐 파일 {result.UpdatedFiles.Count}개\n" +
-                $"추가된 파일 {result.AddedFiles.Count}개\n" +
-                $"삭제된 파일 {result.DeletedFiles.Count}개");
+                $"동일한 파일 {result.IdenticalFilePairs.Count}개\n" +
+                $"바뀐 파일 {result.UpdatedFilePairs.Count}개\n" +
+                $"로컬 파일 {result.AddedFiles.Count}개\n" +
+                $"서버 파일 {result.DeletedFiles.Count}개");
         }
         catch (Exception ex)
         {
@@ -225,14 +223,73 @@ public partial class MainWindow : Window
         }
     }
 
-    private void cbScrollLog_Checked(object sender, RoutedEventArgs e)
+    private async void btnPull_Click(object sender, RoutedEventArgs e)
     {
-        txtLogs.ScrollToEnd();
-    }
+        try
+        {
+            setUIEnables(false);
 
-    private void btnPull_Click(object sender, RoutedEventArgs e)
-    {
+            cancellationTokenSource = new();
+            var cancellationToken = cancellationTokenSource.Token;
+            Logger.Instance.LogInformation($"[PULL] {targetSyncFiles.Count} items");
 
+            var fileProgress = new Progress<FishFileProgressEventArgs>(e =>
+            {
+                Logger.Instance.LogInformation($"[PULL] {e.EventType}: {e.CurrentFileName}");
+                if (e.EventType == FishFileProgressEventType.StartSync)
+                {
+                    targetSyncFiles.StartProgress(e.CurrentFileName);
+                    targetSyncFiles.SetStatus(e.CurrentFileName, "동기화 대기");
+                }
+                else if (e.EventType == FishFileProgressEventType.DoneSync)
+                {
+                    targetSyncFiles.CompleteProgress(e.CurrentFileName);
+                    targetSyncFiles.SetStatus(e.CurrentFileName, "동기화 완료");
+                }
+            });
+            var byteProgress = new Progress<SyncFileByteProgress>(e =>
+            {
+                targetSyncFiles.AddProgress(e.SyncFile, e.Progress);
+            });
+
+            var sourceFiles = sourceSyncFiles.GetFiles().ToArray();
+            var targetFiles = targetSyncFiles.GetFiles().ToArray();
+
+            var pullIndex = new PullIndex { Files = targetFiles };
+            var pullClient = new LocalPullClient(
+                txtRoot.Text,
+                new PathOptions(),
+                6,
+                new NullVersionManager(),
+                new DefaultFileComparerFactory(),
+                new ParallelFileSyncer());
+            var pullResult = await pullClient.Pull(
+                new PullIndex { Files = targetFiles },
+                sourceSyncFiles,
+                new SyncOptions
+                {
+                    FileProgress = fileProgress,
+                    ByteProgress = byteProgress,
+                    CancellationToken = cancellationToken
+                });
+
+            Logger.Instance.LogInformation($"[PULL] 완료" +
+                $"업데이트 {pullResult.SyncResult.UpdatedFilePairs.Count} 개" +
+                $"추가 {pullResult.SyncResult.AddedFiles.Count} 개" +
+                $"삭제 {pullResult.SyncResult.DeletedFiles.Count} 개" +
+                $"동일한 파일 {pullResult.SyncResult.IdenticalFilePairs.Count} 개");
+            MessageBox.Show($"PULL 성공");
+        }
+        catch (Exception ex)
+        {
+            Logger.Instance.LogError($"[PULL] 예외 발생: {ex}");
+            MessageBox.Show(ex.ToString());
+        }
+        finally
+        {
+            setUIEnables(true);
+            btnCompare_Click(this, e);
+        }
     }
 
     private async void btnPush_Click(object sender, RoutedEventArgs e)
@@ -240,7 +297,10 @@ public partial class MainWindow : Window
         try
         {
             setUIEnables(false);
-            var cancellationToken = cancellationTokenSource?.Token ?? default;
+
+            cancellationTokenSource = new();
+            var cancellationToken = cancellationTokenSource.Token;
+            Logger.Instance.LogInformation($"[PUSH] {sourceSyncFiles.Count} items");
 
             var actionProgress = new Progress<SyncActionProgress>(e =>
             {
@@ -258,29 +318,37 @@ public partial class MainWindow : Window
             });
             var byteProgress = new Progress<SyncActionByteProgress>(e =>
             {
-                sourceSyncFiles.SetProgress(e.Path, e.Progress.GetPercentage(false));
+                sourceSyncFiles.AddProgress(e.Path, e.Progress);
             });
 
             var handler = new SimpleBucketSyncActionCollectionHandler(6, actionProgress, byteProgress);
             handler.Add(new HttpBucketSyncActionHandler(_httpClient));
             var apiClient = new FishApiClient(txtHost.Text, _httpClient);
 
+            int iterationCount = 0;
             BucketSyncResult result;
             while (true)
             {
-                result = await apiClient.Sync("first", sourceSyncFiles);
+                result = await apiClient.Sync(txtBucketId.Text, sourceSyncFiles);
                 Logger.Instance.LogInformation($"[PUSH] sync 요청 결과: {result.IsSuccess}, UpdatedAt {result.UpdatedAt}, {result.Actions.Count} 개 작업 필요");
 
                 if (result.IsSuccess)
                     break;
 
                 await handler.Handle(sourceSyncFiles, result.Actions, cancellationToken);
+
+                iterationCount++;
+                if (iterationCount > 10)
+                {
+                    throw new Exception("동기화 10회 실패");
+                }
             }
 
             if (result.IsSuccess)
                 MessageBox.Show($"PUSH 성공, UpdatedAt {result.UpdatedAt}");
             else
                 MessageBox.Show("PUSH 실패\n" + string.Join("\n", result.Actions));
+
         }
         catch (ActionRequiredException actionRequiredException)
         {
@@ -299,6 +367,7 @@ public partial class MainWindow : Window
         finally
         {
             setUIEnables(true);
+            btnCompare_Click(this, e);
         }
     }
 
@@ -307,9 +376,24 @@ public partial class MainWindow : Window
         txtHost.IsEnabled = value;
         txtRoot.IsEnabled = value;
         btnOpen.IsEnabled = value;
-        btnLoad.IsEnabled = value;
+        btnFishLogin.IsEnabled = value;
         btnCompare.IsEnabled = value;
         btnPull.IsEnabled = value;
         btnPush.IsEnabled = value;
+
+        if (value)
+            btnCancel.Visibility = Visibility.Collapsed;
+        else
+            btnCancel.Visibility = Visibility.Visible;
+    }
+
+    private void btnFishLogin_Click(object sender, RoutedEventArgs e)
+    {
+
+    }
+
+    private void btnCancel_Click(object sender, RoutedEventArgs e)
+    {
+        cancellationTokenSource.Cancel();
     }
 }

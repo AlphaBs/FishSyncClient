@@ -1,4 +1,5 @@
 ﻿using FishSyncClient.Files;
+using FishSyncClient.Progress;
 using NeoSmart.PrettySize;
 using System.Collections;
 using System.Windows.Controls;
@@ -26,7 +27,7 @@ public partial class SyncFileCollectionControl : UserControl, ISyncFileCollectio
     public long TotalFiles { get; private set; }
     public long TotalBytes { get; private set; }
 
-    public int Count => throw new NotImplementedException();
+    public int Count => lvFiles.Items.Count;
 
     public void Clear()
     {
@@ -92,13 +93,16 @@ public partial class SyncFileCollectionControl : UserControl, ISyncFileCollectio
         }
     }
 
-    public bool SetProgress(string path, double progress)
+    public bool AddProgress(SyncFile file, ByteProgress progress) => AddProgress(file.Path.SubPath, progress);
+
+    public bool AddProgress(string path, ByteProgress progress)
     {
         if (pathItemMap.TryGetValue(path, out var item))
         {
             if (item.IsProgressing)
             {
-                item.Status = progress.ToString("p");
+                item.CurrentProgress += progress;
+                item.Status = item.CurrentProgress.GetPercentage(false).ToString("p");
                 return true;
             }
             else

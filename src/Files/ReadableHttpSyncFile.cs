@@ -1,4 +1,7 @@
-﻿namespace FishSyncClient.Files;
+﻿using FishSyncClient.Internals;
+using FishSyncClient.Progress;
+
+namespace FishSyncClient.Files;
 
 public class ReadableHttpSyncFile : SyncFile
 {
@@ -17,7 +20,7 @@ public class ReadableHttpSyncFile : SyncFile
 
     public override async ValueTask<Stream> OpenReadStream(CancellationToken cancellationToken = default)
     {
-        using var response = await _httpClient.GetAsync(
+        var response = await _httpClient.GetAsync(
             Location, 
             HttpCompletionOption.ResponseHeadersRead, 
             cancellationToken);
@@ -39,5 +42,21 @@ public class ReadableHttpSyncFile : SyncFile
     public override ValueTask<Stream> OpenWriteStream(CancellationToken cancellationToken = default)
     {
         throw new InvalidOperationException("cannot write");
+    }
+
+    public override async Task CopyTo(Stream destination, IProgress<ByteProgress>? progress, CancellationToken cancellationToken)
+    {
+        using var sourceStream = await OpenReadStream(cancellationToken);
+        long totalBytes = Metadata?.Size ?? 0;
+        progress?.Report(new ByteProgress(totalBytes, 0));
+
+        var buffer = StreamProgressHelper.GetBufferSize(totalBytes);
+        await StreamProgressHelper.CopyStreamWithProgressPerBuffer(
+            sourceStream,
+            destination,
+            buffer,
+            new SyncProgress<long>(read => 
+                progress?.Report(new ByteProgress(0, read))),
+            cancellationToken);
     }
 }

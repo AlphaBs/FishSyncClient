@@ -27,7 +27,8 @@
                     <ColumnDefinition Width="60"/>
                     <ColumnDefinition/>
                     <ColumnDefinition Width="50"/>
-                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="60"/>
                 </Grid.ColumnDefinitions>
 
                 <Label Grid.Column="0" Grid.Row="0"
@@ -38,10 +39,21 @@
 
                 <TextBox x:Name="txtRoot" 
                          Grid.Column="1"
+                         Grid.ColumnSpan="3"
                          VerticalContentAlignment="Center" 
                          Height="20" 
                          Margin="5"
                          Text=""/>
+
+                <Button x:Name="btnOpen" 
+                        Grid.RowSpan="1" Grid.Column="4"
+                        Margin="5" Content="열기" Click="btnOpen_Click"/>
+
+                <Label Grid.Row="1" Grid.Column="0" 
+                       VerticalAlignment="Center" 
+                       HorizontalAlignment="Right" 
+                       Margin="5" Padding="0"
+                       Content="서버 :"/>
 
                 <TextBox x:Name="txtHost"
                          Grid.Row="1" Grid.Column="1"
@@ -50,22 +62,22 @@
                          Margin="5"
                          Text=""/>
 
-                <Label Grid.Row="1" Grid.Column="0" 
-                       VerticalAlignment="Center" 
-                       HorizontalAlignment="Right" 
-                       Margin="5" Padding="0"
-                       Content="서버 :"/>
+                <Label Grid.Row="1" Grid.Column="2"
+                       Content="버킷 :"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Right"
+                       Margin="5" Padding="0"/>
 
-                <Button x:Name="btnOpen" 
-                        Grid.RowSpan="1" Grid.Column="2"
-                        Margin="5" Content="열기" Click="btnOpen_Click"/>
+                <TextBox x:Name="txtBucketId"
+                         Grid.Row="1" Grid.Column="3"
+                         VerticalContentAlignment="Center"
+                         Height="20"
+                         Margin="5"
+                         Text=""/>
 
-                <Button x:Name="btnCancelLoad" 
-                        Visibility="Collapsed" 
-                        Grid.RowSpan="2" Grid.Column="3"
-                        Margin="5"
-                        Content="취소" 
-                        Click="btnCancelLoad_Click"/>
+                <Button x:Name="btnFishLogin"
+                        Grid.Row="1" Grid.Column="4"
+                        Margin="5" Content="로그인" Click="btnFishLogin_Click"/>
             </Grid>
         </Grid>
 
@@ -80,6 +92,7 @@
                 <Button x:Name="btnPull" Grid.Column="0" Content=" PULL 동기화&#10;로컬 &lt;= 서버" Click="btnPull_Click"/>
                 <Button x:Name="btnCompare" Grid.Column="1" Content="비교" Click="btnCompare_Click"/>
                 <Button x:Name="btnPush" Grid.Column="2" Content=" PUSH 동기화&#10;로컬 =&gt; 서버" Click="btnPush_Click"/>
+                <Button x:Name="btnCancel" Grid.ColumnSpan="3" Content="취소" Visibility="Collapsed" Click="btnCancel_Click"/>
             </Grid>
         </Grid>
 

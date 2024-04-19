@@ -1,4 +1,6 @@
-﻿namespace FishSyncClient.Files;
+﻿using FishSyncClient.Progress;
+
+namespace FishSyncClient.Files;
 
 public record SyncFileMetadata
 {

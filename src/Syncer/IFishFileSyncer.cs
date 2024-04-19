@@ -1,5 +1,6 @@
 using FishSyncClient.FileComparers;
 using FishSyncClient.Files;
+using FishSyncClient.Progress;
 
 namespace FishSyncClient.Syncer;
 
@@ -9,6 +10,6 @@ public interface IFishFileSyncer
         IReadOnlyCollection<SyncFilePair> pairs,
         IFileComparer comparer,
         IProgress<FishFileProgressEventArgs>? fileProgress = null,
-        IProgress<ByteProgress>? byteProgress = null,
+        IProgress<SyncFileByteProgress>? byteProgress = null,
         CancellationToken cancellationToken = default);
 }

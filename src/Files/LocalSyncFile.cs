@@ -1,4 +1,8 @@
-﻿namespace FishSyncClient.Files;
+﻿
+using FishSyncClient.Internals;
+using FishSyncClient.Progress;
+
+namespace FishSyncClient.Files;
 
 public class LocalSyncFile : SyncFile
 {
@@ -21,5 +25,21 @@ public class LocalSyncFile : SyncFile
         PathHelper.CreateParentDirectory(fullPath);
         var stream = File.Create(fullPath);
         return new ValueTask<Stream>(stream);
+    }
+
+    public override async Task CopyTo(Stream destination, IProgress<ByteProgress>? progress, CancellationToken cancellationToken)
+    {
+        using var sourceStream = await OpenReadStream(cancellationToken);
+
+        long totalBytes = sourceStream.Length;
+        progress?.Report(new ByteProgress(totalBytes, 0));
+
+        await StreamProgressHelper.CopyStreamWithPeriodicProgress(
+            sourceStream, 
+            destination, 
+            100, 
+            new SyncProgress<long>(read =>
+                progress?.Report(new ByteProgress(0, read))), 
+            cancellationToken);
     }
 }

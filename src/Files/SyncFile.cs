@@ -1,4 +1,6 @@
-﻿namespace FishSyncClient.Files;
+﻿using FishSyncClient.Progress;
+
+namespace FishSyncClient.Files;
 
 public abstract class SyncFile
 {
@@ -14,6 +16,7 @@ public abstract class SyncFile
     public abstract bool IsWritable { get; }
     public abstract ValueTask<Stream> OpenReadStream(CancellationToken cancellationToken = default);
     public abstract ValueTask<Stream> OpenWriteStream(CancellationToken cancellationToken = default);
+    public abstract Task CopyTo(Stream destination, IProgress<ByteProgress>? progress, CancellationToken cancellationToken);
 
     public override string ToString()
     {
