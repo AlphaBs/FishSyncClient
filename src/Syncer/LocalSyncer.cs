@@ -11,7 +11,7 @@ public class SyncerOptions
     public string? Version { get; set; }
     public IEnumerable<string> Excludes { get; set; } = Enumerable.Empty<string>();
     public IEnumerable<string> Includes { get; set; } = ["**"];
-    public IProgress<FishFileProgressEventArgs>? FileProgress { get; set; }
+    public IProgress<FileProgressEvent>? FileProgress { get; set; }
     public IProgress<SyncFileByteProgress>? ByteProgress { get; set; }
     public CancellationToken CancellationToken { get; set; }
 }
@@ -104,11 +104,11 @@ public class LocalSyncer
 
         var block = new ActionBlock<SyncFilePair>(async pair =>
         {
-            options.FileProgress?.Report(new FishFileProgressEventArgs(FishFileProgressEventType.StartSync, progressed, total, pair.Source.Path.SubPath));
+            options.FileProgress?.Report(new FileProgressEvent(FileProgressEventType.StartSync, progressed, total, pair.Source.Path.SubPath));
             await pair.SyncContent(options.ByteProgress, options.CancellationToken);
 
             Interlocked.Increment(ref progressed);
-            options.FileProgress?.Report(new FishFileProgressEventArgs(FishFileProgressEventType.DoneSync, progressed, total, pair.Source.Path.SubPath));
+            options.FileProgress?.Report(new FileProgressEvent(FileProgressEventType.DoneSync, progressed, total, pair.Source.Path.SubPath));
         }, new ExecutionDataflowBlockOptions
         {
             CancellationToken = options.CancellationToken,

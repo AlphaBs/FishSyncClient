@@ -98,7 +98,6 @@ public partial class MainWindow : Window
         sourceSyncFiles.Clear();
         await Task.Run(() =>
         {
-            var pushClient = new LocalPushClient();
             var files = RootedPath.FromDirectory(root, new PathOptions()).Select(createLocalSyncFile);
             addFiles(root, files, sourceSyncFiles, cancellationToken);
         });
@@ -233,15 +232,15 @@ public partial class MainWindow : Window
             var cancellationToken = cancellationTokenSource.Token;
             Logger.Instance.LogInformation($"[PULL] {targetSyncFiles.Count} items");
 
-            var fileProgress = new Progress<FishFileProgressEventArgs>(e =>
+            var fileProgress = new Progress<FileProgressEvent>(e =>
             {
                 Logger.Instance.LogInformation($"[PULL] {e.EventType}: {e.CurrentFileName}");
-                if (e.EventType == FishFileProgressEventType.StartSync)
+                if (e.EventType == FileProgressEventType.StartSync)
                 {
                     targetSyncFiles.StartProgress(e.CurrentFileName);
                     targetSyncFiles.SetStatus(e.CurrentFileName, "동기화 대기");
                 }
-                else if (e.EventType == FishFileProgressEventType.DoneSync)
+                else if (e.EventType == FileProgressEventType.DoneSync)
                 {
                     targetSyncFiles.CompleteProgress(e.CurrentFileName);
                     targetSyncFiles.SetStatus(e.CurrentFileName, "동기화 완료");
@@ -255,7 +254,6 @@ public partial class MainWindow : Window
             var sourceFiles = sourceSyncFiles.GetFiles().ToArray();
             var targetFiles = targetSyncFiles.GetFiles().ToArray();
 
-            var pullIndex = new PullIndex { Files = targetFiles };
             var pullClient = new LocalSyncer(
                 txtRoot.Text,
                 new PathOptions(),
@@ -264,9 +262,9 @@ public partial class MainWindow : Window
                 new DefaultFileComparerFactory(),
                 new ParallelSyncFilePairComparer());
             var pullResult = await pullClient.Pull(
-                new PullIndex { Files = targetFiles },
-                sourceSyncFiles,
-                new SyncFileComparerOptions
+                sourceFiles,
+                targetFiles,
+                new SyncerOptions
                 {
                     FileProgress = fileProgress,
                     ByteProgress = byteProgress,
@@ -305,12 +303,12 @@ public partial class MainWindow : Window
             var actionProgress = new Progress<SyncActionProgress>(e =>
             {
                 Logger.Instance.LogInformation($"[PUSH] BucketSyncAction {e.EventType}: {e.Action.Action.Type}, {e.Action.Path}");
-                if (e.EventType == SyncActionEventTypes.Queue)
+                if (e.EventType == FileProgressEventType.Queue)
                 {
                     sourceSyncFiles.StartProgress(e.Action.Path);
                     sourceSyncFiles.SetStatus(e.Action.Path, $"업로드 대기 ({e.Action.Action.Type})");
                 }
-                else if (e.EventType == SyncActionEventTypes.Done)
+                else if (e.EventType == FileProgressEventType.DoneSync)
                 {
                     sourceSyncFiles.CompleteProgress(e.Action.Path);
                     sourceSyncFiles.SetStatus(e.Action.Path, $"업로드 완료 ({e.Action.Action.Type})");
@@ -324,25 +322,7 @@ public partial class MainWindow : Window
             var handler = new SimpleBucketSyncActionCollectionHandler(6, actionProgress, byteProgress);
             handler.Add(new HttpBucketSyncActionHandler(_httpClient));
             var apiClient = new FishApiClient(txtHost.Text, _httpClient);
-
-            int iterationCount = 0;
-            BucketSyncResult result;
-            while (true)
-            {
-                result = await apiClient.Sync(txtBucketId.Text, sourceSyncFiles);
-                Logger.Instance.LogInformation($"[PUSH] sync 요청 결과: {result.IsSuccess}, UpdatedAt {result.UpdatedAt}, {result.Actions.Count} 개 작업 필요");
-
-                if (result.IsSuccess)
-                    break;
-
-                await handler.Handle(sourceSyncFiles, result.Actions, cancellationToken);
-
-                iterationCount++;
-                if (iterationCount > 10)
-                {
-                    throw new Exception("동기화 10회 실패");
-                }
-            }
+            var result = await apiClient.Sync(txtBucketId.Text, sourceSyncFiles, handler, cancellationToken);
 
             if (result.IsSuccess)
                 MessageBox.Show($"PUSH 성공, UpdatedAt {result.UpdatedAt}");

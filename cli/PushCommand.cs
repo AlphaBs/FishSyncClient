@@ -37,7 +37,7 @@ public class PushCommand : CommandBase
             Console.WriteLine("Source: " + file.Path);
         }
 
-        var fileProgress = new SyncProgress<FishFileProgressEventArgs>(e => 
+        var fileProgress = new SyncProgress<FileProgressEvent>(e => 
             Console.WriteLine($"{e.EventType} {e.ProgressedFiles} / {e.TotalFiles} {e.CurrentFileName}"));
         var byteProgress = new SyncProgress<ByteProgress>(e => 
             Console.WriteLine(e.GetPercentage() + "%"));

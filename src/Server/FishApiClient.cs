@@ -1,4 +1,5 @@
 using FishSyncClient.Files;
+using FishSyncClient.Server.BucketSyncActions;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
@@ -56,7 +57,7 @@ public class FishApiClient
         return json ?? throw new FormatException();
     }
 
-    public async Task<BucketSyncResult> Sync(string id, IEnumerable<SyncFile> files)
+    public async Task<BucketSyncResult> Sync(string id, IEnumerable<SyncFile> files, CancellationToken cancellationToken)
     {
         var bucketSyncFiles = files.Select(file => new BucketSyncFile
         {
@@ -64,10 +65,10 @@ public class FishApiClient
             Checksum = file.Metadata?.Checksum,
             Size = file.Metadata?.Size ?? 0,
         });
-        return await Sync(id, bucketSyncFiles);
+        return await Sync(id, bucketSyncFiles, cancellationToken);
     }
 
-    public async Task<BucketSyncResult> Sync(string id, IEnumerable<BucketSyncFile> files)
+    public async Task<BucketSyncResult> Sync(string id, IEnumerable<BucketSyncFile> files, CancellationToken cancellationToken = default)
     {
         var json = JsonSerializer.Serialize(new { files });
         using var reqContent = new StringContent(json);
@@ -79,12 +80,34 @@ public class FishApiClient
             Method = HttpMethod.Post,
             Content = reqContent
         };
-        using var res = await _httpClient.SendAsync(reqMessage);
-        var resStr = await res.Content.ReadAsStringAsync();
-
+        using var res = await _httpClient.SendAsync(reqMessage, cancellationToken);
         res.EnsureSuccessStatusCode();
+
         using var resStream = await res.Content.ReadAsStreamAsync();
-        return await JsonSerializer.DeserializeAsync<BucketSyncResult>(resStream) ?? 
+        return await JsonSerializer.DeserializeAsync<BucketSyncResult>(resStream, cancellationToken: cancellationToken) ?? 
             throw new FormatException();
+    }
+
+    public async Task<BucketSyncResult> Sync(
+        string id, 
+        ISyncFileCollection sources,
+        IBucketSyncActionCollectionHandler actionHandler, 
+        CancellationToken cancellationToken = default)
+    {
+        int iterationCount = 0;
+        BucketSyncResult result;
+        while (true)
+        {
+            result = await Sync(id, sources, cancellationToken);
+            if (result.IsSuccess)
+                break;
+            await actionHandler.Handle(sources, result.Actions, cancellationToken);
+
+            iterationCount++;
+            if (iterationCount > 10)
+                break;
+        }
+
+        return result;
     }
 }

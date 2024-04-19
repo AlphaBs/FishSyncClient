@@ -1,18 +1,18 @@
-namespace FishSyncClient;
+namespace FishSyncClient.Progress;
 
-public enum FishFileProgressEventType
+public enum FileProgressEventType
 {
     None,
+    Queue,
     StartCompare,
     DoneCompare,
     StartSync,
     DoneSync,
-
 }
 
-public class FishFileProgressEventArgs
+public class FileProgressEvent
 {
-    public FishFileProgressEventArgs(FishFileProgressEventType type, int progressed, int total, string current)
+    public FileProgressEvent(FileProgressEventType type, int progressed, int total, string current)
     {
         EventType = type;
         ProgressedFiles = progressed;
@@ -20,7 +20,7 @@ public class FishFileProgressEventArgs
         CurrentFileName = current;
     }
 
-    public FishFileProgressEventType EventType { get; }
+    public FileProgressEventType EventType { get; }
     public int ProgressedFiles { get; }
     public int TotalFiles { get; }
     public string CurrentFileName { get; }

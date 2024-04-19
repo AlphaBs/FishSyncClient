@@ -9,7 +9,7 @@ public class SequentialSyncFilePairComparer : ISyncFilePairComparer
     public async ValueTask<SyncFilePairCompareResult> ComparePairs(
         IReadOnlyCollection<SyncFilePair> pairs,
         IFileComparer comparer,
-        IProgress<FishFileProgressEventArgs>? fileProgress = null,
+        IProgress<FileProgressEvent>? fileProgress = null,
         IProgress<SyncFileByteProgress>? byteProgress = null,
         CancellationToken cancellationToken = default)
     {
@@ -20,8 +20,8 @@ public class SequentialSyncFilePairComparer : ISyncFilePairComparer
         foreach (var pair in pairs)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            fileProgress?.Report(new FishFileProgressEventArgs(
-                FishFileProgressEventType.StartCompare, fileProgressed, pairs.Count, pair.Source.Path.SubPath));
+            fileProgress?.Report(new FileProgressEvent(
+                FileProgressEventType.StartCompare, fileProgressed, pairs.Count, pair.Source.Path.SubPath));
 
             var areEqual = await comparer.AreEqual(pair, cancellationToken);
             if (areEqual)
@@ -30,8 +30,8 @@ public class SequentialSyncFilePairComparer : ISyncFilePairComparer
                 updated.Add(pair);
 
             fileProgressed++;
-            fileProgress?.Report(new FishFileProgressEventArgs(
-                FishFileProgressEventType.DoneCompare, fileProgressed, pairs.Count, pair.Source.Path.SubPath));
+            fileProgress?.Report(new FileProgressEvent(
+                FileProgressEventType.DoneCompare, fileProgressed, pairs.Count, pair.Source.Path.SubPath));
         }
 
         return new SyncFilePairCompareResult(updated.ToArray(), identical.ToArray());

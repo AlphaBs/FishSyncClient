@@ -4,15 +4,10 @@ using FishSyncClient.Progress;
 
 namespace FishSyncClient.Server.BucketSyncActions;
 
-public enum SyncActionEventTypes
-{
-    Queue, Start, Done
-}
-
 public class SyncActionProgress
 {
-    public SyncActionEventTypes EventType { get; set; }
-    public BucketSyncAction Action { get; set; }
+    public FileProgressEventType EventType { get; set; }
+    public BucketSyncAction? Action { get; set; }
 }
 
 public class SyncActionByteProgress
@@ -97,7 +92,7 @@ public class SimpleBucketSyncActionCollectionHandler : IBucketSyncActionCollecti
             if (file == null)
                 throw new InvalidOperationException();
 
-            actionProgress.Report(new SyncActionProgress { EventType = SyncActionEventTypes.Queue, Action = action });
+            actionProgress.Report(new SyncActionProgress { EventType = FileProgressEventType.Queue, Action = action });
             await handlerBlock.SendAsync(new SyncHandlerParameters
             {
                 Action = action,
@@ -125,9 +120,9 @@ public class SimpleBucketSyncActionCollectionHandler : IBucketSyncActionCollecti
                 });
             });
 
-            actionProgress.Report(new SyncActionProgress { EventType = SyncActionEventTypes.Start, Action = parameters.Action });
+            actionProgress.Report(new SyncActionProgress { EventType = FileProgressEventType.StartSync, Action = parameters.Action });
             await parameters.Handler.Handle(parameters.File, parameters.Action, progressReporter, cancellationToken);
-            actionProgress.Report(new SyncActionProgress { EventType = SyncActionEventTypes.Done, Action = parameters.Action });
+            actionProgress.Report(new SyncActionProgress { EventType = FileProgressEventType.DoneSync, Action = parameters.Action });
         }, new ExecutionDataflowBlockOptions
         {
             MaxDegreeOfParallelism = _maxParallelism,

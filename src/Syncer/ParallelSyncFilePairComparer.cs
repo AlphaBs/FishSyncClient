@@ -27,7 +27,7 @@ public class ParallelSyncFilePairComparer : ISyncFilePairComparer
     public async ValueTask<SyncFilePairCompareResult> ComparePairs(
         IReadOnlyCollection<SyncFilePair> pairs,
         IFileComparer comparer,
-        IProgress<FishFileProgressEventArgs>? fileProgress = null,
+        IProgress<FileProgressEvent>? fileProgress = null,
         IProgress<SyncFileByteProgress>? byteProgress = null,
         CancellationToken cancellationToken = default)
     {
@@ -39,8 +39,8 @@ public class ParallelSyncFilePairComparer : ISyncFilePairComparer
 
         var block = new ActionBlock<SyncFilePair>(async pair =>
         {
-            fileProgress?.Report(new FishFileProgressEventArgs(
-                FishFileProgressEventType.StartSync, progressedFiles, totalFiles, pair.Source.Path.SubPath));
+            fileProgress?.Report(new FileProgressEvent(
+                FileProgressEventType.StartSync, progressedFiles, totalFiles, pair.Source.Path.SubPath));
 
             var areEqual = await comparer.AreEqual(pair, cancellationToken);
             if (areEqual)
@@ -49,8 +49,8 @@ public class ParallelSyncFilePairComparer : ISyncFilePairComparer
                 updatedFiles.Add(pair);
 
             Interlocked.Increment(ref progressedFiles);
-            fileProgress?.Report(new FishFileProgressEventArgs(
-                FishFileProgressEventType.DoneSync, progressedFiles, totalFiles, pair.Source.Path.SubPath));
+            fileProgress?.Report(new FileProgressEvent(
+                FileProgressEventType.DoneSync, progressedFiles, totalFiles, pair.Source.Path.SubPath));
         }, new ExecutionDataflowBlockOptions
         {
             MaxDegreeOfParallelism = _maxDegreeOfParallelism,

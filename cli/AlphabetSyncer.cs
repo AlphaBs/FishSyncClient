@@ -18,7 +18,7 @@ public class AlphabetSyncer
         var versionPath = "C:/fishsync.version.txt";
         var versionManager = new VersionManager(versionPath);
 
-        var fileProgress = new SyncProgress<FishFileProgressEventArgs>(p => 
+        var fileProgress = new SyncProgress<FileProgressEvent>(p => 
             Console.WriteLine($"[{p.EventType}] {p.ProgressedFiles}/{p.TotalFiles} {p.CurrentFileName}"));
 
         var lastByteProgress = new ByteProgress();

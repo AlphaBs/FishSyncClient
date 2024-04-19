@@ -9,7 +9,7 @@ public interface ISyncFilePairComparer
     ValueTask<SyncFilePairCompareResult> ComparePairs(
         IReadOnlyCollection<SyncFilePair> pairs,
         IFileComparer comparer,
-        IProgress<FishFileProgressEventArgs>? fileProgress = null,
+        IProgress<FileProgressEvent>? fileProgress = null,
         IProgress<SyncFileByteProgress>? byteProgress = null,
         CancellationToken cancellationToken = default);
 }
