@@ -4,9 +4,9 @@ using FishSyncClient.Progress;
 
 namespace FishSyncClient.Syncer;
 
-public class SequentialFileSyncer : IFishFileSyncer
+public class SequentialSyncFilePairComparer : ISyncFilePairComparer
 {
-    public async ValueTask<FishFileSyncResult> Sync(
+    public async ValueTask<SyncFilePairCompareResult> ComparePairs(
         IReadOnlyCollection<SyncFilePair> pairs,
         IFileComparer comparer,
         IProgress<FishFileProgressEventArgs>? fileProgress = null,
@@ -34,6 +34,6 @@ public class SequentialFileSyncer : IFishFileSyncer
                 FishFileProgressEventType.DoneCompare, fileProgressed, pairs.Count, pair.Source.Path.SubPath));
         }
 
-        return new FishFileSyncResult(updated.ToArray(), identical.ToArray());
+        return new SyncFilePairCompareResult(updated.ToArray(), identical.ToArray());
     }
 }

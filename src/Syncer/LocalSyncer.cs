@@ -1,22 +1,22 @@
 using FishSyncClient.FileComparers;
 using FishSyncClient.Files;
-using FishSyncClient.Internals;
 using FishSyncClient.Progress;
-using FishSyncClient.Syncer;
 using FishSyncClient.Versions;
 using System.Threading.Tasks.Dataflow;
 
-namespace FishSyncClient.Server;
+namespace FishSyncClient.Syncer;
 
-public class PullIndex
+public class SyncerOptions
 {
     public string? Version { get; set; }
-    public IEnumerable<SyncFile> Files { get; set; } = [];
     public IEnumerable<string> Excludes { get; set; } = Enumerable.Empty<string>();
     public IEnumerable<string> Includes { get; set; } = ["**"];
+    public IProgress<FishFileProgressEventArgs>? FileProgress { get; set; }
+    public IProgress<SyncFileByteProgress>? ByteProgress { get; set; }
+    public CancellationToken CancellationToken { get; set; }
 }
 
-public class LocalPullClient
+public class LocalSyncer
 {
     public static IEnumerable<SyncFile> EnumerateLocalSyncFiles(string root, PathOptions options)
     {
@@ -29,45 +29,49 @@ public class LocalPullClient
     private readonly int _maxParallelism;
     private readonly IVersionManager _versionManager;
     private readonly IFileComparerFactory _comparerFactory;
-    private readonly IFishFileSyncer _fileSyncer;
+    private readonly ISyncFilePairComparer _fileSyncer;
 
-    public LocalPullClient(
+    public LocalSyncer(
         string root,
         PathOptions pathOptions,
         int maxParallelism,
-        IVersionManager versionManager, 
+        IVersionManager versionManager,
         IFileComparerFactory comparerFactory,
-        IFishFileSyncer fileSyncer) =>
-        (_root, _pathOptions, _maxParallelism, _versionManager, _comparerFactory, _fileSyncer) = 
+        ISyncFilePairComparer fileSyncer) =>
+        (_root, _pathOptions, _maxParallelism, _versionManager, _comparerFactory, _fileSyncer) =
         (root, pathOptions, maxParallelism, versionManager, comparerFactory, fileSyncer);
 
-    public Task<PullResult> Pull(PullIndex index, SyncOptions? options)
+    public Task<PullResult> Pull(IEnumerable<SyncFile> sources, SyncerOptions? options)
     {
         var targets = EnumerateLocalSyncFiles(_root, _pathOptions);
-        return Pull(index, targets, options);
+        return Pull(sources, targets, options);
     }
 
     public async Task<PullResult> Pull(
-        PullIndex index,
+        IEnumerable<SyncFile> sources,
         IEnumerable<SyncFile> targets,
-        SyncOptions? options)
+        SyncerOptions? options)
     {
         options ??= new();
-        options.Excludes = index.Excludes;
-        options.Includes = index.Includes;
+        var newVersion = await _versionManager.CheckNewVersion(options.Version);
 
-        var newVersion = await _versionManager.CheckNewVersion(index.Version);
-
-        var syncer = new FishSyncer(_fileSyncer);
-        var comparer = createComparer(newVersion, index.Includes);
-        var syncResult = await syncer.Sync(index.Files, targets, comparer, options);
+        var syncer = new SyncFileComparer(_fileSyncer);
+        var comparer = createComparer(newVersion, options.Includes);
+        var syncResult = await syncer.CompareFiles(sources, targets, comparer, new SyncFileComparerOptions
+        {
+            Includes = options.Includes,
+            Excludes = options.Excludes,
+            FileProgress = options.FileProgress,
+            ByteProgress = options.ByteProgress,
+            CancellationToken = options.CancellationToken
+        });
 
         await syncFilePairs(syncResult, options);
         deleteFiles(syncResult.DeletedFiles);
 
         return new PullResult(
-            newVersion, 
-            index.Version,
+            newVersion,
+            options.Version,
             syncResult);
     }
 
@@ -89,7 +93,7 @@ public class LocalPullClient
         }
     }
 
-    private async Task syncFilePairs(FishSyncResult syncResult, SyncOptions options)
+    private async Task syncFilePairs(SyncFileCompareResult syncResult, SyncerOptions options)
     {
         var addedFilePairs = syncResult.AddedFiles.Select(
             file => new SyncFilePair(file, createLocalFile(file)));
@@ -111,7 +115,7 @@ public class LocalPullClient
             EnsureOrdered = false,
             MaxDegreeOfParallelism = _maxParallelism
         });
-        
+
         foreach (var pair in syncPairs)
         {
             options.ByteProgress?.Report(new SyncFileByteProgress(pair.Source, new ByteProgress
@@ -144,5 +148,5 @@ public class LocalPullClient
 public record PullResult(
     bool IsLatestVersion,
     string? Version,
-    FishSyncResult SyncResult
+    SyncFileCompareResult SyncResult
 );

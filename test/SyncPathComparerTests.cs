@@ -2,16 +2,16 @@ using FishSyncClient.Syncer;
 
 namespace FishSyncClientTest;
 
-public class FishPathSyncTests : FishFileTestBase
+public class SyncPathComparerTests : SyncerTestBase
 {
     [Fact]
     public void find_duplicated_paths()
     {
         // Given
-        var sut = new FishPathSyncer();
+        var sut = new SyncPathComparer();
 
         // When
-        var result = sut.Sync(
+        var result = sut.ComparePaths(
             source: CreateSourcePaths("file1", "file2", "file3", "file4"),
             target: CreateTargetPaths("file3", "file4", "file5", "file6"));
 
@@ -25,10 +25,10 @@ public class FishPathSyncTests : FishFileTestBase
     public void find_added_paths()
     {
         // Given
-        var sut = new FishPathSyncer();
+        var sut = new SyncPathComparer();
 
         // When
-        var result = sut.Sync(
+        var result = sut.ComparePaths(
             source: CreateSourcePaths("file1", "file2", "file3", "file4"),
             target: CreateTargetPaths("file3", "file4", "file5", "file6"));
 
@@ -41,10 +41,10 @@ public class FishPathSyncTests : FishFileTestBase
     public void find_deleted_paths()
     {
         // Given
-        var sut = new FishPathSyncer();
+        var sut = new SyncPathComparer();
 
         // When
-        var result = sut.Sync(
+        var result = sut.ComparePaths(
             source: CreateSourcePaths("file1", "file2", "file3", "file4"),
             target: CreateTargetPaths("file3", "file4", "file5", "file6"));
 

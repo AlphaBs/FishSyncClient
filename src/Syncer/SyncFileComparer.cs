@@ -6,7 +6,7 @@ using FishSyncClient.Progress;
 
 namespace FishSyncClient;
 
-public class SyncOptions
+public class SyncFileComparerOptions
 {
     public IEnumerable<string> Includes { get; set; } = ["**"];
     public IEnumerable<string> Excludes { get; set; } = Enumerable.Empty<string>();
@@ -15,18 +15,18 @@ public class SyncOptions
     public CancellationToken CancellationToken { get; set; }
 }
 
-public class FishSyncer
+public class SyncFileComparer
 {
-    private readonly IFishFileSyncer _fileSyncer;
+    private readonly ISyncFilePairComparer _fileSyncer;
 
-    public FishSyncer(IFishFileSyncer fileSyncer) => 
+    public SyncFileComparer(ISyncFilePairComparer fileSyncer) => 
         _fileSyncer = fileSyncer;
 
-    public Task<FishSyncResult> Sync(
+    public Task<SyncFileCompareResult> CompareFiles(
         IEnumerable<SyncFile> sources,
         IEnumerable<SyncFile> targets,
         IFileComparer comparer,
-        SyncOptions? options)
+        SyncFileComparerOptions? options)
     {
         options ??= new();
         return new SyncProcessor(_fileSyncer, options)
@@ -35,12 +35,12 @@ public class FishSyncer
 
     class SyncProcessor
     {
-        private readonly IFishFileSyncer _fileSyncer;
+        private readonly ISyncFilePairComparer _fileSyncer;
         private readonly Glob[] _includesPatterns;
         private readonly Glob[] _excludesPatterns;
-        private readonly SyncOptions _options;
+        private readonly SyncFileComparerOptions _options;
 
-        public SyncProcessor(IFishFileSyncer fileSyncer, SyncOptions options) 
+        public SyncProcessor(ISyncFilePairComparer fileSyncer, SyncFileComparerOptions options) 
         {
             _fileSyncer = fileSyncer;
             _options = options;
@@ -53,22 +53,22 @@ public class FishSyncer
             return patterns.Select(pattern => Glob.Parse(pattern)).ToArray();
         }
 
-        public async Task<FishSyncResult> Sync(
+        public async Task<SyncFileCompareResult> Sync(
             IEnumerable<SyncFile> sources, 
             IEnumerable<SyncFile> targets, 
             IFileComparer comparer)
         {
-            var pathSyncer = new FishPathSyncer();
-            var pathSyncResult = pathSyncer.Sync(sources, targets);
+            var pathSyncer = new SyncPathComparer();
+            var pathSyncResult = pathSyncer.ComparePaths(sources, targets);
 
-            var fileSyncResult = await _fileSyncer.Sync(
+            var fileSyncResult = await _fileSyncer.ComparePairs(
                 pairs: pathSyncResult.DuplicatedPaths, 
                 comparer: comparer, 
                 fileProgress: _options.FileProgress, 
                 byteProgress: _options.ByteProgress,
                 cancellationToken: _options.CancellationToken);
 
-            return new FishSyncResult(
+            return new SyncFileCompareResult(
                 pathSyncResult.AddedPaths,
                 fileSyncResult.UpdatedFiles.Where(pair => checkIncluded(pair.Source)).ToList(),
                 fileSyncResult.IdenticalFiles.ToArray(),
@@ -83,7 +83,7 @@ public class FishSyncer
     }
 }
 
-public record FishSyncResult(
+public record SyncFileCompareResult(
     IReadOnlyCollection<SyncFile> AddedFiles,
     IReadOnlyCollection<SyncFilePair> UpdatedFilePairs,
     IReadOnlyCollection<SyncFilePair> IdenticalFilePairs,

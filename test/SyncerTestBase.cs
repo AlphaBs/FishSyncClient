@@ -1,8 +1,9 @@
 using FishSyncClient;
+using FishSyncClient.Files;
 
 namespace FishSyncClientTest;
 
-public class FishFileTestBase
+public class SyncerTestBase
 {
     public PathOptions PathOptions = new PathOptions
     {
@@ -26,7 +27,7 @@ public class FishFileTestBase
         var list = new List<SyncFile>();
         foreach (var path in paths)
         {
-            list.Add(new SyncFile(RootedPath.Create(root, path, PathOptions)));
+            list.Add(new VirtualSyncFile(RootedPath.Create(root, path, PathOptions)));
         }
         return list.ToArray();
     }

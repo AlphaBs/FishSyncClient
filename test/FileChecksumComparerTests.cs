@@ -152,7 +152,7 @@ public class FileChecksumComparerTests
 
     private static SyncFile CreateRootedFileWithChecksumAlgorithm(string alg)
     {
-        return new SyncFile(RootedPath.Create("root", "file", pathOptions))
+        return new VirtualSyncFile(RootedPath.Create("root", "file", pathOptions))
         {
             Metadata = new SyncFileMetadata
             {
@@ -165,7 +165,7 @@ public class FileChecksumComparerTests
 
     private static SyncFile CreateSubFileWithChecksumAlgorithm(string alg)
     {
-        return new SyncFile(RootedPath.FromSubPath("file", pathOptions))
+        return new VirtualSyncFile(RootedPath.FromSubPath("file", pathOptions))
         {
             Metadata = new SyncFileMetadata
             {
@@ -178,6 +178,6 @@ public class FileChecksumComparerTests
 
     private static SyncFile CreateRootedFile()
     {
-        return new SyncFile(RootedPath.Create("root", "file", pathOptions));
+        return new VirtualSyncFile(RootedPath.Create("root", "file", pathOptions));
     }
 }

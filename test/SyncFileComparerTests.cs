@@ -6,7 +6,7 @@ using Moq;
 
 namespace FishSyncClientTest;
 
-public class FishSyncerTests : FishFileTestBase
+public class SyncFileComparerTests : SyncerTestBase
 {
     [Fact]
     public async Task exclude_files_which_match_exclude_patterns_from_updated_files()
@@ -18,18 +18,18 @@ public class FishSyncerTests : FishFileTestBase
             .Returns(new ValueTask<bool>(false));
 
         // When
-        var result = await sut.Sync(
+        var result = await sut.CompareFiles(
             CreateSourcePaths("file1", "file2", "file222", "file34", "files/a/b/c"),
             CreateTargetPaths(         "file2", "file222", "file34", "files/a/b/c", "file5"),
             mockComparer.Object,
-            new SyncOptions
+            new SyncFileComparerOptions
             {
                 Excludes = new [] { "file2", "file3*", "files/**" }
             });
 
         // Then
-        var expected = CreateSourcePaths("file1", "file222");
-        var actual = result.UpdatedFiles.ToArray();
+        var expected = CreateSourcePaths("file222");
+        var actual = result.UpdatedFilePairs.Select(pair => pair.Source).ToArray();
         AssertEqualPathCollection(expected, actual);
     }
 
@@ -43,18 +43,18 @@ public class FishSyncerTests : FishFileTestBase
             .Returns(new ValueTask<bool>(false));
 
         // When
-        var result = await sut.Sync(
+        var result = await sut.CompareFiles(
             CreateSourcePaths("file1", "file2", "file222", "file34", "files/a/b/c"),
             CreateTargetPaths(         "file2", "file222", "file34", "files/a/b/c", "file5"),
             mockComparer.Object,
-            new SyncOptions
+            new SyncFileComparerOptions
             {
                 Includes = new [] { "file2", "file3*", "files/**" }
             });
 
         // Then
         var expected = CreateSourcePaths("file2", "file34", "files/a/b/c");
-        var actual = result.UpdatedFiles.ToArray();
+        var actual = result.UpdatedFilePairs.Select(pair => pair.Source).ToArray();
         AssertEqualPathCollection(expected, actual);
     }
 
@@ -68,11 +68,11 @@ public class FishSyncerTests : FishFileTestBase
             .Returns(new ValueTask<bool>(false));
 
         // When
-        var result = await sut.Sync(
+        var result = await sut.CompareFiles(
             CreateSourcePaths("file1"),
             CreateTargetPaths("file2", "file222", "file34", "files/a/b/c"),
             mockComparer.Object,
-            new SyncOptions
+            new SyncFileComparerOptions
             {
                 Excludes = new [] { "file2", "file3*", "files/**" }
             });
@@ -93,11 +93,11 @@ public class FishSyncerTests : FishFileTestBase
             .Returns(new ValueTask<bool>(false));
 
         // When
-        var result = await sut.Sync(
+        var result = await sut.CompareFiles(
             CreateSourcePaths("file1"),
             CreateTargetPaths("file2", "file222", "file34", "files/a/b/c"),
             mockComparer.Object,
-            new SyncOptions
+            new SyncFileComparerOptions
             {
                 Includes = new [] { "file2", "file3*", "files/**" }
             });
@@ -108,8 +108,8 @@ public class FishSyncerTests : FishFileTestBase
         AssertEqualPathCollection(expected, actual);
     }
 
-    public static FishSyncer CreateSyncer()
+    public static SyncFileComparer CreateSyncer()
     {
-        return new FishSyncer(new SequentialFileSyncer());
+        return new SyncFileComparer(new SequentialSyncFilePairComparer());
     }
 }

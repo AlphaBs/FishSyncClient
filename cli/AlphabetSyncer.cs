@@ -26,7 +26,7 @@ public class AlphabetSyncer
 
         var serverIndex = await getServerIndex();
         var serverSyncer = new FishServerSyncer(
-            versionManager, new DefaultFileComparerFactory(), new ParallelFileSyncer());
+            versionManager, new DefaultFileComparerFactory(), new ParallelSyncFilePairComparer());
         var syncResult = await serverSyncer.Sync(
             serverIndex, getLocalPaths(root), fileProgress, default);
 

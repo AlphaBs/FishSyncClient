@@ -177,12 +177,12 @@ public partial class MainWindow : Window
             var sources = sourceSyncFiles.GetFiles();
             var targets = targetSyncFiles.GetFiles();
 
-            var syncer = new FishSyncer(new SequentialFileSyncer());
-            var result = await syncer.Sync(
+            var syncer = new SyncFileComparer(new SequentialSyncFilePairComparer());
+            var result = await syncer.CompareFiles(
                 sources, 
                 targets, 
                 _fileComparerFactory.CreateFullComparer(), 
-                new SyncOptions());
+                new SyncFileComparerOptions());
 
             foreach (var identical in result.IdenticalFilePairs)
             {
@@ -256,17 +256,17 @@ public partial class MainWindow : Window
             var targetFiles = targetSyncFiles.GetFiles().ToArray();
 
             var pullIndex = new PullIndex { Files = targetFiles };
-            var pullClient = new LocalPullClient(
+            var pullClient = new LocalSyncer(
                 txtRoot.Text,
                 new PathOptions(),
                 6,
                 new NullVersionManager(),
                 new DefaultFileComparerFactory(),
-                new ParallelFileSyncer());
+                new ParallelSyncFilePairComparer());
             var pullResult = await pullClient.Pull(
                 new PullIndex { Files = targetFiles },
                 sourceSyncFiles,
-                new SyncOptions
+                new SyncFileComparerOptions
                 {
                     FileProgress = fileProgress,
                     ByteProgress = byteProgress,

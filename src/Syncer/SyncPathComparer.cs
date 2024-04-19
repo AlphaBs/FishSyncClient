@@ -2,9 +2,9 @@
 
 namespace FishSyncClient.Syncer;
 
-public class FishPathSyncer
+public class SyncPathComparer
 {
-    public FishPathSyncResult Sync(IEnumerable<SyncFile> source, IEnumerable<SyncFile> target)
+    public SyncFilePathCompareResult ComparePaths(IEnumerable<SyncFile> source, IEnumerable<SyncFile> target)
     {
         var sourceDict = source.ToDictionary(s => s.Path.SubPath, s => s);
         var targetDict = target.ToDictionary(t => t.Path.SubPath, t => t);
@@ -33,11 +33,11 @@ public class FishPathSyncer
             .Select(kv => kv.Value)
             .ToArray();
 
-        return new FishPathSyncResult(added, duplicated, deleted);
+        return new SyncFilePathCompareResult(added, duplicated, deleted);
     }
 }
 
-public record FishPathSyncResult(
+public record SyncFilePathCompareResult(
     IReadOnlyCollection<SyncFile> AddedPaths,
     IReadOnlyCollection<SyncFilePair> DuplicatedPaths,
     IReadOnlyCollection<SyncFile> DeletedPaths
