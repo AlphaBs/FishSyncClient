@@ -15,7 +15,7 @@ internal partial class SyncFileItem : ObservableObject
     public string Name => File.Path.SubPath;
     public long Size => File.Metadata?.Size ?? 0;
     public string? Checksum => File.Metadata?.Checksum;
-    public bool IsProgressing { get; set; }
+    public bool IsProgressing { get; set; } = true;
     public ByteProgress CurrentProgress { get; set; }
 
     [ObservableProperty]

@@ -30,10 +30,6 @@ public class LocalSyncFile : SyncFile
     public override async Task CopyTo(Stream destination, IProgress<ByteProgress>? progress, CancellationToken cancellationToken)
     {
         using var sourceStream = await OpenReadStream(cancellationToken);
-
-        long totalBytes = sourceStream.Length;
-        progress?.Report(new ByteProgress(totalBytes, 0));
-
         await StreamProgressHelper.CopyStreamWithPeriodicProgress(
             sourceStream, 
             destination, 

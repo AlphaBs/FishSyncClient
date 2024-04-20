@@ -41,13 +41,13 @@ public class LocalSyncer
         (_root, _pathOptions, _maxParallelism, _versionManager, _comparerFactory, _fileSyncer) =
         (root, pathOptions, maxParallelism, versionManager, comparerFactory, fileSyncer);
 
-    public Task<PullResult> Pull(IEnumerable<SyncFile> sources, SyncerOptions? options)
+    public Task<SyncResult> Sync(IEnumerable<SyncFile> sources, SyncerOptions? options)
     {
         var targets = EnumerateLocalSyncFiles(_root, _pathOptions);
-        return Pull(sources, targets, options);
+        return Sync(sources, targets, options);
     }
 
-    public async Task<PullResult> Pull(
+    public async Task<SyncResult> Sync(
         IEnumerable<SyncFile> sources,
         IEnumerable<SyncFile> targets,
         SyncerOptions? options)
@@ -69,7 +69,7 @@ public class LocalSyncer
         await syncFilePairs(syncResult, options);
         deleteFiles(syncResult.DeletedFiles);
 
-        return new PullResult(
+        return new SyncResult(
             newVersion,
             options.Version,
             syncResult);
@@ -118,11 +118,16 @@ public class LocalSyncer
 
         foreach (var pair in syncPairs)
         {
-            options.ByteProgress?.Report(new SyncFileByteProgress(pair.Source, new ByteProgress
-            {
-                TotalBytes = pair.Source.Metadata?.Size ?? 0,
-                ProgressedBytes = 0
-            }));
+            options.FileProgress?.Report(new FileProgressEvent(FileProgressEventType.Queue, progressed, total, pair.Source.Path.SubPath));
+            options.ByteProgress?.Report(
+                new SyncFileByteProgress(
+                    pair.Source, 
+                    new ByteProgress 
+                    { 
+                        TotalBytes = pair.Source.Metadata?.Size ?? 0, 
+                        ProgressedBytes = 0
+                    }));
+
             await block.SendAsync(pair);
         }
         block.Complete();
@@ -145,8 +150,8 @@ public class LocalSyncer
     }
 }
 
-public record PullResult(
+public record SyncResult(
     bool IsLatestVersion,
     string? Version,
-    SyncFileCompareResult SyncResult
+    SyncFileCompareResult CompareResult
 );

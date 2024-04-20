@@ -3,6 +3,7 @@ using FishSyncClient.Progress;
 using NeoSmart.PrettySize;
 using System.Collections;
 using System.Windows.Controls;
+using System.Windows.Threading;
 
 namespace FishSyncClient.Gui;
 
@@ -11,9 +12,15 @@ namespace FishSyncClient.Gui;
 /// </summary>
 public partial class SyncFileCollectionControl : UserControl, ISyncFileCollection
 {
+    private ConcurrentByteProgressAggregator _progressAggregator = new();
+    private readonly DispatcherTimer _timer;
+
     public SyncFileCollectionControl()
     {
         InitializeComponent();
+        _timer = new DispatcherTimer();
+        _timer.Interval = TimeSpan.FromMilliseconds(100);
+        _timer.Tick += _timer_Tick;
     }
 
     private readonly Dictionary<string, SyncFileItem> pathItemMap = new();
@@ -65,6 +72,26 @@ public partial class SyncFileCollectionControl : UserControl, ISyncFileCollectio
         }
     }
 
+    public bool SetStatus(SyncFile file, FileProgressEventType type) => SetStatus(file.Path.SubPath, type);
+
+    public bool SetStatus(string path, FileProgressEventType type)
+    {
+        if (type == FileProgressEventType.DoneSync)
+            CompleteProgress(path);
+        else
+            StartProgress(path);
+
+        return SetStatus(path, type switch
+        {
+            FileProgressEventType.Queue => "작업 대기",
+            FileProgressEventType.StartCompare => "비교 중",
+            FileProgressEventType.DoneCompare => "비교 완료",
+            FileProgressEventType.StartSync => "동기화 중",
+            FileProgressEventType.DoneSync => "동기화 완료",
+            _ => "대기"
+        });
+    }
+
     public bool SetStatus(SyncFile file, string status) => SetStatus(file.Path.SubPath, status);
 
     public bool SetStatus(string path, string status)
@@ -85,6 +112,7 @@ public partial class SyncFileCollectionControl : UserControl, ISyncFileCollectio
         if (pathItemMap.TryGetValue(path, out var item))
         {
             item.IsProgressing = true;
+            _timer.Start();
             return true;
         }
         else
@@ -103,6 +131,7 @@ public partial class SyncFileCollectionControl : UserControl, ISyncFileCollectio
             {
                 item.CurrentProgress += progress;
                 item.Status = item.CurrentProgress.GetPercentage(false).ToString("p");
+                _progressAggregator.Report(progress);
                 return true;
             }
             else
@@ -127,6 +156,27 @@ public partial class SyncFileCollectionControl : UserControl, ISyncFileCollectio
         {
             return false;
         }
+    }
+
+    public void ClearProgress()
+    {
+        _timer.Stop();
+        _progressAggregator = new();
+        pbProgress.Value = 0;
+        lbProgress.Content = "";
+    }
+
+    private void updateAggregatedProgress()
+    {
+        var progress = _progressAggregator.AggregateProgress();
+        pbProgress.Maximum = progress.TotalBytes;
+        pbProgress.Value = progress.ProgressedBytes;
+        lbProgress.Content = $"{progress.GetPercentage(false):p} ({progress.ProgressedBytes:#,##} / {progress.TotalBytes:#,##})";
+    }
+
+    private void _timer_Tick(object? sender, EventArgs e)
+    {
+        updateAggregatedProgress();
     }
 
     private void updateControl()

@@ -11,19 +11,6 @@ public class ConcurrentByteProgressAggregator : IProgress<ByteProgress>
 
     public ByteProgress AggregateProgress()
     {
-        long aggregatedTotalBytes = 0;
-        long aggregatedProgatedBytes = 0;
-
-        foreach (var progress in _progressStorage.Values)
-        {
-            aggregatedTotalBytes += progress.TotalBytes;
-            aggregatedProgatedBytes += progress.ProgressedBytes;
-        }
-
-        return new ByteProgress
-        {
-            TotalBytes = aggregatedTotalBytes,
-            ProgressedBytes = aggregatedProgatedBytes
-        };
+        return _progressStorage.Values.Aggregate((a, b) => a + b);
     }
 }

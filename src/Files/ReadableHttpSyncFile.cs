@@ -46,11 +46,12 @@ public class ReadableHttpSyncFile : SyncFile
 
     public override async Task CopyTo(Stream destination, IProgress<ByteProgress>? progress, CancellationToken cancellationToken)
     {
+        long previousTotalBytes = Metadata?.Size ?? 0;
         using var sourceStream = await OpenReadStream(cancellationToken);
-        long totalBytes = Metadata?.Size ?? 0;
-        progress?.Report(new ByteProgress(totalBytes, 0));
+        long currentTotalBytes = Metadata?.Size ?? 0;
+        progress?.Report(new ByteProgress(currentTotalBytes - previousTotalBytes, 0));
 
-        var buffer = StreamProgressHelper.GetBufferSize(totalBytes);
+        var buffer = StreamProgressHelper.GetBufferSize(currentTotalBytes);
         await StreamProgressHelper.CopyStreamWithProgressPerBuffer(
             sourceStream,
             destination,

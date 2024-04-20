@@ -6,8 +6,14 @@ namespace FishSyncClient.Server.BucketSyncActions;
 
 public class SyncActionProgress
 {
+    public SyncActionProgress(FileProgressEventType eventType, BucketSyncAction action)
+    {
+        EventType = eventType;
+        Action = action;
+    }
+
     public FileProgressEventType EventType { get; set; }
-    public BucketSyncAction? Action { get; set; }
+    public BucketSyncAction Action { get; set; }
 }
 
 public class SyncActionByteProgress
@@ -92,7 +98,7 @@ public class SimpleBucketSyncActionCollectionHandler : IBucketSyncActionCollecti
             if (file == null)
                 throw new InvalidOperationException();
 
-            actionProgress.Report(new SyncActionProgress { EventType = FileProgressEventType.Queue, Action = action });
+            actionProgress.Report(new SyncActionProgress(FileProgressEventType.Queue, action));
             await handlerBlock.SendAsync(new SyncHandlerParameters
             {
                 Action = action,
@@ -120,9 +126,9 @@ public class SimpleBucketSyncActionCollectionHandler : IBucketSyncActionCollecti
                 });
             });
 
-            actionProgress.Report(new SyncActionProgress { EventType = FileProgressEventType.StartSync, Action = parameters.Action });
+            actionProgress.Report(new SyncActionProgress(FileProgressEventType.StartSync, parameters.Action));
             await parameters.Handler.Handle(parameters.File, parameters.Action, progressReporter, cancellationToken);
-            actionProgress.Report(new SyncActionProgress { EventType = FileProgressEventType.DoneSync, Action = parameters.Action });
+            actionProgress.Report(new SyncActionProgress(FileProgressEventType.DoneSync, parameters.Action));
         }, new ExecutionDataflowBlockOptions
         {
             MaxDegreeOfParallelism = _maxParallelism,

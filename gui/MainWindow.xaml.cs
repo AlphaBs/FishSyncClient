@@ -95,6 +95,7 @@ public partial class MainWindow : Window
 
     private async Task loadSource(string root, CancellationToken cancellationToken)
     {
+        sourceSyncFiles.ClearProgress();
         sourceSyncFiles.Clear();
         await Task.Run(() =>
         {
@@ -105,6 +106,7 @@ public partial class MainWindow : Window
 
     private async Task loadTarget(string host, string id, CancellationToken cancellationToken)
     {
+        targetSyncFiles.ClearProgress();
         targetSyncFiles.Clear();
         var apiClient = new FishApiClient(host, _httpClient);
         var files = await apiClient.GetBucketFiles(id, cancellationToken);
@@ -235,16 +237,7 @@ public partial class MainWindow : Window
             var fileProgress = new Progress<FileProgressEvent>(e =>
             {
                 Logger.Instance.LogInformation($"[PULL] {e.EventType}: {e.CurrentFileName}");
-                if (e.EventType == FileProgressEventType.StartSync)
-                {
-                    targetSyncFiles.StartProgress(e.CurrentFileName);
-                    targetSyncFiles.SetStatus(e.CurrentFileName, "동기화 대기");
-                }
-                else if (e.EventType == FileProgressEventType.DoneSync)
-                {
-                    targetSyncFiles.CompleteProgress(e.CurrentFileName);
-                    targetSyncFiles.SetStatus(e.CurrentFileName, "동기화 완료");
-                }
+                targetSyncFiles.SetStatus(e.CurrentFileName, e.EventType);
             });
             var byteProgress = new Progress<SyncFileByteProgress>(e =>
             {
@@ -254,16 +247,16 @@ public partial class MainWindow : Window
             var sourceFiles = sourceSyncFiles.GetFiles().ToArray();
             var targetFiles = targetSyncFiles.GetFiles().ToArray();
 
-            var pullClient = new LocalSyncer(
+            var syncer = new LocalSyncer(
                 txtRoot.Text,
                 new PathOptions(),
                 6,
                 new NullVersionManager(),
                 new DefaultFileComparerFactory(),
                 new ParallelSyncFilePairComparer());
-            var pullResult = await pullClient.Pull(
-                sourceFiles,
+            var syncResult = await syncer.Sync(
                 targetFiles,
+                sourceFiles,
                 new SyncerOptions
                 {
                     FileProgress = fileProgress,
@@ -271,11 +264,11 @@ public partial class MainWindow : Window
                     CancellationToken = cancellationToken
                 });
 
-            Logger.Instance.LogInformation($"[PULL] 완료" +
-                $"업데이트 {pullResult.SyncResult.UpdatedFilePairs.Count} 개" +
-                $"추가 {pullResult.SyncResult.AddedFiles.Count} 개" +
-                $"삭제 {pullResult.SyncResult.DeletedFiles.Count} 개" +
-                $"동일한 파일 {pullResult.SyncResult.IdenticalFilePairs.Count} 개");
+            Logger.Instance.LogInformation($"[PULL] 완료: " +
+                $"업데이트 {syncResult.CompareResult.UpdatedFilePairs.Count} 개, " +
+                $"추가 {syncResult.CompareResult.AddedFiles.Count} 개, " +
+                $"삭제 {syncResult.CompareResult.DeletedFiles.Count} 개, " +
+                $"동일한 파일 {syncResult.CompareResult.IdenticalFilePairs.Count} 개");
             MessageBox.Show($"PULL 성공");
         }
         catch (Exception ex)
@@ -303,16 +296,7 @@ public partial class MainWindow : Window
             var actionProgress = new Progress<SyncActionProgress>(e =>
             {
                 Logger.Instance.LogInformation($"[PUSH] BucketSyncAction {e.EventType}: {e.Action.Action.Type}, {e.Action.Path}");
-                if (e.EventType == FileProgressEventType.Queue)
-                {
-                    sourceSyncFiles.StartProgress(e.Action.Path);
-                    sourceSyncFiles.SetStatus(e.Action.Path, $"업로드 대기 ({e.Action.Action.Type})");
-                }
-                else if (e.EventType == FileProgressEventType.DoneSync)
-                {
-                    sourceSyncFiles.CompleteProgress(e.Action.Path);
-                    sourceSyncFiles.SetStatus(e.Action.Path, $"업로드 완료 ({e.Action.Action.Type})");
-                }
+                sourceSyncFiles.SetStatus(e.Action.Path, e.EventType);
             });
             var byteProgress = new Progress<SyncActionByteProgress>(e =>
             {

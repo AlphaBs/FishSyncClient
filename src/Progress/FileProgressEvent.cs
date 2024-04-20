@@ -12,7 +12,11 @@ public enum FileProgressEventType
 
 public class FileProgressEvent
 {
-    public FileProgressEvent(FileProgressEventType type, int progressed, int total, string current)
+    public FileProgressEvent(
+        FileProgressEventType type, 
+        int progressed, 
+        int total, 
+        string current)
     {
         EventType = type;
         ProgressedFiles = progressed;
