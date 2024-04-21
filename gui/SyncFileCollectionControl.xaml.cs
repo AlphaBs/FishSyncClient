@@ -161,7 +161,7 @@ public partial class SyncFileCollectionControl : UserControl, ISyncFileCollectio
     public void ClearProgress()
     {
         _timer.Stop();
-        _progressAggregator = new();
+        _progressAggregator.Clear();
         pbProgress.Value = 0;
         lbProgress.Content = "";
     }
