@@ -2,7 +2,7 @@
   "profiles": {
     "cli": {
       "commandName": "Project",
-      "commandLineArgs": "push first --root \"C:\\fishsync\" --server \"https://localhost:7128/api\""
+      "commandLineArgs": "pull first --root \"C:\\Users\\ksi12\\AppData\\Roaming\\ICY_ONLINE\\game\" --server \"https://localhost:7128/api\""
     }
   }
 }

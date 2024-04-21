@@ -1,3 +1,4 @@
+using FishSyncClient.Files;
 using System.Text.Json.Serialization;
 
 namespace FishSyncClient.Server;
@@ -27,6 +28,25 @@ public class FishBucketFiles
 
     [JsonPropertyName("files")]
     public FishBucketFile[]? Files { get; set; }
+
+    public IEnumerable<SyncFile> GetSyncFiles(HttpClient httpClient, PathOptions options)
+    {
+        if (Files == null)
+            return [];
+
+        return Files.Select(file => 
+            new ReadableHttpSyncFile(RootedPath.FromSubPath(file.Path, options), httpClient)
+            {
+                Location = new Uri(file.Location),
+                Uploaded = file.Metadata.LastUpdated,
+                Metadata = new SyncFileMetadata()
+                { 
+                    Checksum = file.Metadata.Checksum,
+                    ChecksumAlgorithm = "md5",
+                    Size = file.Metadata.Size,
+                },
+            });
+    }
 }
 
 public class FishBucketLimitations

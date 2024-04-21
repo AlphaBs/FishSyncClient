@@ -10,6 +10,9 @@ public abstract class CommandBase
     [Option("server")]
     public string? Server { get; set; }
 
+    [Value(0, Required = true)]
+    public string? Id { get; set; }
+
     public int Run()
     {
         return RunAsync().GetAwaiter().GetResult();
