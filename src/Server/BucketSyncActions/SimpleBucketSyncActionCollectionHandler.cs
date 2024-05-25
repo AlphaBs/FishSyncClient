@@ -4,29 +4,16 @@ using FishSyncClient.Progress;
 
 namespace FishSyncClient.Server.BucketSyncActions;
 
-public class SyncActionProgress
+public class SyncActionProgress(FileProgressEventType eventType, BucketSyncAction action)
 {
-    public SyncActionProgress(FileProgressEventType eventType, BucketSyncAction action)
-    {
-        EventType = eventType;
-        Action = action;
-    }
-
-    public FileProgressEventType EventType { get; set; }
-    public BucketSyncAction Action { get; set; }
+    public FileProgressEventType EventType { get; } = eventType;
+    public BucketSyncAction Action { get; } = action;
 }
 
-public class SyncActionByteProgress
+public class SyncActionByteProgress(string path, ByteProgress progress)
 {
-    public string Path { get; set; }
-    public ByteProgress Progress { get; set; }
-}
-
-public class SyncHandlerParameters
-{
-    public IBucketSyncActionHandler Handler { get; set; }
-    public SyncFile File { get; set; }
-    public BucketSyncAction Action { get; set; }
+    public string Path { get; } = path;
+    public ByteProgress Progress { get; } = progress;
 }
 
 public class SimpleBucketSyncActionCollectionHandler : IBucketSyncActionCollectionHandler
@@ -71,6 +58,16 @@ public class SimpleBucketSyncActionCollectionHandler : IBucketSyncActionCollecti
         return handle(files, actions, _actionProgress, _byteProgress, cancellationToken);
     }
 
+    class SyncHandlerParameters(
+        IBucketSyncActionHandler handler, 
+        SyncFile file,
+        BucketSyncAction action)
+    {
+        public IBucketSyncActionHandler Handler { get; } = handler;
+        public SyncFile File { get; } = file;
+        public BucketSyncAction Action { get; } = action;
+    }
+
     private async Task handle(
         ISyncFileCollection files,
         IEnumerable<BucketSyncAction> actions,
@@ -99,12 +96,7 @@ public class SimpleBucketSyncActionCollectionHandler : IBucketSyncActionCollecti
                 throw new InvalidOperationException();
 
             actionProgress.Report(new SyncActionProgress(FileProgressEventType.Queue, action));
-            await handlerBlock.SendAsync(new SyncHandlerParameters
-            {
-                Action = action,
-                Handler = handler,
-                File = file
-            });
+            await handlerBlock.SendAsync(new SyncHandlerParameters(handler, file, action));
         }
         handlerBlock.Complete();
         await handlerBlock.Completion;
@@ -120,10 +112,10 @@ public class SimpleBucketSyncActionCollectionHandler : IBucketSyncActionCollecti
             var progressReporter = new Progress<ByteProgress>(progress =>
             {
                 byteProgress.Report(new SyncActionByteProgress
-                {
-                    Path = parameters.File.Path.SubPath,
-                    Progress = progress
-                });
+                (
+                    parameters.File.Path.SubPath,
+                    progress
+                ));
             });
 
             actionProgress.Report(new SyncActionProgress(FileProgressEventType.StartSync, parameters.Action));
