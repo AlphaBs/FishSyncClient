@@ -51,11 +51,11 @@ public class HttpBucketSyncActionHandler : IBucketSyncActionHandler
         reqMessage.Content = reqContent;
 
         var totalBytes = file.Metadata?.Size ?? 0;
-        progress?.Report(new ByteProgress { TotalBytes = totalBytes, ProgressedBytes = 0 });
+        progress?.Report(new ByteProgress(totalBytes, 0));
 
         var sendTask = _httpClient.SendAsync(reqMessage);
         await StreamProgressHelper.MonitorStreamPosition(sendTask, readStream, 0, 100, new SyncProgress<long>(delta =>
-            progress?.Report(new ByteProgress { TotalBytes = 0, ProgressedBytes = delta })));
+            progress?.Report(new ByteProgress(0, delta))));
 
         var res = await sendTask;
         var resStr = await res.Content.ReadAsStringAsync();

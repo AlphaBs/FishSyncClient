@@ -130,7 +130,7 @@ public partial class SyncFileCollectionControl : UserControl, ISyncFileCollectio
             if (item.IsProgressing)
             {
                 item.CurrentProgress += progress;
-                item.Status = item.CurrentProgress.GetPercentage(false).ToString("p");
+                item.Status = item.CurrentProgress.GetRatio().ToString("p");
                 _progressAggregator.Report(progress);
                 return true;
             }
@@ -171,7 +171,7 @@ public partial class SyncFileCollectionControl : UserControl, ISyncFileCollectio
         var progress = _progressAggregator.AggregateProgress();
         pbProgress.Maximum = progress.TotalBytes;
         pbProgress.Value = progress.ProgressedBytes;
-        lbProgress.Content = $"{progress.GetPercentage(false):p} ({progress.ProgressedBytes:#,##} / {progress.TotalBytes:#,##})";
+        lbProgress.Content = $"{progress.GetRatio():p} ({progress.ProgressedBytes:#,##} / {progress.TotalBytes:#,##})";
     }
 
     private void _timer_Tick(object? sender, EventArgs e)

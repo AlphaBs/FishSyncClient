@@ -123,10 +123,10 @@ public class LocalSyncer
                 new SyncFileByteProgress(
                     pair.Source, 
                     new ByteProgress 
-                    { 
-                        TotalBytes = pair.Source.Metadata?.Size ?? 0, 
-                        ProgressedBytes = 0
-                    }));
+                    (
+                        totalBytes: pair.Source.Metadata?.Size ?? 0, 
+                        progressedBytes: 0
+                    )));
 
             await block.SendAsync(pair);
         }

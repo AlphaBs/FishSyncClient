@@ -1,9 +1,9 @@
 namespace FishSyncClient.Progress;
 
-public struct ByteProgress
+public readonly struct ByteProgress
 {
-    public long TotalBytes;
-    public long ProgressedBytes;
+    public readonly long TotalBytes;
+    public readonly long ProgressedBytes;
 
     public ByteProgress(long totalBytes, long progressedBytes)
     {
@@ -11,23 +11,23 @@ public struct ByteProgress
         ProgressedBytes = progressedBytes;
     }
 
-    public double GetPercentage(bool hundred) => (double)ProgressedBytes / TotalBytes * (hundred ? 100 : 1);
+    public double GetRatio() => (double)ProgressedBytes / TotalBytes;
 
     public static ByteProgress operator +(ByteProgress a, ByteProgress b)
     {
         return new ByteProgress
-        {
-            TotalBytes = a.TotalBytes + b.TotalBytes,
-            ProgressedBytes = a.ProgressedBytes + b.ProgressedBytes
-        };
+        (
+            totalBytes: a.TotalBytes + b.TotalBytes,
+            progressedBytes: a.ProgressedBytes + b.ProgressedBytes
+        );
     }
 
     public static ByteProgress operator -(ByteProgress a, ByteProgress b)
     {
         return new ByteProgress
-        {
-            TotalBytes = a.TotalBytes - b.TotalBytes,
-            ProgressedBytes = b.TotalBytes - b.TotalBytes
-        };
+        (
+            totalBytes: a.TotalBytes - b.TotalBytes,
+            progressedBytes: b.TotalBytes - b.TotalBytes
+        );
     }
 }

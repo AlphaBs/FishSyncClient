@@ -56,29 +56,29 @@ public class PullCommand : CommandBase
         {
             await Task.WhenAny(syncTask, Task.Delay(100));
             var progress = progressAggregator.AggregateProgress();
-            Console.WriteLine($"{progress.GetPercentage(false):p} ( {progress.ProgressedBytes:#,##} / {progress.TotalBytes:#,##} )");
+            Console.WriteLine($"{progress.GetRatio():p} ( {progress.ProgressedBytes:#,##} / {progress.TotalBytes:#,##} )");
         }
 
         var syncResult = await syncTask;
-        Console.WriteLine($"\nµ¿ÀÏ ÆÄÀÏ({syncResult.CompareResult.IdenticalFilePairs.Count}): ");
+        Console.WriteLine($"\nï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½({syncResult.CompareResult.IdenticalFilePairs.Count}): ");
         foreach (var identical in syncResult.CompareResult.IdenticalFilePairs)
         {
             Console.WriteLine(identical.Source.Path.SubPath);
         }
 
-        Console.WriteLine($"\n¾÷µ¥ÀÌÆ® ÆÄÀÏ({syncResult.CompareResult.UpdatedFilePairs.Count}): ");
+        Console.WriteLine($"\nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½ï¿½ï¿½({syncResult.CompareResult.UpdatedFilePairs.Count}): ");
         foreach (var updated in syncResult.CompareResult.UpdatedFilePairs)
         {
             Console.WriteLine(updated.Source.Path.SubPath);
         }
 
-        Console.WriteLine($"\nÃß°¡µÈ ÆÄÀÏ({syncResult.CompareResult.AddedFiles.Count}): ");
+        Console.WriteLine($"\nï¿½ß°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½({syncResult.CompareResult.AddedFiles.Count}): ");
         foreach (var added in syncResult.CompareResult.AddedFiles)
         {
             Console.WriteLine(added.Path.SubPath);
         }
 
-        Console.WriteLine($"\n»èÁ¦µÈ ÆÄÀÏ({syncResult.CompareResult.DeletedFiles.Count}): ");
+        Console.WriteLine($"\nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½({syncResult.CompareResult.DeletedFiles.Count}): ");
         foreach (var deleted in syncResult.CompareResult.DeletedFiles)
         {
             Console.WriteLine(deleted.Path.SubPath);

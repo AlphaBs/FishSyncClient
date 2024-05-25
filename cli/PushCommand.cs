@@ -48,7 +48,7 @@ public class PushCommand : CommandBase
         {
             await Task.WhenAny(Task.Delay(100), syncTask);
             var progress = progressAggregator.AggregateProgress();
-            Console.WriteLine($"{progress.GetPercentage(false):p} ( {progress.ProgressedBytes:#,##} / {progress.TotalBytes:#,##} )");
+            Console.WriteLine($"{progress.GetRatio():p} ( {progress.ProgressedBytes:#,##} / {progress.TotalBytes:#,##} )");
         }
 
         var result = await syncTask;
