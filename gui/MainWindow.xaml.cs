@@ -178,12 +178,12 @@ public partial class MainWindow : Window
             var sources = sourceSyncFiles.GetFiles();
             var targets = targetSyncFiles.GetFiles();
 
-            var syncer = new SyncFileComparer(new SequentialSyncFilePairComparer());
+            var syncer = new SyncFileCollectionComparer(new SequentialSyncFilePairComparer());
             var result = await syncer.CompareFiles(
                 sources, 
                 targets, 
                 _fileComparerFactory.CreateFullComparer(), 
-                new SyncFileComparerOptions());
+                new SyncFileCollectionComparerOptions());
 
             foreach (var identical in result.IdenticalFilePairs)
             {

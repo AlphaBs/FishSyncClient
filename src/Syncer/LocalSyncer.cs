@@ -1,8 +1,6 @@
 using FishSyncClient.FileComparers;
 using FishSyncClient.Files;
 using FishSyncClient.Progress;
-using FishSyncClient.Versions;
-using System.Threading.Tasks.Dataflow;
 
 namespace FishSyncClient.Syncer;
 
@@ -27,111 +25,62 @@ public class LocalSyncer
     private readonly string _root;
     private readonly PathOptions _pathOptions;
     private readonly int _maxParallelism;
-    private readonly IVersionManager _versionManager;
-    private readonly IFileComparerFactory _comparerFactory;
-    private readonly ISyncFilePairComparer _fileSyncer;
+    private readonly ISyncFilePairComparer _filePairComparer;
 
     public LocalSyncer(
         string root,
         PathOptions pathOptions,
         int maxParallelism,
-        IVersionManager versionManager,
-        IFileComparerFactory comparerFactory,
-        ISyncFilePairComparer fileSyncer) =>
-        (_root, _pathOptions, _maxParallelism, _versionManager, _comparerFactory, _fileSyncer) =
-        (root, pathOptions, maxParallelism, versionManager, comparerFactory, fileSyncer);
+        ISyncFilePairComparer filePairComparer) =>
+        (_root, _pathOptions, _maxParallelism, _filePairComparer) =
+        (root, pathOptions, maxParallelism, filePairComparer);
 
-    public Task<SyncResult> Sync(IEnumerable<SyncFile> sources, SyncerOptions? options)
+    public Task<SyncFileCollectionComparerResult> Sync(
+        IEnumerable<SyncFile> sources, 
+        IFileComparer comparer,
+        SyncerOptions? options)
     {
         var targets = EnumerateLocalSyncFiles(_root, _pathOptions);
-        return Sync(sources, targets, options);
+        return Sync(sources, targets, comparer, options);
     }
 
-    public async Task<SyncResult> Sync(
+    public async Task<SyncFileCollectionComparerResult> Sync(
         IEnumerable<SyncFile> sources,
         IEnumerable<SyncFile> targets,
+        IFileComparer comparer,
         SyncerOptions? options)
     {
         options ??= new();
-        var newVersion = await _versionManager.CheckNewVersion(options.Version);
 
-        var syncer = new SyncFileComparer(_fileSyncer);
-        var comparer = createComparer(newVersion, options.Includes);
-        var syncResult = await syncer.CompareFiles(sources, targets, comparer, new SyncFileComparerOptions
-        {
-            Includes = options.Includes,
-            Excludes = options.Excludes,
-            FileProgress = options.FileProgress,
-            ByteProgress = options.ByteProgress,
-            CancellationToken = options.CancellationToken
-        });
-
-        await syncFilePairs(syncResult, options);
-        deleteFiles(syncResult.DeletedFiles);
-
-        return new SyncResult(
-            newVersion,
-            options.Version,
-            syncResult);
-    }
-
-    private IFileComparer createComparer(bool isNewVersion, IEnumerable<string> includePatterns)
-    {
-        if (isNewVersion)
-        {
-            return _comparerFactory.CreateFullComparer();
-        }
-        else
-        {
-            var comparer = new CompositeFileComparerWithGlob();
-            foreach (var includePattern in includePatterns)
+        // sources 와 targets 비교
+        var fileCollectionComparer = new SyncFileCollectionComparer(_filePairComparer);
+        var syncResult = await fileCollectionComparer.CompareFiles(
+            sources, 
+            targets, 
+            comparer, 
+            new SyncFileCollectionComparerOptions
             {
-                comparer.Add(includePattern, _comparerFactory.CreateFullComparer());
-            }
-            comparer.Add("**", _comparerFactory.CreateFastComparer());
-            return comparer;
-        }
-    }
+                Includes = options.Includes,
+                Excludes = options.Excludes,
+                FileProgress = options.FileProgress,
+                ByteProgress = options.ByteProgress,
+                CancellationToken = options.CancellationToken
+            });
 
-    private async Task syncFilePairs(SyncFileCompareResult syncResult, SyncerOptions options)
-    {
+        // AddedFiles 과 대응되는 LocalFile 만들어서 SyncFilePair 만들기
         var addedFilePairs = syncResult.AddedFiles.Select(
             file => new SyncFilePair(file, createLocalFile(file)));
-        var syncPairs = syncResult.UpdatedFilePairs.Concat(addedFilePairs);
 
-        int total = syncResult.AddedFiles.Count + syncResult.UpdatedFilePairs.Count;
-        int progressed = 0;
+        // SyncFilePair 모두 동기화
+        var filePairSyncer = new FilePairSyncer(_maxParallelism);
+        await filePairSyncer.SyncFilePairs(
+            syncResult.UpdatedFilePairs.Concat(addedFilePairs), 
+            options);
 
-        var block = new ActionBlock<SyncFilePair>(async pair =>
-        {
-            options.FileProgress?.Report(new FileProgressEvent(FileProgressEventType.StartSync, progressed, total, pair.Source.Path.SubPath));
-            await pair.SyncContent(options.ByteProgress, options.CancellationToken);
+        // DeletedFiles 삭제
+        deleteFiles(syncResult.DeletedFiles);
 
-            Interlocked.Increment(ref progressed);
-            options.FileProgress?.Report(new FileProgressEvent(FileProgressEventType.DoneSync, progressed, total, pair.Source.Path.SubPath));
-        }, new ExecutionDataflowBlockOptions
-        {
-            CancellationToken = options.CancellationToken,
-            EnsureOrdered = false,
-            MaxDegreeOfParallelism = _maxParallelism
-        });
-
-        foreach (var pair in syncPairs)
-        {
-            options.FileProgress?.Report(new FileProgressEvent(FileProgressEventType.Queue, progressed, total, pair.Source.Path.SubPath));
-            options.ByteProgress?.Report(
-                new SyncFileByteProgress(
-                    pair.Source, 
-                    new ByteProgress 
-                    (
-                        totalBytes: pair.Source.Metadata?.Size ?? 0, 
-                        progressedBytes: 0
-                    )));
-
-            await block.SendAsync(pair);
-        }
-        block.Complete();
-        await block.Completion;
+        return syncResult;
     }
 
     private LocalSyncFile createLocalFile(SyncFile file)
@@ -149,9 +98,3 @@ public class LocalSyncer
         }
     }
 }
-
-public record SyncResult(
-    bool IsLatestVersion,
-    string? Version,
-    SyncFileCompareResult CompareResult
-);

@@ -86,4 +86,22 @@ public class PullCommand : CommandBase
 
         return 0;
     }
+
+    private IFileComparer createComparer(IEnumerable<string> includePatterns)
+    {
+        if (isNewVersion)
+        {
+            return _comparerFactory.CreateFullComparer();
+        }
+        else
+        {
+            var comparer = new CompositeFileComparerWithGlob();
+            foreach (var includePattern in includePatterns)
+            {
+                comparer.Add(includePattern, _comparerFactory.CreateFullComparer());
+            }
+            comparer.Add("**", _comparerFactory.CreateFastComparer());
+            return comparer;
+        }
+    }
 }
