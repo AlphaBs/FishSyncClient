@@ -6,7 +6,7 @@ using FishSyncClient.Progress;
 
 namespace FishSyncClient.Syncer;
 
-public class ParallelSyncFilePairComparer : ISyncFilePairComparer
+public class ParallelSyncFilePairComparer : ISyncFilePairCollectionComparer
 {
     private readonly int _maxDegreeOfParallelism;
 
@@ -24,7 +24,7 @@ public class ParallelSyncFilePairComparer : ISyncFilePairComparer
         _maxDegreeOfParallelism = maxDegreeOfParallelism;
     }
 
-    public async ValueTask<SyncFilePairCompareResult> ComparePairs(
+    public async ValueTask<SyncFilePairCollectionCompareResult> ComparePairs(
         IReadOnlyCollection<SyncFilePair> pairs,
         IFileComparer comparer,
         IProgress<FileProgressEvent>? fileProgress = null,
@@ -67,7 +67,7 @@ public class ParallelSyncFilePairComparer : ISyncFilePairComparer
 
         // convert concurrent collection to non-concurrent collection, 
         // for efficient accessing to its elements
-        return new SyncFilePairCompareResult(
+        return new SyncFilePairCollectionCompareResult(
             updatedFiles.ToArray(),
             identicalFiles.ToArray());
     }

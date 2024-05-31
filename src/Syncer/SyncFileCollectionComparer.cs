@@ -17,9 +17,9 @@ public class SyncFileCollectionComparerOptions
 
 public class SyncFileCollectionComparer
 {
-    private readonly ISyncFilePairComparer _fileSyncer;
+    private readonly ISyncFilePairCollectionComparer _fileSyncer;
 
-    public SyncFileCollectionComparer(ISyncFilePairComparer fileSyncer) => 
+    public SyncFileCollectionComparer(ISyncFilePairCollectionComparer fileSyncer) => 
         _fileSyncer = fileSyncer;
 
     public Task<SyncFileCollectionComparerResult> CompareFiles(
@@ -35,12 +35,12 @@ public class SyncFileCollectionComparer
 
     class SyncProcessor
     {
-        private readonly ISyncFilePairComparer _fileSyncer;
+        private readonly ISyncFilePairCollectionComparer _fileSyncer;
         private readonly Glob[] _includesPatterns;
         private readonly Glob[] _excludesPatterns;
         private readonly SyncFileCollectionComparerOptions _options;
 
-        public SyncProcessor(ISyncFilePairComparer fileSyncer, SyncFileCollectionComparerOptions options) 
+        public SyncProcessor(ISyncFilePairCollectionComparer fileSyncer, SyncFileCollectionComparerOptions options) 
         {
             _fileSyncer = fileSyncer;
             _options = options;

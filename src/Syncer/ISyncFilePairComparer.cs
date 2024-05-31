@@ -4,9 +4,9 @@ using FishSyncClient.Progress;
 
 namespace FishSyncClient.Syncer;
 
-public interface ISyncFilePairComparer
+public interface ISyncFilePairCollectionComparer
 {
-    ValueTask<SyncFilePairCompareResult> ComparePairs(
+    ValueTask<SyncFilePairCollectionCompareResult> ComparePairs(
         IReadOnlyCollection<SyncFilePair> pairs,
         IFileComparer comparer,
         IProgress<FileProgressEvent>? fileProgress = null,
@@ -14,7 +14,7 @@ public interface ISyncFilePairComparer
         CancellationToken cancellationToken = default);
 }
 
-public record SyncFilePairCompareResult(
+public record SyncFilePairCollectionCompareResult(
     IReadOnlyCollection<SyncFilePair> UpdatedFiles,
     IReadOnlyCollection<SyncFilePair> IdenticalFiles
 );

@@ -25,13 +25,13 @@ public class LocalSyncer
     private readonly string _root;
     private readonly PathOptions _pathOptions;
     private readonly int _maxParallelism;
-    private readonly ISyncFilePairComparer _filePairComparer;
+    private readonly ISyncFilePairCollectionComparer _filePairComparer;
 
     public LocalSyncer(
         string root,
         PathOptions pathOptions,
         int maxParallelism,
-        ISyncFilePairComparer filePairComparer) =>
+        ISyncFilePairCollectionComparer filePairComparer) =>
         (_root, _pathOptions, _maxParallelism, _filePairComparer) =
         (root, pathOptions, maxParallelism, filePairComparer);
 
