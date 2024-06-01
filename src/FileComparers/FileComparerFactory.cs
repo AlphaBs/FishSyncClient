@@ -6,18 +6,15 @@ public interface IFileComparerFactory
     IFileComparer CreateFastComparer();
 }
 
-public class DefaultFileComparerFactory : IFileComparerFactory
+public class LocalFileComparerFactory : IFileComparerFactory
 {
     public IFileComparer CreateFullComparer()
     {
-        var comparer = new FileChecksumComparer();
-        comparer.AddAlgorithm(MD5FileComparer.AlgorithmName, new MD5FileComparer());
-        comparer.AddAlgorithm(SHA1FileComparer.AlgorithmName, new SHA1FileComparer());
-        return comparer;
+        return new LocalFileChecksumComparer();
     }
 
     public IFileComparer CreateFastComparer()
     {
-        return new FileSizeComparer();
+        return new LocalFileSizeComparer();
     }
 }

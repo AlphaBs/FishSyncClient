@@ -62,7 +62,7 @@ public class FishApiClient
         var bucketSyncFiles = files.Select(file => new BucketSyncFile
         {
             Path = file.Path.SubPath,
-            Checksum = file.Metadata?.Checksum,
+            Checksum = file.Metadata?.Checksum?.ChecksumHexString,
             Size = file.Metadata?.Size ?? 0,
         });
         return await Sync(id, bucketSyncFiles, cancellationToken);

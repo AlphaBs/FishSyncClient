@@ -6,11 +6,11 @@ using FishSyncClient.Progress;
 
 namespace FishSyncClient.Syncer;
 
-public class ParallelSyncFilePairComparer : ISyncFilePairCollectionComparer
+public class ParallelSyncFilePairCollectionComparer : ISyncFilePairCollectionComparer
 {
     private readonly int _maxDegreeOfParallelism;
 
-    public ParallelSyncFilePairComparer()
+    public ParallelSyncFilePairCollectionComparer()
     {
         var processors = Environment.ProcessorCount;
         processors = Math.Max(1, processors);
@@ -19,7 +19,7 @@ public class ParallelSyncFilePairComparer : ISyncFilePairCollectionComparer
         _maxDegreeOfParallelism = processors;
     }
 
-    public ParallelSyncFilePairComparer(int maxDegreeOfParallelism)
+    public ParallelSyncFilePairCollectionComparer(int maxDegreeOfParallelism)
     {
         _maxDegreeOfParallelism = maxDegreeOfParallelism;
     }

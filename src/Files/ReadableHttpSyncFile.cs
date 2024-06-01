@@ -41,7 +41,7 @@ public class ReadableHttpSyncFile : SyncFile
 
     public override ValueTask<Stream> OpenWriteStream(CancellationToken cancellationToken = default)
     {
-        throw new InvalidOperationException("cannot write");
+        throw new NotSupportedException();
     }
 
     public override async Task CopyTo(Stream destination, IProgress<ByteProgress>? progress, CancellationToken cancellationToken)

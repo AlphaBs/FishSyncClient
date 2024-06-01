@@ -82,8 +82,7 @@ public class PushCommand : CommandBase
             Metadata = new SyncFileMetadata()
             {
                 Size = fileinfo.Length,
-                Checksum = checksum,
-                ChecksumAlgorithm = "md5"
+                Checksum = new SyncFileChecksum(ChecksumAlgorithmNames.MD5, checksum)
             }
         };
     }

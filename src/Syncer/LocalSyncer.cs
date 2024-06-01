@@ -25,15 +25,13 @@ public class LocalSyncer
     private readonly string _root;
     private readonly PathOptions _pathOptions;
     private readonly int _maxParallelism;
-    private readonly ISyncFilePairCollectionComparer _filePairComparer;
 
     public LocalSyncer(
         string root,
         PathOptions pathOptions,
-        int maxParallelism,
-        ISyncFilePairCollectionComparer filePairComparer) =>
-        (_root, _pathOptions, _maxParallelism, _filePairComparer) =
-        (root, pathOptions, maxParallelism, filePairComparer);
+        int maxParallelism) =>
+        (_root, _pathOptions, _maxParallelism) =
+        (root, pathOptions, maxParallelism);
 
     public Task<SyncFileCollectionComparerResult> Sync(
         IEnumerable<SyncFile> sources, 
@@ -53,7 +51,8 @@ public class LocalSyncer
         options ??= new();
 
         // sources 와 targets 비교
-        var fileCollectionComparer = new SyncFileCollectionComparer(_filePairComparer);
+        var filePairCollectionComparer = new ParallelSyncFilePairCollectionComparer(_maxParallelism);
+        var fileCollectionComparer = new SyncFileCollectionComparer(filePairCollectionComparer);
         var syncResult = await fileCollectionComparer.CompareFiles(
             sources, 
             targets, 

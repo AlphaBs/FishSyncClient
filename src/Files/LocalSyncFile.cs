@@ -1,5 +1,4 @@
-﻿
-using FishSyncClient.Internals;
+﻿using FishSyncClient.Internals;
 using FishSyncClient.Progress;
 
 namespace FishSyncClient.Files;

@@ -1,4 +1,4 @@
-﻿namespace FishSyncClient.Progress;
+﻿namespace FishSyncClient;
 
 public static class HashHelper
 {

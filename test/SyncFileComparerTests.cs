@@ -49,7 +49,7 @@ public class SyncFileComparerTests : SyncerTestBase
             mockComparer.Object,
             new SyncFileCollectionComparerOptions
             {
-                Includes = new [] { "file2", "file3*", "files/**" }
+                Includes = ["file2", "file3*", "files/**"]
             });
 
         // Then
@@ -110,6 +110,6 @@ public class SyncFileComparerTests : SyncerTestBase
 
     public static SyncFileCollectionComparer CreateSyncer()
     {
-        return new SyncFileCollectionComparer(new SequentialSyncFilePairComparer());
+        return new SyncFileCollectionComparer(new ParallelSyncFilePairCollectionComparer());
     }
 }

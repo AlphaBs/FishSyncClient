@@ -30,11 +30,10 @@ public class UpdateFileCollection
 
             yield return new ReadableHttpSyncFile(RootedPath.FromSubPath(file.Path, options), httpClient)
             {
-                Metadata = new SyncFileMetadata
-                {
+                Metadata = new SyncFileMetadata 
+                { 
                     Size = file.Size,
-                    Checksum = file.Hash,
-                    ChecksumAlgorithm = checksumAlgorithm,
+                    Checksum = string.IsNullOrEmpty(file.Hash) ? null : new SyncFileChecksum(file.Hash, checksumAlgorithm)
                 },
                 Uploaded = DateTimeOffset.MinValue,
                 Location = new Uri(file.Url)

@@ -2,10 +2,6 @@
 
 .NET Client for FiSH Server (File Syncing and Hosting Server)
 
-## Common
-
-FiSH Server 의 REST API 구현
-
 ## Push
 
 특정 경로 내 모든 파일을 서버와 동기화
@@ -14,6 +10,12 @@ FiSH Server 의 REST API 구현
 2. 응답받은 BucketSyncResult 에서 BucketSyncAction 을 적절하게 처리
 
 ## Pull
+
+SyncFile
+- RootedPath 
+- Metadata
+- Sync
+- Compare
 
 - [ ] 파일 다운로드 후 체크섬 확인
 - [ ] E2E 테스트 아직 충분히 안해봄

@@ -1,21 +1,35 @@
 using System.Security.Cryptography;
-using FishSyncClient.Progress;
 
 namespace FishSyncClient;
 
 public static class ChecksumAlgorithms
 {
-    public static string ComputeMD5(Stream stream)
+    public static HashAlgorithm CreateHashAlgorithmFromName(string name)
     {
-        using var md5 = MD5.Create();
-        var checksum = md5.ComputeHash(stream);
+        if (name == ChecksumAlgorithmNames.MD5)
+        {
+            return MD5.Create();
+        }
+        else if (name == ChecksumAlgorithmNames.SHA1)
+        {
+            return SHA1.Create();
+        }
+        else
+        {
+            throw new KeyNotFoundException();
+        }
+    }
+
+    public static string ComputeHash(string algName, Stream stream)
+    {
+        using var hashAlgorithm = CreateHashAlgorithmFromName(algName);
+        var checksum = hashAlgorithm.ComputeHash(stream);
         return HashHelper.ToHexString(checksum);
     }
 
-    public static string ComputeSHA1(Stream stream)
-    {
-        using var sha1 = SHA1.Create();
-        var checksum = sha1.ComputeHash(stream);
-        return HashHelper.ToHexString(checksum);
-    }
+    public static string ComputeMD5(Stream stream) => 
+        ComputeHash(ChecksumAlgorithmNames.MD5, stream);
+
+    public static string ComputeSHA1(Stream stream) => 
+        ComputeHash(ChecksumAlgorithmNames.SHA1, stream);
 }

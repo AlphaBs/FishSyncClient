@@ -3,7 +3,6 @@ using FishSyncClient.FileComparers;
 using FishSyncClient.Progress;
 using FishSyncClient.Server;
 using FishSyncClient.Syncer;
-using FishSyncClient.Versions;
 
 namespace FishSyncClient.Cli;
 
@@ -38,15 +37,13 @@ public class PullCommand : CommandBase
             progressAggregator.Report(e.Progress);
         });
 
+        var comparerFactory = new LocalFileComparerFactory();
         var syncer = new LocalSyncer(
             Root,
             pathOptions,
-            6,
-            new NullVersionManager(),
-            new DefaultFileComparerFactory(),
-            new ParallelSyncFilePairComparer());
+            6);
 
-        var syncTask = syncer.Sync(syncFiles, new SyncerOptions
+        var syncTask = syncer.Sync(syncFiles, comparerFactory.CreateFullComparer(), new SyncerOptions
         {
             FileProgress = fileProgress,
             ByteProgress = byteProgress
@@ -60,48 +57,30 @@ public class PullCommand : CommandBase
         }
 
         var syncResult = await syncTask;
-        Console.WriteLine($"\n���� ����({syncResult.CompareResult.IdenticalFilePairs.Count}): ");
-        foreach (var identical in syncResult.CompareResult.IdenticalFilePairs)
+        Console.WriteLine($"\nIdentical files ({syncResult.IdenticalFilePairs.Count}): ");
+        foreach (var identical in syncResult.IdenticalFilePairs)
         {
             Console.WriteLine(identical.Source.Path.SubPath);
         }
 
-        Console.WriteLine($"\n������Ʈ ����({syncResult.CompareResult.UpdatedFilePairs.Count}): ");
-        foreach (var updated in syncResult.CompareResult.UpdatedFilePairs)
+        Console.WriteLine($"\nUpdated files ({syncResult.UpdatedFilePairs.Count}): ");
+        foreach (var updated in syncResult.UpdatedFilePairs)
         {
             Console.WriteLine(updated.Source.Path.SubPath);
         }
 
-        Console.WriteLine($"\n�߰��� ����({syncResult.CompareResult.AddedFiles.Count}): ");
-        foreach (var added in syncResult.CompareResult.AddedFiles)
+        Console.WriteLine($"\nAdded files ({syncResult.AddedFiles.Count}): ");
+        foreach (var added in syncResult.AddedFiles)
         {
             Console.WriteLine(added.Path.SubPath);
         }
 
-        Console.WriteLine($"\n������ ����({syncResult.CompareResult.DeletedFiles.Count}): ");
-        foreach (var deleted in syncResult.CompareResult.DeletedFiles)
+        Console.WriteLine($"\nDeleted files ({syncResult.DeletedFiles.Count}): ");
+        foreach (var deleted in syncResult.DeletedFiles)
         {
             Console.WriteLine(deleted.Path.SubPath);
         }
 
         return 0;
-    }
-
-    private IFileComparer createComparer(IEnumerable<string> includePatterns)
-    {
-        if (isNewVersion)
-        {
-            return _comparerFactory.CreateFullComparer();
-        }
-        else
-        {
-            var comparer = new CompositeFileComparerWithGlob();
-            foreach (var includePattern in includePatterns)
-            {
-                comparer.Add(includePattern, _comparerFactory.CreateFullComparer());
-            }
-            comparer.Add("**", _comparerFactory.CreateFastComparer());
-            return comparer;
-        }
     }
 }

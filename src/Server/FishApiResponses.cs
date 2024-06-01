@@ -41,8 +41,7 @@ public class FishBucketFiles
                 Uploaded = file.Metadata.LastUpdated,
                 Metadata = new SyncFileMetadata()
                 { 
-                    Checksum = file.Metadata.Checksum,
-                    ChecksumAlgorithm = "md5",
+                    Checksum = new SyncFileChecksum(ChecksumAlgorithmNames.MD5, file.Metadata.Checksum),
                     Size = file.Metadata.Size,
                 },
             });

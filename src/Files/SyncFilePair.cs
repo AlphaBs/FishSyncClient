@@ -3,13 +3,13 @@ using FishSyncClient.Progress;
 
 namespace FishSyncClient.Files;
 
-public struct SyncFilePair
+public readonly struct SyncFilePair
 {
     public SyncFilePair(SyncFile source, SyncFile target) =>
         (Source, Target) = (source, target);
 
-    public SyncFile Source;
-    public SyncFile Target;
+    public readonly SyncFile Source;
+    public readonly SyncFile Target;
 
     public async Task SyncContent(
         IProgress<SyncFileByteProgress>? progress = null, 

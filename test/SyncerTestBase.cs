@@ -34,6 +34,8 @@ public class SyncerTestBase
 
     public void AssertEqualPathCollection(IEnumerable<SyncFile> expected, IEnumerable<SyncFile> actual)
     {
-        Assert.Equal(expected.Select(f => f.Path.ToString()), actual.Select(f => f.Path.ToString()));
+        Assert.Equal(
+            expected.Select(f => f.Path.ToString()).ToHashSet(), 
+            actual.Select(f => f.Path.ToString()).ToHashSet());
     }
 }

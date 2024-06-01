@@ -2,7 +2,7 @@
 
 namespace FishSyncClient.FileComparers;
 
-public class FileSizeComparer : IFileComparer
+public class MetadataFileSizeComparer : IFileComparer
 {
     public ValueTask<bool> AreEqual(SyncFilePair pair, CancellationToken cancellationToken)
     {
@@ -17,14 +17,9 @@ public class FileSizeComparer : IFileComparer
         {
             return file.Metadata.Size;
         }
-        else if (file.Path.IsRooted)
-        {
-            var fileInfo = new FileInfo(file.Path.GetFullPath());
-            return fileInfo.Length;
-        }
         else
         {
-            return 0;
+            throw new FileComparerException("Cannot get file size: " + file.Path);
         }
     }
 }

@@ -20,7 +20,6 @@ public partial class MainWindow : Window
 {
     private readonly HttpClient _httpClient;
     private readonly PathOptions _pathOptions = new();
-    private readonly IFileComparerFactory _fileComparerFactory = new DefaultFileComparerFactory();
 
     public MainWindow()
     {
@@ -124,8 +123,7 @@ public partial class MainWindow : Window
             Metadata = new SyncFileMetadata()
             {
                 Size = fileinfo.Length,
-                Checksum = checksum,
-                ChecksumAlgorithm = "md5"
+                Checksum = new SyncFileChecksum(ChecksumAlgorithmNames.MD5, checksum)
             }
         };
     }
@@ -142,8 +140,7 @@ public partial class MainWindow : Window
             Metadata = new SyncFileMetadata
             {
                 Size = file.Metadata.Size,
-                Checksum = file.Metadata.Checksum,
-                ChecksumAlgorithm = "md5"
+                Checksum = new SyncFileChecksum(ChecksumAlgorithmNames.MD5, file.Metadata.Checksum)
             }
         };
     }
@@ -178,11 +175,11 @@ public partial class MainWindow : Window
             var sources = sourceSyncFiles.GetFiles();
             var targets = targetSyncFiles.GetFiles();
 
-            var syncer = new SyncFileCollectionComparer(new SequentialSyncFilePairComparer());
+            var syncer = new SyncFileCollectionComparer(new ParallelSyncFilePairCollectionComparer());
             var result = await syncer.CompareFiles(
                 sources, 
                 targets, 
-                _fileComparerFactory.CreateFullComparer(), 
+                new MetadataChecksumComparer(),
                 new SyncFileCollectionComparerOptions());
 
             foreach (var identical in result.IdenticalFilePairs)
@@ -250,13 +247,11 @@ public partial class MainWindow : Window
             var syncer = new LocalSyncer(
                 txtRoot.Text,
                 new PathOptions(),
-                6,
-                new NullVersionManager(),
-                new DefaultFileComparerFactory(),
-                new ParallelSyncFilePairComparer());
+                6);
             var syncResult = await syncer.Sync(
                 targetFiles,
                 sourceFiles,
+                new MetadataChecksumComparer(),
                 new SyncerOptions
                 {
                     FileProgress = fileProgress,
@@ -265,10 +260,10 @@ public partial class MainWindow : Window
                 });
 
             Logger.Instance.LogInformation($"[PULL] 완료: " +
-                $"업데이트 {syncResult.CompareResult.UpdatedFilePairs.Count} 개, " +
-                $"추가 {syncResult.CompareResult.AddedFiles.Count} 개, " +
-                $"삭제 {syncResult.CompareResult.DeletedFiles.Count} 개, " +
-                $"동일한 파일 {syncResult.CompareResult.IdenticalFilePairs.Count} 개");
+                $"업데이트 {syncResult.UpdatedFilePairs.Count} 개, " +
+                $"추가 {syncResult.AddedFiles.Count} 개, " +
+                $"삭제 {syncResult.DeletedFiles.Count} 개, " +
+                $"동일한 파일 {syncResult.IdenticalFilePairs.Count} 개");
             MessageBox.Show($"PULL 성공");
         }
         catch (Exception ex)
