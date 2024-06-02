@@ -179,7 +179,7 @@ public partial class MainWindow : Window
             var result = await syncer.CompareFiles(
                 sources, 
                 targets, 
-                new MetadataChecksumComparer(),
+                new FileChecksumMetadataComparer(),
                 new SyncFileCollectionComparerOptions());
 
             foreach (var identical in result.IdenticalFilePairs)
@@ -251,7 +251,7 @@ public partial class MainWindow : Window
             var syncResult = await syncer.Sync(
                 targetFiles,
                 sourceFiles,
-                new MetadataChecksumComparer(),
+                new FileChecksumMetadataComparer(),
                 new SyncerOptions
                 {
                     FileProgress = fileProgress,

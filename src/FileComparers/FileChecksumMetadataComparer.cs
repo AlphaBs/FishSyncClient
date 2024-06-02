@@ -2,7 +2,7 @@ using FishSyncClient.Files;
 
 namespace FishSyncClient.FileComparers;
 
-public class MetadataChecksumComparer : IFileComparer
+public class FileChecksumMetadataComparer : IFileComparer
 {
     public ValueTask<bool> AreEqual(SyncFilePair pair, CancellationToken cancellationToken)
     {

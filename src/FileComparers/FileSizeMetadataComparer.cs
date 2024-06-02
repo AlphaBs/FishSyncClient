@@ -2,7 +2,7 @@
 
 namespace FishSyncClient.FileComparers;
 
-public class MetadataFileSizeComparer : IFileComparer
+public class FileSizeMetadataComparer : IFileComparer
 {
     public ValueTask<bool> AreEqual(SyncFilePair pair, CancellationToken cancellationToken)
     {
