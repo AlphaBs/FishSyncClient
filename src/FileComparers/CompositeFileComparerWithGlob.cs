@@ -5,10 +5,13 @@ namespace FishSyncClient.FileComparers;
 
 public class CompositeFileComparerWithGlob : IFileComparer
 {
-    struct GlobComparerPair
+    readonly struct GlobComparerPair
     {
-        public Glob Glob;
-        public IFileComparer FileComparer;
+        public GlobComparerPair(Glob glob, IFileComparer fileComparer) => 
+            (Glob, FileComparer) = (glob, fileComparer);
+
+        public readonly Glob Glob;
+        public readonly IFileComparer FileComparer;
     }
 
     private readonly List<GlobComparerPair> _globComparerPairs = new();
@@ -16,11 +19,7 @@ public class CompositeFileComparerWithGlob : IFileComparer
     public void Add(string pattern, IFileComparer comparer)
     {
         var glob = Glob.Parse(pattern);
-        _globComparerPairs.Add(new GlobComparerPair
-        {
-            Glob = glob,
-            FileComparer = comparer
-        });
+        _globComparerPairs.Add(new GlobComparerPair(glob, comparer));
     }
 
     public async ValueTask<bool> AreEqual(SyncFilePair pair, CancellationToken cancellationToken)
