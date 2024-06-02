@@ -15,6 +15,17 @@ public class CompositeFileComparerWithGlob : IFileComparer
     }
 
     private readonly List<GlobComparerPair> _globComparerPairs = new();
+    private readonly ComparerErrorHandlingModes _errorMode = ComparerErrorHandlingModes.ThrowException;
+
+    public CompositeFileComparerWithGlob() : this(ComparerErrorHandlingModes.ThrowException)
+    {
+        
+    }
+
+    public CompositeFileComparerWithGlob(ComparerErrorHandlingModes mode)
+    {
+        _errorMode = mode;
+    }
 
     public void Add(string pattern, IFileComparer comparer)
     {
@@ -32,6 +43,16 @@ public class CompositeFileComparerWithGlob : IFileComparer
                 return await globComparerPair.FileComparer.AreEqual(pair, cancellationToken);
             }
         }
-        return true;
+
+        switch (_errorMode)
+        {
+            case ComparerErrorHandlingModes.ReturnEqual:
+                return true;
+            case ComparerErrorHandlingModes.ReturnNotEqual:
+                return false;
+            case ComparerErrorHandlingModes.ThrowException:
+            default:
+                throw new FileComparerException("No matching pattern: " + pair.Source.Path.SubPath);
+        }
     }
 }
