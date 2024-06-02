@@ -1,18 +1,7 @@
 using FishSyncClient.FileComparers;
 using FishSyncClient.Files;
-using FishSyncClient.Progress;
 
 namespace FishSyncClient.Syncer;
-
-public class SyncerOptions
-{
-    public string? Version { get; set; }
-    public IEnumerable<string> Excludes { get; set; } = Enumerable.Empty<string>();
-    public IEnumerable<string> Includes { get; set; } = ["**"];
-    public IProgress<FileProgressEvent>? FileProgress { get; set; }
-    public IProgress<SyncFileByteProgress>? ByteProgress { get; set; }
-    public CancellationToken CancellationToken { get; set; }
-}
 
 public class LocalSyncer
 {
@@ -53,18 +42,7 @@ public class LocalSyncer
         // sources 와 targets 비교
         var filePairCollectionComparer = new ParallelSyncFilePairCollectionComparer(_maxParallelism);
         var fileCollectionComparer = new SyncFileCollectionComparer(filePairCollectionComparer);
-        var syncResult = await fileCollectionComparer.CompareFiles(
-            sources, 
-            targets, 
-            comparer, 
-            new SyncFileCollectionComparerOptions
-            {
-                Includes = options.Includes,
-                Excludes = options.Excludes,
-                FileProgress = options.FileProgress,
-                ByteProgress = options.ByteProgress,
-                CancellationToken = options.CancellationToken
-            });
+        var syncResult = await fileCollectionComparer.CompareFiles(sources, targets, comparer, options);
 
         // AddedFiles 과 대응되는 LocalFile 만들어서 SyncFilePair 만들기
         var addedFilePairs = syncResult.AddedFiles.Select(

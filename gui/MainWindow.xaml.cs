@@ -180,7 +180,7 @@ public partial class MainWindow : Window
                 sources, 
                 targets, 
                 new FileChecksumMetadataComparer(),
-                new SyncFileCollectionComparerOptions());
+                new SyncerOptions());
 
             foreach (var identical in result.IdenticalFilePairs)
             {

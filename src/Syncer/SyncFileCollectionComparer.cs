@@ -6,15 +6,6 @@ using FishSyncClient.Progress;
 
 namespace FishSyncClient;
 
-public class SyncFileCollectionComparerOptions
-{
-    public IEnumerable<string> Includes { get; set; } = ["**"];
-    public IEnumerable<string> Excludes { get; set; } = Enumerable.Empty<string>();
-    public IProgress<FileProgressEvent>? FileProgress { get; set; }
-    public IProgress<SyncFileByteProgress>? ByteProgress { get; set; }
-    public CancellationToken CancellationToken { get; set; }
-}
-
 public class SyncFileCollectionComparer
 {
     private readonly ISyncFilePairCollectionComparer _fileSyncer;
@@ -26,7 +17,7 @@ public class SyncFileCollectionComparer
         IEnumerable<SyncFile> sources,
         IEnumerable<SyncFile> targets,
         IFileComparer comparer,
-        SyncFileCollectionComparerOptions? options)
+        SyncerOptions? options)
     {
         options ??= new();
         return new SyncProcessor(_fileSyncer, options)
@@ -38,9 +29,9 @@ public class SyncFileCollectionComparer
         private readonly ISyncFilePairCollectionComparer _fileSyncer;
         private readonly Glob[] _includesPatterns;
         private readonly Glob[] _excludesPatterns;
-        private readonly SyncFileCollectionComparerOptions _options;
+        private readonly SyncerOptions _options;
 
-        public SyncProcessor(ISyncFilePairCollectionComparer fileSyncer, SyncFileCollectionComparerOptions options) 
+        public SyncProcessor(ISyncFilePairCollectionComparer fileSyncer, SyncerOptions options) 
         {
             _fileSyncer = fileSyncer;
             _options = options;

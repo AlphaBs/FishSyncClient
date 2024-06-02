@@ -22,7 +22,7 @@ public class SyncFileComparerTests : SyncerTestBase
             CreateSourcePaths("file1", "file2", "file222", "file34", "files/a/b/c"),
             CreateTargetPaths(         "file2", "file222", "file34", "files/a/b/c", "file5"),
             mockComparer.Object,
-            new SyncFileCollectionComparerOptions
+            new SyncerOptions
             {
                 Excludes = new [] { "file2", "file3*", "files/**" }
             });
@@ -47,7 +47,7 @@ public class SyncFileComparerTests : SyncerTestBase
             CreateSourcePaths("file1", "file2", "file222", "file34", "files/a/b/c"),
             CreateTargetPaths(         "file2", "file222", "file34", "files/a/b/c", "file5"),
             mockComparer.Object,
-            new SyncFileCollectionComparerOptions
+            new SyncerOptions
             {
                 Includes = ["file2", "file3*", "files/**"]
             });
@@ -72,7 +72,7 @@ public class SyncFileComparerTests : SyncerTestBase
             CreateSourcePaths("file1"),
             CreateTargetPaths("file2", "file222", "file34", "files/a/b/c"),
             mockComparer.Object,
-            new SyncFileCollectionComparerOptions
+            new SyncerOptions
             {
                 Excludes = new [] { "file2", "file3*", "files/**" }
             });
@@ -97,7 +97,7 @@ public class SyncFileComparerTests : SyncerTestBase
             CreateSourcePaths("file1"),
             CreateTargetPaths("file2", "file222", "file34", "files/a/b/c"),
             mockComparer.Object,
-            new SyncFileCollectionComparerOptions
+            new SyncerOptions
             {
                 Includes = new [] { "file2", "file3*", "files/**" }
             });

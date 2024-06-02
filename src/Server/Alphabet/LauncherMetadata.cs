@@ -24,7 +24,7 @@ public class LauncherMetadata
 
         return new SyncerOptions
         {
-            Version = Files?.LastUpdate.ToString("O"),
+            //Version = Files?.LastUpdate.ToString("O"),
             Excludes = excludePatterns.ToArray(),
             Includes = Launcher?.IncludeFiles ?? ["**"]
         };
