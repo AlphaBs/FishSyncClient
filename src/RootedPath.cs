@@ -15,7 +15,7 @@ namespace FishSyncClient;
 // SubPath 에는 상대 경로 문자 (. 혹은 ..) 가 들어갈 수 없다. 
 // Root 와 SubPath 는 정규화된 경로를 유지해야 한다.
 
-public struct RootedPath
+public readonly struct RootedPath
 {
     public static RootedPath Create(string root, string subpath, PathOptions options)
     {
@@ -70,8 +70,8 @@ public struct RootedPath
         _options = options;
     }
 
-    public string Root { get; }
-    public string SubPath { get; }
+    public readonly string Root;
+    public readonly string SubPath;
 
     public bool IsRooted => !string.IsNullOrEmpty(Root);
     public bool IsDirectory => SubPath.EndsWith(_options.PathSeperator) || SubPath.Equals(string.Empty);
