@@ -17,7 +17,7 @@ public class SyncPathComparerTests : SyncerTestBase
 
         // Then
         var expected = CreateSourcePaths("file3", "file4");
-        var actual = result.DuplicatedPaths.Select(st => st.Source).ToArray();
+        var actual = result.DuplicatedFiles.Select(st => st.Source).ToArray();
         AssertEqualPathCollection(expected, actual);
     }
 
@@ -34,7 +34,7 @@ public class SyncPathComparerTests : SyncerTestBase
 
         // Then
         var expected = CreateSourcePaths("file1", "file2");
-        AssertEqualPathCollection(expected, result.AddedPaths);
+        AssertEqualPathCollection(expected, result.AddedFiles);
     }
 
     [Fact]
@@ -50,6 +50,6 @@ public class SyncPathComparerTests : SyncerTestBase
 
         // Then
         var expected = CreateTargetPaths("file5", "file6");
-        AssertEqualPathCollection(expected, result.DeletedPaths);
+        AssertEqualPathCollection(expected, result.DeletedFiles);
     }
 }

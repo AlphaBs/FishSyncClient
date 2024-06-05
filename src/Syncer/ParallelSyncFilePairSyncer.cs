@@ -24,7 +24,12 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
         _maxDegreeOfParallelism = maxDegreeOfParallelism;
     }
 
-    public async Task<SyncFilePairCollectionCompareResult> CompareFilePairs(IEnumerable<SyncFilePair> pairs, IFileComparer comparer, SyncerOptions options)
+    public async Task<SyncFilePairCollectionCompareResult> CompareFilePairs(
+        IEnumerable<SyncFilePair> pairs, 
+        IFileComparer comparer, 
+        IProgress<FileProgressEvent>? fileProgress,
+        IProgress<SyncFileByteProgress>? byteProgress,
+        CancellationToken cancellationToken)
     {
         var identicalFiles = new ConcurrentBag<SyncFilePair>();
         var updatedFiles = new ConcurrentBag<SyncFilePair>();
@@ -32,48 +37,54 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
         var processor = new SyncProcessor();
         var block = new ActionBlock<SyncFilePair>(async pair =>
         {
-            options.FileProgress?.Report(new FileProgressEvent(
+            fileProgress?.Report(new FileProgressEvent(
                 FileProgressEventType.StartCompare, processor.ProgressedFiles, processor.TotalFiles, pair.Source.Path.SubPath));
 
-            var areEqual = await comparer.AreEqual(pair, options.CancellationToken);
+            var areEqual = await comparer.AreEqual(pair, cancellationToken);
             if (areEqual)
                 identicalFiles.Add(pair);
             else
                 updatedFiles.Add(pair);
 
             Interlocked.Increment(ref processor.ProgressedFiles);
-            options.FileProgress?.Report(new FileProgressEvent(
+            fileProgress?.Report(new FileProgressEvent(
                 FileProgressEventType.DoneSync, processor.ProgressedFiles, processor.TotalFiles, pair.Source.Path.SubPath));
         });
 
-        await processor.ProcessBlock(pairs, block, options);
+        await processor.ProcessBlock(pairs, block, fileProgress, byteProgress, cancellationToken);
 
         return new SyncFilePairCollectionCompareResult(
             updatedFiles.ToList(),
             identicalFiles.ToList());
     }
 
-    public async Task SyncFilePairs(IEnumerable<SyncFilePair> pairs, SyncerOptions options)
+    public async Task SyncFilePairs(
+        IEnumerable<SyncFilePair> pairs, 
+        IProgress<FileProgressEvent>? fileProgress,
+        IProgress<SyncFileByteProgress>? byteProgress,
+        CancellationToken cancellationToken)
     {
         var processor = new SyncProcessor();
         var block = new ActionBlock<SyncFilePair>(async pair =>
         {
-            options.FileProgress?.Report(new FileProgressEvent(
+            fileProgress?.Report(new FileProgressEvent(
                 FileProgressEventType.StartSync, processor.ProgressedFiles, processor.TotalFiles, pair.Source.Path.SubPath));
-            await pair.SyncContent(options.ByteProgress, options.CancellationToken);
+            await pair.SyncContent(byteProgress, cancellationToken);
 
             Interlocked.Increment(ref processor.ProgressedFiles);
-            options.FileProgress?.Report(new FileProgressEvent(
+            fileProgress?.Report(new FileProgressEvent(
                 FileProgressEventType.DoneSync, processor.ProgressedFiles, processor.TotalFiles, pair.Source.Path.SubPath));
         });
 
-        await processor.ProcessBlock(pairs, block, options);
+        await processor.ProcessBlock(pairs, block, fileProgress, byteProgress, cancellationToken);
     }
 
     public async Task<SyncFilePairCollectionCompareResult> CompareAndSyncFilePairs(
         IEnumerable<SyncFilePair> pairs,
         IFileComparer comparer,
-        SyncerOptions options)
+        IProgress<FileProgressEvent>? fileProgress,
+        IProgress<SyncFileByteProgress>? byteProgress,
+        CancellationToken cancellationToken)
     {
         var identicalFiles = new ConcurrentBag<SyncFilePair>();
         var updatedFiles = new ConcurrentBag<SyncFilePair>();
@@ -81,42 +92,46 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
         var processor = new SyncProcessor();
         var block = new ActionBlock<SyncFilePair>(async pair =>
         {
-            options.FileProgress?.Report(new FileProgressEvent(
+            fileProgress?.Report(new FileProgressEvent(
                 FileProgressEventType.StartSync, processor.ProgressedFiles, processor.TotalFiles, pair.Source.Path.SubPath));
 
-            var areEqual = await comparer.AreEqual(pair, options.CancellationToken);
+            var areEqual = await comparer.AreEqual(pair, cancellationToken);
             if (areEqual)
                 identicalFiles.Add(pair);
             else
             {
-                await syncContent(pair, comparer, options);
+                await syncContent(pair, comparer, byteProgress, cancellationToken);
                 updatedFiles.Add(pair);
             }
 
             Interlocked.Increment(ref processor.ProgressedFiles);
-            options.FileProgress?.Report(new FileProgressEvent(
+            fileProgress?.Report(new FileProgressEvent(
                 FileProgressEventType.DoneSync, processor.ProgressedFiles, processor.TotalFiles, pair.Source.Path.SubPath));
         }, new ExecutionDataflowBlockOptions
         {
             MaxDegreeOfParallelism = _maxDegreeOfParallelism,
-            CancellationToken = options.CancellationToken,
+            CancellationToken = cancellationToken,
             EnsureOrdered = false
         });
 
-        await processor.ProcessBlock(pairs, block, options);
+        await processor.ProcessBlock(pairs, block, fileProgress, byteProgress, cancellationToken);
 
         return new SyncFilePairCollectionCompareResult(
             updatedFiles.ToList(),
             identicalFiles.ToList()
         );
 
-        static async Task syncContent(SyncFilePair pair, IFileComparer comparer, SyncerOptions options)
+        static async Task syncContent(
+            SyncFilePair pair, 
+            IFileComparer comparer, 
+            IProgress<SyncFileByteProgress>? byteProgress, 
+            CancellationToken cancellationToken)
         {
             int failCount = 0;
             while (failCount < 3)
             {
-                await pair.SyncContent(options.ByteProgress, options.CancellationToken);
-                var areEqual = await comparer.AreEqual(pair, options.CancellationToken);
+                await pair.SyncContent(byteProgress, cancellationToken);
+                var areEqual = await comparer.AreEqual(pair, cancellationToken);
                 if (areEqual)
                     return;
                 else
@@ -129,20 +144,22 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
 
     class SyncProcessor
     {
-        public int TotalFiles;
-        public int ProgressedFiles;
+        public int TotalFiles = 0;
+        public int ProgressedFiles = 0;
 
-        public async Task ProcessBlock(IEnumerable<SyncFilePair> pairs, ActionBlock<SyncFilePair> block, SyncerOptions options)
+        public async Task ProcessBlock(
+            IEnumerable<SyncFilePair> pairs, 
+            ActionBlock<SyncFilePair> block,
+            IProgress<FileProgressEvent>? fileProgress,
+            IProgress<SyncFileByteProgress>? byteProgress,
+            CancellationToken cancellationToken)
         {
-            var totalFiles = 0;
-            var progressedFiles = 0;
-
             foreach (var pair in pairs)
             {
-                Interlocked.Increment(ref totalFiles);
-                options.FileProgress?.Report(new FileProgressEvent(
-                    FileProgressEventType.Queue, progressedFiles, totalFiles, pair.Source.Path.SubPath));
-                options.ByteProgress?.Report(
+                Interlocked.Increment(ref TotalFiles);
+                fileProgress?.Report(new FileProgressEvent(
+                    FileProgressEventType.Queue, ProgressedFiles, TotalFiles, pair.Source.Path.SubPath));
+                byteProgress?.Report(
                     new SyncFileByteProgress(
                         pair.Source,
                         new ByteProgress
@@ -151,7 +168,7 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
                             progressedBytes: 0
                         )));
 
-                await block.SendAsync(pair);
+                await block.SendAsync(pair, cancellationToken);
             }
 
             block.Complete();

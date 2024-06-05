@@ -38,7 +38,7 @@ public class SyncPathComparer
 }
 
 public record SyncFilePathCompareResult(
-    IReadOnlyCollection<SyncFile> AddedPaths,
-    IReadOnlyCollection<SyncFilePair> DuplicatedPaths,
-    IReadOnlyCollection<SyncFile> DeletedPaths
+    IReadOnlyCollection<SyncFile> AddedFiles,
+    IReadOnlyCollection<SyncFilePair> DuplicatedFiles,
+    IReadOnlyCollection<SyncFile> DeletedFiles
 );

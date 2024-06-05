@@ -24,15 +24,17 @@ public class SyncFileCollectionSyncer
         var pathCompareResult = pathComparer.ComparePaths(sources, targets);
 
         var fileCompareResult = await _filePairSyncer.CompareFilePairs(
-            pairs: pathCompareResult.DuplicatedPaths.Where(pair => filter.Match(pair.Source.Path.SubPath)),
-            comparer: comparer,
-            options: options);
+            pathCompareResult.DuplicatedFiles.Where(pair => filter.Match(pair.Source.Path.SubPath)),
+            comparer,
+            options.FileProgress,
+            options.ByteProgress,
+            options.CancellationToken);
 
         return new SyncFileCollectionComparerResult(
-            pathCompareResult.AddedPaths,
+            pathCompareResult.AddedFiles,
             fileCompareResult.UpdatedFiles,
             fileCompareResult.IdenticalFiles,
-            pathCompareResult.DeletedPaths.Where(file => filter.Match(file.Path.SubPath)).ToList());
+            pathCompareResult.DeletedFiles.Where(file => filter.Match(file.Path.SubPath)).ToList());
     }
 
     public async Task<SyncFileCollectionComparerResult> CompareAndSyncFiles(
@@ -47,18 +49,20 @@ public class SyncFileCollectionSyncer
         var pathComparer = new SyncPathComparer();
         var pathCompareResult = pathComparer.ComparePaths(sources, targets);
 
-        var addedFilePairs = CreateFilePairs(pathCompareResult.AddedPaths);
-        var duplicatedFilePairs = pathCompareResult.DuplicatedPaths.Where(pair => filter.Match(pair.Source.Path.SubPath));
+        var addedFilePairs = CreateFilePairs(pathCompareResult.AddedFiles);
+        var duplicatedFilePairs = pathCompareResult.DuplicatedFiles.Where(pair => filter.Match(pair.Source.Path.SubPath));
         var fileCompareResult = await _filePairSyncer.CompareAndSyncFilePairs(
-            pairs: addedFilePairs.Concat(duplicatedFilePairs),
-            comparer: comparer,
-            options: options);
+            addedFilePairs.Concat(duplicatedFilePairs),
+            comparer,
+            options.FileProgress,
+            options.ByteProgress,
+            options.CancellationToken);
 
         return new SyncFileCollectionComparerResult(
-            pathCompareResult.AddedPaths,
+            pathCompareResult.AddedFiles,
             fileCompareResult.UpdatedFiles,
             fileCompareResult.IdenticalFiles,
-            pathCompareResult.DeletedPaths.Where(file => filter.Match(file.Path.SubPath)).ToList());
+            pathCompareResult.DeletedFiles.Where(file => filter.Match(file.Path.SubPath)).ToList());
     }
 
     protected virtual IEnumerable<SyncFilePair> CreateFilePairs(IEnumerable<SyncFile> sourceFiles)
