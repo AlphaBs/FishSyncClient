@@ -18,7 +18,7 @@ public class Logger
 
     private void log(string level, string message)
     {
-        var log = $"[{level}][{DateTime.Now.ToString("HH:mm:ss.ff")}] {message}";
+        var log = $"[{level}][{DateTime.Now:HH:mm:ss.ff}] {message}";
         Append?.Invoke(this, log);
     }
 }

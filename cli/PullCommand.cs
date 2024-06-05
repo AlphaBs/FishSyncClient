@@ -41,9 +41,9 @@ public class PullCommand : CommandBase
         var syncer = new LocalSyncer(
             Root,
             pathOptions,
-            6);
+            new ParallelSyncFilePairSyncer());
 
-        var syncTask = syncer.Sync(syncFiles, comparerFactory.CreateFullComparer(), new SyncerOptions
+        var syncTask = syncer.CompareAndSyncFiles(syncFiles, comparerFactory.CreateFullComparer(), new SyncerOptions
         {
             FileProgress = fileProgress,
             ByteProgress = byteProgress

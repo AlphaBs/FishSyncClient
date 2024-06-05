@@ -3,7 +3,7 @@ using FishSyncClient.Files;
 
 namespace FishSyncClient.Syncer;
 
-public class LocalSyncer
+public class LocalSyncer : SyncFileCollectionSyncer
 {
     public static IEnumerable<SyncFile> EnumerateLocalSyncFiles(string root, PathOptions options)
     {
@@ -13,63 +13,47 @@ public class LocalSyncer
 
     private readonly string _root;
     private readonly PathOptions _pathOptions;
-    private readonly int _maxParallelism;
 
     public LocalSyncer(
         string root,
         PathOptions pathOptions,
-        int maxParallelism) =>
-        (_root, _pathOptions, _maxParallelism) =
-        (root, pathOptions, maxParallelism);
+        ISyncFilePairSyncer syncer) : base(syncer) =>
+        (_root, _pathOptions) =
+        (root, pathOptions);
 
-    public Task<SyncFileCollectionComparerResult> Sync(
+    public Task<SyncFileCollectionComparerResult> CompareFiles(
         IEnumerable<SyncFile> sources, 
         IFileComparer comparer,
         SyncerOptions? options)
     {
         var targets = EnumerateLocalSyncFiles(_root, _pathOptions);
-        return Sync(sources, targets, comparer, options);
+        return CompareFiles(sources, targets, comparer, options);
     }
 
-    public async Task<SyncFileCollectionComparerResult> Sync(
+    public Task<SyncFileCollectionComparerResult> CompareAndSyncFiles(
         IEnumerable<SyncFile> sources,
-        IEnumerable<SyncFile> targets,
         IFileComparer comparer,
         SyncerOptions? options)
     {
-        options ??= new();
-
-        // sources 와 targets 비교
-        var filePairCollectionComparer = new ParallelSyncFilePairCollectionComparer(_maxParallelism);
-        var fileCollectionComparer = new SyncFileCollectionComparer(filePairCollectionComparer);
-        var syncResult = await fileCollectionComparer.CompareFiles(sources, targets, comparer, options);
-
-        // AddedFiles 과 대응되는 LocalFile 만들어서 SyncFilePair 만들기
-        var addedFilePairs = syncResult.AddedFiles.Select(
-            file => new SyncFilePair(file, createLocalFile(file)));
-
-        // SyncFilePair 모두 동기화
-        var filePairSyncer = new FilePairSyncer(_maxParallelism);
-        await filePairSyncer.SyncFilePairs(
-            syncResult.UpdatedFilePairs.Concat(addedFilePairs), 
-            options);
-
-        // DeletedFiles 삭제
-        deleteFiles(syncResult.DeletedFiles);
-
-        return syncResult;
+        var targets = EnumerateLocalSyncFiles(_root, _pathOptions);
+        return CompareFiles(sources, targets, comparer, options);
     }
 
-    private LocalSyncFile createLocalFile(SyncFile file)
+    protected override IEnumerable<SyncFilePair> CreateFilePairs(IEnumerable<SyncFile> sourceFiles)
     {
-        var newPath = file.Path.WithRoot(_root);
-        return new LocalSyncFile(newPath);
+        return sourceFiles.Select(source => 
+            new SyncFilePair(
+                source, 
+                new LocalSyncFile(source.Path.WithRoot(_root))));
     }
 
-    private void deleteFiles(IEnumerable<SyncFile> files)
+    public void DeleteLocalFiles(IEnumerable<SyncFile> files)
     {
         foreach (var file in files)
         {
+            if (file.Path.Root != _root)
+                throw new InvalidOperationException();
+                
             var path = file.Path.GetFullPath();
             File.Delete(path);
         }

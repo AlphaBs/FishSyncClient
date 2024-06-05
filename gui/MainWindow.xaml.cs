@@ -175,7 +175,7 @@ public partial class MainWindow : Window
             var sources = sourceSyncFiles.GetFiles();
             var targets = targetSyncFiles.GetFiles();
 
-            var syncer = new SyncFileCollectionComparer(new ParallelSyncFilePairCollectionComparer());
+            var syncer = new SyncFileCollectionSyncer(new ParallelSyncFilePairSyncer());
             var result = await syncer.CompareFiles(
                 sources, 
                 targets, 
@@ -247,8 +247,8 @@ public partial class MainWindow : Window
             var syncer = new LocalSyncer(
                 txtRoot.Text,
                 new PathOptions(),
-                6);
-            var syncResult = await syncer.Sync(
+                new ParallelSyncFilePairSyncer());
+            var syncResult = await syncer.CompareAndSyncFiles(
                 targetFiles,
                 sourceFiles,
                 new FileChecksumMetadataComparer(),

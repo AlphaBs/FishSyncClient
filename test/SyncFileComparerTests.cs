@@ -108,8 +108,8 @@ public class SyncFileComparerTests : SyncerTestBase
         AssertEqualPathCollection(expected, actual);
     }
 
-    public static SyncFileCollectionComparer CreateSyncer()
+    public static SyncFileCollectionSyncer CreateSyncer()
     {
-        return new SyncFileCollectionComparer(new ParallelSyncFilePairCollectionComparer());
+        return new SyncFileCollectionSyncer(new ParallelSyncFilePairSyncer(1));
     }
 }
