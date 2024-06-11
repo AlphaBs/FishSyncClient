@@ -15,6 +15,9 @@ public class PushCommand : CommandBase
         WriteIndented = true
     };
 
+    [Value(0, Required = true)]
+    public string? Id { get; set; }
+
     protected override async ValueTask<int> RunAsync()
     {
         if (string.IsNullOrEmpty(Id))

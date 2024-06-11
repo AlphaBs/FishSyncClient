@@ -1,21 +1,18 @@
-using CommandLine;
+﻿using CommandLine;
 using FishSyncClient.FileComparers;
 using FishSyncClient.Progress;
 using FishSyncClient.Server;
 using FishSyncClient.Syncer;
+using FishSyncClient.Versions;
+using System.Diagnostics;
 
 namespace FishSyncClient.Cli;
 
-[Verb("pull")]
-public class PullCommand : CommandBase
+[Verb("alphabet")]
+public class AlphabetCommand : CommandBase
 {
-    [Value(0, Required = true)]
-    public string? Id { get; set; }
-
     protected override async ValueTask<int> RunAsync()
     {
-        if (string.IsNullOrEmpty(Id))
-            throw new ArgumentException("Id");
         if (string.IsNullOrEmpty(Root))
             Root = Environment.CurrentDirectory;
 
@@ -25,10 +22,8 @@ public class PullCommand : CommandBase
 
         var httpClient = new HttpClient();
         var pathOptions = new PathOptions();
-
-        var apiClient = new FishApiClient(host, httpClient);
-        var bucketFiles = await apiClient.GetBucketFiles(Id);
-        var syncFiles = bucketFiles.GetSyncFiles(httpClient, pathOptions);
+        var metadata = await AlphabetFileUpdateServer.GetLauncherMetadata(httpClient, new Uri(host));
+        var syncFiles = metadata.GetSyncFiles(httpClient, pathOptions);
 
         var progressAggregator = new ConcurrentByteProgressAggregator();
         var fileProgress = new SyncProgress<FileProgressEvent>(e =>
@@ -40,13 +35,33 @@ public class PullCommand : CommandBase
             progressAggregator.Report(e.Progress);
         });
 
+        var versionManager = new VersionManager("version.txt");
+        var isNewVersion = await versionManager.CheckNewVersion(metadata.LastInfoUpdate.ToString("o"));
         var comparerFactory = new LocalFileComparerFactory();
+        IFileComparer comparer;
+        if (isNewVersion)
+        {
+            comparer = comparerFactory.CreateFullComparer();
+        }
+        else
+        {
+            var comparerWithGlob = new CompositeFileComparerWithGlob();
+            foreach (var pattern in metadata.Launcher?.IncludeFiles ?? [])
+            {
+                comparerWithGlob.Add(pattern, comparerFactory.CreateFullComparer());
+            }
+            comparerWithGlob.Add("**", comparerFactory.CreateFastComparer());
+            comparer = comparerWithGlob;
+        }
+
         var syncer = new LocalSyncer(
             Root,
             pathOptions,
             new ParallelSyncFilePairSyncer());
 
-        var syncTask = syncer.CompareAndSyncFiles(syncFiles, comparerFactory.CreateFullComparer(), new SyncerOptions
+        var sw = new Stopwatch();
+        sw.Start();
+        var syncTask = syncer.CompareAndSyncFiles(syncFiles, comparer, new SyncerOptions
         {
             FileProgress = fileProgress,
             ByteProgress = byteProgress
@@ -55,9 +70,10 @@ public class PullCommand : CommandBase
         while (!syncTask.IsCompleted)
         {
             await Task.WhenAny(syncTask, Task.Delay(100));
-            var progress = progressAggregator.AggregateProgress();
-            Console.WriteLine($"{progress.GetRatio():p} ( {progress.ProgressedBytes:#,##} / {progress.TotalBytes:#,##} )");
+            printByteProgress(progressAggregator);
         }
+        sw.Stop();
+        printByteProgress(progressAggregator);
 
         var syncResult = await syncTask;
         Console.WriteLine($"\nIdentical files ({syncResult.IdenticalFilePairs.Count}): ");
@@ -84,6 +100,19 @@ public class PullCommand : CommandBase
             Console.WriteLine(deleted.Path.SubPath);
         }
 
+        Console.WriteLine("\nNewVersion: " + isNewVersion);
+        if (isNewVersion)
+        {
+            await versionManager.UpdateVersion(metadata.LastInfoUpdate.ToString("o"));
+        }
+        Console.WriteLine("ElapsedSeconds: " + sw.Elapsed.TotalSeconds);
+
         return 0;
+    }
+
+    private void printByteProgress(ConcurrentByteProgressAggregator progressAggregator)
+    {
+        var progress = progressAggregator.AggregateProgress();
+        Console.WriteLine($"{progress.GetRatio():p} ( {progress.ProgressedBytes:#,##} / {progress.TotalBytes:#,##} )");
     }
 }
