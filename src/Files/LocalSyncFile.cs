@@ -9,6 +9,7 @@ public class LocalSyncFile : SyncFile
     {
     }
 
+    public bool Exists => File.Exists(Path.GetFullPath());
     public override bool IsReadable => Path.IsRooted;
     public override bool IsWritable => Path.IsRooted;
 

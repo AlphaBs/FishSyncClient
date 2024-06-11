@@ -14,6 +14,8 @@ public class LocalFileChecksumComparer : IFileComparer
         var targetLocalFile = pair.Target as LocalSyncFile;
         if (targetLocalFile == null)
             throw new FileComparerException("Target should be LocalSyncFile");
+        if (!targetLocalFile.Exists)
+            return false;
 
         var targetChecksum = await getChecksum(sourceChecksumAlgorithmName, targetLocalFile);
         var areEqual = sourceChecksum == targetChecksum;

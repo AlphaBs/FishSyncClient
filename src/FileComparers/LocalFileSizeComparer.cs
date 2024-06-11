@@ -8,6 +8,9 @@ public class LocalFileSizeComparer : IFileComparer
     {
         if (pair.Target is LocalSyncFile targetLocalFile)
         {
+            if (targetLocalFile.Exists == false)
+                return new ValueTask<bool>(false);
+
             var areEqual = getSourceSize(pair.Source) == getTargetSize(targetLocalFile);
             return new ValueTask<bool>(areEqual);
         }
