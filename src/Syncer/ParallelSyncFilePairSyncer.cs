@@ -97,7 +97,11 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
 
             var areEqual = await comparer.AreEqual(pair, cancellationToken);
             if (areEqual)
+            {
+                var size = pair.Source.Metadata?.Size ?? 0; 
+                byteProgress?.Report(new SyncFileByteProgress(pair.Source, new ByteProgress(0, size)));
                 identicalFiles.Add(pair);
+            }
             else
             {
                 await syncContent(pair, comparer, byteProgress, cancellationToken);
@@ -135,7 +139,13 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
                 if (areEqual)
                     return;
                 else
+                {
+                    // rewind progress
+                    var size = pair.Source.Metadata?.Size ?? 0;
+                    byteProgress?.Report(new SyncFileByteProgress(pair.Source, new ByteProgress(0, -size)));
+
                     failCount++;
+                }
             }
 
             throw new Exception();

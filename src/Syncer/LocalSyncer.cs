@@ -36,7 +36,7 @@ public class LocalSyncer : SyncFileCollectionSyncer
         SyncerOptions? options)
     {
         var targets = EnumerateLocalSyncFiles(_root, _pathOptions);
-        return CompareFiles(sources, targets, comparer, options);
+        return CompareAndSyncFiles(sources, targets, comparer, options);
     }
 
     protected override IEnumerable<SyncFilePair> CreateFilePairs(IEnumerable<SyncFile> sourceFiles)
