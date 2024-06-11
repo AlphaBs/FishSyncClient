@@ -33,7 +33,9 @@ public class UpdateFileCollection
                 Metadata = new SyncFileMetadata 
                 { 
                     Size = file.Size,
-                    Checksum = string.IsNullOrEmpty(file.Hash) ? null : new SyncFileChecksum(file.Hash, checksumAlgorithm)
+                    Checksum = string.IsNullOrEmpty(file.Hash) ? 
+                        null : 
+                        new SyncFileChecksum(algName: checksumAlgorithm, checksum: file.Hash)
                 },
                 Uploaded = DateTimeOffset.MinValue,
                 Location = new Uri(file.Url)

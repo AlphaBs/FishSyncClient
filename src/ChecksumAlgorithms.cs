@@ -16,7 +16,7 @@ public static class ChecksumAlgorithms
         }
         else
         {
-            throw new KeyNotFoundException();
+            throw new KeyNotFoundException(name);
         }
     }
 
