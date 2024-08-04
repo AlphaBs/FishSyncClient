@@ -7,9 +7,8 @@ public class SyncerTestBase
 {
     public PathOptions PathOptions = new PathOptions
     {
-        PathSeperator = '/',
-        AltPathSeperator = '\\',
-        CaseInsensitivePath = false
+        PathSeparator = '/',
+        AltPathSeparator = '\\',
     };
 
     public SyncFile[] CreateSourcePaths(params string[] paths)

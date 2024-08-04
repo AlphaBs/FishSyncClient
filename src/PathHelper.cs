@@ -92,12 +92,8 @@ public static class PathHelper
 
     public static bool IsRootDirectory(string rootDir, string filePath, PathOptions options)
     {
-        var comparisonType = options.CaseInsensitivePath
-             ? StringComparison.OrdinalIgnoreCase
-             : StringComparison.Ordinal;
-
         int rootDirLength = rootDir.Length;
-        return filePath.StartsWith(rootDir, comparisonType) &&
+        return filePath.StartsWith(rootDir) &&
             (rootDir[rootDirLength - 1] == options.PathSeparator ||
             filePath.IndexOf(options.PathSeparator, rootDirLength) == rootDirLength);
     }
