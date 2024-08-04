@@ -13,8 +13,8 @@ public static class PathHelper
     public static string NormalizeDirectoryPath(string path, PathOptions options)
     {
         path = NormalizePath(path, options);
-        if (!path.EndsWith(options.PathSeperator))
-            path += options.PathSeperator;
+        if (!path.EndsWith(options.PathSeparator))
+            path += options.PathSeparator;
         return path;
     }
 
@@ -57,11 +57,8 @@ public static class PathHelper
                 continue;
 
             // replace AltPathSeperator -> PathSeperator
-            if (c == options.AltPathSeperator)
-                c = options.PathSeperator;
-            // case insensitivity
-            else if (options.CaseInsensitivePath)
-                c = char.ToLowerInvariant(c);
+            if (c == options.AltPathSeparator)
+                c = options.PathSeparator;
 
             sb.Append(c);
         }
@@ -71,7 +68,7 @@ public static class PathHelper
 
     public static bool IsPathSeparator(char ch, PathOptions pathOptions)
     {
-        return ch == pathOptions.PathSeperator || ch == pathOptions.AltPathSeperator;
+        return ch == pathOptions.PathSeparator || ch == pathOptions.AltPathSeparator;
     }
 
     public static string GetRelativePathFromDirectory(string absPath, string rootPath, PathOptions options)
@@ -80,7 +77,7 @@ public static class PathHelper
         if (string.IsNullOrEmpty(rootPath))
             return absPath;
 
-        if (!rootPath.EndsWith(options.PathSeperator))
+        if (!rootPath.EndsWith(options.PathSeparator))
             throw new ArgumentException("rootPath is not a directory");
         rootPath = NormalizePath(rootPath, options);
 
@@ -101,8 +98,8 @@ public static class PathHelper
 
         int rootDirLength = rootDir.Length;
         return filePath.StartsWith(rootDir, comparisonType) &&
-            (rootDir[rootDirLength - 1] == options.PathSeperator ||
-            filePath.IndexOf(options.PathSeperator, rootDirLength) == rootDirLength);
+            (rootDir[rootDirLength - 1] == options.PathSeparator ||
+            filePath.IndexOf(options.PathSeparator, rootDirLength) == rootDirLength);
     }
 
     public static void CreateParentDirectory(string path)

@@ -30,7 +30,7 @@ public readonly struct RootedPath
         }
 
         subpath = PathHelper.NormalizePath(subpath, options);
-        subpath = subpath.TrimStart(options.PathSeperator);
+        subpath = subpath.TrimStart(options.PathSeparator);
 
         return new RootedPath(root, subpath, options);
     }
@@ -63,7 +63,7 @@ public readonly struct RootedPath
 
     private RootedPath(string root, string subpath, PathOptions options)
     {
-        Debug.Assert(!subpath.StartsWith(options.PathSeperator));
+        Debug.Assert(!subpath.StartsWith(options.PathSeparator));
 
         Root = root;
         SubPath = subpath;
@@ -74,7 +74,7 @@ public readonly struct RootedPath
     public readonly string SubPath;
 
     public bool IsRooted => !string.IsNullOrEmpty(Root);
-    public bool IsDirectory => SubPath.EndsWith(_options.PathSeperator) || SubPath.Equals(string.Empty);
+    public bool IsDirectory => SubPath.EndsWith(_options.PathSeparator) || SubPath.Equals(string.Empty);
 
     public RootedPath WithRoot(string newRoot)
     {
