@@ -140,10 +140,6 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
                     return;
                 else
                 {
-                    // rewind progress
-                    var size = pair.Source.Metadata?.Size ?? 0;
-                    byteProgress?.Report(new SyncFileByteProgress(pair.Source, new ByteProgress(0, -size)));
-
                     failCount++;
                 }
             }
