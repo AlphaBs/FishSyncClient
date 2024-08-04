@@ -1,9 +1,17 @@
+using System.Runtime.InteropServices;
 using FishSyncClient;
 
 namespace FishSyncClientTest;
 
-public class RootedPathTests
+[Trait("Platform", "Unix")]
+public class RootedPathUnixTests
 {
+    public RootedPathUnixTests()
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            throw new PlatformNotSupportedException("NOT LINUX");
+    }
+
     [Theory]
     [InlineData("/", "/", "/", "", "/")]
     [InlineData("/a", "/", "/a/", "", "/a/")]
@@ -24,7 +32,6 @@ public class RootedPathTests
     }
 
     [Theory]
-    [InlineData("", "/root/subpath", "root/subpath")]
     [InlineData("/", "/root/subpath", "root/subpath")]
     [InlineData("/root", "/root/subpath", "subpath")]
     [InlineData("/root/", "/root/subpath", "subpath")]
@@ -47,6 +54,35 @@ public class RootedPathTests
         var rootedPath = RootedPath.FromSubPath(subpath, new PathOptions());
         Assert.Equal("", rootedPath.Root);
         Assert.Equal(expectedSubPath, rootedPath.SubPath);
+    }
+
+    [Theory]
+    [InlineData("dir/")]
+    [InlineData(".")]
+    [InlineData("././././dir")]
+    [InlineData(".//////./dir")]
+    public void prevent_to_parse_with_empty_root_path(string root)
+    {
+        Assert.Throws<ArgumentException>(() =>
+        {
+            RootedPath.FromFullPath(root, "/dir/file", new PathOptions());
+        });
+    }
+
+    [Theory]
+    [InlineData(".")]
+    [InlineData("dir")]
+    [InlineData("dir/")]
+    [InlineData("././././")]
+    [InlineData("././././dir")]
+    [InlineData(".//////.")]
+
+    public void prevent_to_create_with_empty_root_path(string root)
+    {
+        Assert.Throws<ArgumentException>(() =>
+        {
+            RootedPath.Create(root, "file", new PathOptions());
+        });
     }
 
     [Theory]
@@ -95,6 +131,7 @@ public class RootedPathTests
     [InlineData("a/hi.txt", "/root1/a/hi.txt")]
     [InlineData("a/file.", "/root1/a/file.")]
     [InlineData("a/dir./.file", "/root1/a/dir./.file")]
+    [InlineData("a/hi../..hi", "/root1/a/hi../..hi")]
     public void file_extension_dot_in_subpath_is_allowed(string subpath, string expected)
     {
         var actual = RootedPath.Create("/root1", subpath, new PathOptions());

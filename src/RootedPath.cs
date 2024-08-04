@@ -14,6 +14,7 @@ namespace FishSyncClient;
 // SubPath 의 첫 문자는 경로 구분자가 될 수 없다.
 // SubPath 에는 상대 경로 문자 (. 혹은 ..) 가 들어갈 수 없다. 
 // Root 와 SubPath 는 정규화된 경로를 유지해야 한다.
+// Root 는 절대경로이다. Path.IsPathFullyQualified -> true
 
 public readonly struct RootedPath
 {
@@ -26,7 +27,7 @@ public readonly struct RootedPath
         }
         else
         {
-            root = PathHelper.NormalizeDirectoryPath(root, options);
+            root = PathHelper.NormalizeRoot(root, options);
         }
 
         subpath = PathHelper.NormalizePath(subpath, options);
@@ -37,7 +38,7 @@ public readonly struct RootedPath
 
     public static RootedPath FromFullPath(string root, string fullpath, PathOptions options)
     {
-        root = PathHelper.NormalizeDirectoryPath(root, options);
+        root = PathHelper.NormalizeRoot(root, options);
         var subpath = PathHelper.GetRelativePathFromDirectory(fullpath, root, options);
         return Create(root, subpath, options);
     }

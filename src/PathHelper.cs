@@ -10,12 +10,14 @@ namespace FishSyncClient;
 
 public static class PathHelper
 {
-    public static string NormalizeDirectoryPath(string path, PathOptions options)
+    public static string NormalizeRoot(string root, PathOptions options)
     {
-        path = NormalizePath(path, options);
-        if (!path.EndsWith(options.PathSeparator))
-            path += options.PathSeparator;
-        return path;
+        if (!Path.IsPathFullyQualified(root))
+            throw new ArgumentException("root was not absolute path");
+        root = NormalizePath(root, options);
+        if (!root.EndsWith(options.PathSeparator))
+            root += options.PathSeparator;
+        return root;
     }
 
     public static string NormalizePath(ReadOnlySpan<char> path, PathOptions options)

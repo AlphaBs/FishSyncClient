@@ -1,5 +1,6 @@
 using FishSyncClient;
 using FishSyncClient.Files;
+using System.Runtime.InteropServices;
 
 namespace FishSyncClientTest;
 
@@ -11,14 +12,16 @@ public class SyncerTestBase
         AltPathSeparator = '\\',
     };
 
+    private string getOSRoot() => RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "C:\\" : "/";
+
     public SyncFile[] CreateSourcePaths(params string[] paths)
     {
-        return CreatePathsFromRoot("source", paths);
+        return CreatePathsFromRoot(getOSRoot() + "source", paths);
     }
 
     public SyncFile[] CreateTargetPaths(params string[] paths)
     {
-        return CreatePathsFromRoot("target", paths);
+        return CreatePathsFromRoot(getOSRoot() + "target", paths);
     }
 
     public SyncFile[] CreatePathsFromRoot(string root, params string[] paths)
