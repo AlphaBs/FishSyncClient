@@ -2,7 +2,8 @@
   "profiles": {
     "cli": {
       "commandName": "Project",
-      "commandLineArgs": "pull first --root \"C:\\Users\\ksi12\\AppData\\Roaming\\ICY_ONLINE\\game\" --server \"https://localhost:7128/api\""
+      "commandLineArgs_directory": "directory --root C:/p/installs",
+      "commandLineArgs": "alphabet --root \"C:\\p\\game\\Hypixel\" --server \"https://launcher.pixelmon-scarlet.net/launcher/files-al2.json\""
     }
   }
 }
