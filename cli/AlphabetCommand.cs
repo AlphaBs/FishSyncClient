@@ -95,6 +95,7 @@ public class AlphabetCommand : CommandBase
         }
 
         Console.WriteLine($"\nDeleted files ({syncResult.DeletedFiles.Count}): ");
+        syncer.DeleteLocalFiles(syncResult.DeletedFiles);
         foreach (var deleted in syncResult.DeletedFiles)
         {
             Console.WriteLine(deleted.Path.SubPath);

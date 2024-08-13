@@ -17,9 +17,11 @@ public class LocalSyncer : SyncFileCollectionSyncer
     public LocalSyncer(
         string root,
         PathOptions pathOptions,
-        ISyncFilePairSyncer syncer) : base(syncer) =>
-        (_root, _pathOptions) =
-        (root, pathOptions);
+        ISyncFilePairSyncer syncer) : base(syncer)
+    {
+        _root = PathHelper.NormalizeRoot(root, pathOptions);
+        _pathOptions = pathOptions;
+    }
 
     public Task<SyncFileCollectionComparerResult> CompareFiles(
         IEnumerable<SyncFile> sources, 
@@ -52,7 +54,7 @@ public class LocalSyncer : SyncFileCollectionSyncer
         foreach (var file in files)
         {
             if (file.Path.Root != _root)
-                throw new InvalidOperationException();
+                throw new InvalidOperationException("root not matched");
                 
             var path = file.Path.GetFullPath();
             File.Delete(path);
