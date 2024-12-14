@@ -25,6 +25,8 @@ public class ReadableHttpSyncFile : SyncFile
             HttpCompletionOption.ResponseHeadersRead, 
             cancellationToken);
 
+        response.EnsureSuccessStatusCode();
+
         var contentLength = response.Content.Headers.ContentLength ?? -1;
         if (contentLength > 0)
         {
