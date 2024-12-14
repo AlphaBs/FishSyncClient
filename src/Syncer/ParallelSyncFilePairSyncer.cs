@@ -131,20 +131,10 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
             IProgress<SyncFileByteProgress>? byteProgress, 
             CancellationToken cancellationToken)
         {
-            int failCount = 0;
-            while (failCount < 3)
-            {
-                await pair.SyncContent(byteProgress, cancellationToken);
-                var areEqual = await comparer.AreEqual(pair, cancellationToken);
-                if (areEqual)
-                    return;
-                else
-                {
-                    failCount++;
-                }
-            }
-
-            throw new Exception();
+            await pair.SyncContent(byteProgress, cancellationToken);
+            var areEqual = await comparer.AreEqual(pair, cancellationToken);
+            if (!areEqual)
+                throw new FileIntegrityException(pair.Target.Path.ToString());
         }
     }
 
