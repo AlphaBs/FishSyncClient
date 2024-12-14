@@ -1,7 +1,6 @@
 ﻿using FishSyncClient.Files;
 using FishSyncClient.Internals;
 using FishSyncClient.Progress;
-using System.Diagnostics;
 using System.Net.Http.Headers;
 
 namespace FishSyncClient.Server.BucketSyncActions;
@@ -49,9 +48,6 @@ public class HttpBucketSyncActionHandler : IBucketSyncActionHandler
             }
         }
         reqMessage.Content = reqContent;
-
-        var totalBytes = file.Metadata?.Size ?? 0;
-        progress?.Report(new ByteProgress(totalBytes, 0));
 
         var sendTask = _httpClient.SendAsync(reqMessage);
         await StreamProgressHelper.MonitorStreamPosition(sendTask, readStream, 0, 100, new SyncProgress<long>(delta =>

@@ -96,6 +96,7 @@ public class SimpleBucketSyncActionCollectionHandler : IBucketSyncActionCollecti
                 throw new InvalidOperationException();
 
             actionProgress.Report(new SyncActionProgress(FileProgressEventType.Queue, action));
+            byteProgress.Report(new SyncActionByteProgress(action.Path, new ByteProgress(file.Metadata?.Size ?? 0, 0)));
             await handlerBlock.SendAsync(new SyncHandlerParameters(handler, file, action));
         }
         handlerBlock.Complete();
