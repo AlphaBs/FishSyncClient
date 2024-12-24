@@ -1,0 +1,36 @@
+﻿<Window x:Class="FishSyncClient.Gui.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:FishSyncClient.Gui"
+        mc:Ignorable="d"
+        Title="LoginWindow" 
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Width="400" Height="400"
+        Loaded="Window_Loaded">
+    
+    <StackPanel Margin="10">
+        <StackPanel.Resources>
+            <Style x:Key="Default" TargetType="FrameworkElement">
+                <Setter Property="Margin" Value="4"/>
+            </Style>
+            <Style TargetType="TextBlock" BasedOn="{StaticResource Default}"></Style>
+        </StackPanel.Resources>
+        
+        <TextBlock Text="Username"/>
+        <TextBox x:Name="tbUsername"/>
+        <TextBlock Text="Password"/>
+        <PasswordBox x:Name="tbPassword"/>
+        <TextBlock Text="Token"/>
+        <TextBox x:Name="tbToken" IsReadOnly="True"/>
+        <TextBlock Text="roles"/>
+        <TextBox x:Name="tbRoles" IsReadOnly="True"/>
+        <TextBlock Text="exp"/>
+        <TextBox x:Name="tbExp" IsReadOnly="True"/>
+        <TextBlock x:Name="tbTokenExpired" Text="토큰이 만료되었습니다! 다시 로그인을 해주세요." Foreground="Red" Visibility="Hidden"/>
+        <Button Content="로그인" Height="32" Margin="0,12" Click="Button_Click"/>
+        <Button Content="로그아웃" Height="32" Margin="0,4" Click="Button_Click_1"/>
+    </StackPanel>
+</Window>

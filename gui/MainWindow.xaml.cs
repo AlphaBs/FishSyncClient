@@ -4,10 +4,8 @@ using FishSyncClient.Progress;
 using FishSyncClient.Server;
 using FishSyncClient.Server.BucketSyncActions;
 using FishSyncClient.Syncer;
-using FishSyncClient.Versions;
 using Microsoft.Win32;
 using System.IO;
-using System.Net.Http;
 using System.Text.Json;
 using System.Windows;
 
@@ -18,23 +16,21 @@ namespace FishSyncClient.Gui;
 /// </summary>
 public partial class MainWindow : Window
 {
-    private readonly HttpClient _httpClient;
     private readonly PathOptions _pathOptions = new();
 
     public MainWindow()
     {
-        _httpClient = new HttpClient();
-        _httpClient.Timeout = TimeSpan.FromHours(1);
         InitializeComponent();
     }
 
-    ConfigManager configManager = new("config.json");
+    bool needSync = true;
+    ConfigManager configManager = ConfigManager.Instance;
     CancellationTokenSource cancellationTokenSource = new();
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
         Logger.Instance.Append += (s, e) => appendLog(e);
-        await configManager.LoadConfig();
+        await ConfigManager.Instance.LoadConfig();
 
         txtHost.Text = configManager.Config.Host;
         txtRoot.Text = configManager.Config.Root;
@@ -51,6 +47,13 @@ public partial class MainWindow : Window
         configManager.Config.BucketId = txtBucketId.Text;
 
         await configManager.SaveConfig();
+    }
+
+    private FishApiClient createApiClient()
+    {
+        var apiClient = new FishApiClient(txtHost.Text, HttpUtil.HttpClient);
+        apiClient.ApiKey = configManager.Config.Token;
+        return apiClient;
     }
 
     private void appendLog(string message)
@@ -107,7 +110,7 @@ public partial class MainWindow : Window
     {
         targetSyncFiles.ClearProgress();
         targetSyncFiles.Clear();
-        var apiClient = new FishApiClient(host, _httpClient);
+        var apiClient = createApiClient();
         var files = await apiClient.GetBucketFiles(id, cancellationToken);
         var syncFiles = files.Files?.Select(createFishSyncFile) ?? [];
         addFiles(host, syncFiles, targetSyncFiles, cancellationToken);
@@ -134,7 +137,7 @@ public partial class MainWindow : Window
             throw new ArgumentException();
 
         var path = RootedPath.FromSubPath(file.Path, _pathOptions);
-        return new ReadableHttpSyncFile(path, _httpClient)
+        return new ReadableHttpSyncFile(path, HttpUtil.HttpClient)
         {
             Location = new Uri(file.Location),
             Metadata = new SyncFileMetadata
@@ -204,6 +207,8 @@ public partial class MainWindow : Window
                 targetSyncFiles.SetStatus(deleted, "서버");
             }
 
+            needSync = result.UpdatedFilePairs.Any() || result.AddedFiles.Any() || result.DeletedFiles.Any();
+
             MessageBox.Show($"비교 결과: \n" +
                 $"동일한 파일 {result.IdenticalFilePairs.Count}개\n" +
                 $"바뀐 파일 {result.UpdatedFilePairs.Count}개\n" +
@@ -251,7 +256,7 @@ public partial class MainWindow : Window
             var syncResult = await syncer.CompareAndSyncFiles(
                 targetFiles,
                 sourceFiles,
-                new FileChecksumMetadataComparer(),
+                new LocalFileChecksumComparer(),
                 new SyncerOptions
                 {
                     FileProgress = fileProgress,
@@ -284,6 +289,40 @@ public partial class MainWindow : Window
         {
             setUIEnables(false);
 
+            if (!needSync)
+            {
+                var mbResult = MessageBox.Show(
+                    "경고: 모든 파일이 서버와 동일하여 동기화가 필요 없습니다.\n\n" +
+                    "동기화 횟수가 차감됩니다. 그래도 동기화를 시도할까요?",
+                    "경고",
+                    MessageBoxButton.YesNo);
+
+                if (mbResult == MessageBoxResult.No)
+                    return;
+            }
+
+            var patterns = configManager.Config.WarningPatterns
+                .Select(DotNet.Globbing.Glob.Parse)
+                .ToList();
+            var warningFilePath = sourceSyncFiles.GetFiles()
+                .Select(file => file.Path.SubPath)
+                .Where(path => patterns.Any(pattern => pattern.IsMatch(path)))
+                .FirstOrDefault();
+            if (warningFilePath != null)
+            {
+                var warningPattern = patterns.First(pattern => pattern.IsMatch(warningFilePath));
+                var mbResult = MessageBox.Show(
+                    "경고: 아래 파일은 동기화가 금지되어 있습니다.\n\n" +
+                    $"파일: {warningFilePath}\n" +
+                    $"패턴: {warningPattern}\n\n" +
+                    "동기화를 시도할 경우 실패할 수 있습니다. 그래도 동기화를 시도할까요?", 
+                    "경고", 
+                    MessageBoxButton.YesNo);
+
+                if (mbResult == MessageBoxResult.No)
+                    return;
+            }
+
             cancellationTokenSource = new();
             var cancellationToken = cancellationTokenSource.Token;
             Logger.Instance.LogInformation($"[PUSH] {sourceSyncFiles.Count} items");
@@ -299,8 +338,9 @@ public partial class MainWindow : Window
             });
 
             var handler = new SimpleBucketSyncActionCollectionHandler(6, actionProgress, byteProgress);
-            handler.Add(new HttpBucketSyncActionHandler(_httpClient));
-            var apiClient = new FishApiClient(txtHost.Text, _httpClient);
+            handler.Add(new HttpBucketSyncActionHandler(HttpUtil.HttpClient));
+
+            var apiClient = createApiClient();
             var result = await apiClient.Sync(txtBucketId.Text, sourceSyncFiles, handler, cancellationToken);
 
             if (result.IsSuccess)
@@ -348,7 +388,10 @@ public partial class MainWindow : Window
 
     private void btnFishLogin_Click(object sender, RoutedEventArgs e)
     {
-
+        var apiClient = createApiClient();
+        var loginWindow = new LoginWindow(apiClient);
+        loginWindow.Owner = this;
+        loginWindow.ShowDialog();
     }
 
     private void btnCancel_Click(object sender, RoutedEventArgs e)

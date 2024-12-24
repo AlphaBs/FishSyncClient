@@ -8,12 +8,16 @@ public class Config
     public string? Root { get; set; } 
     public string? Host { get; set; }
     public string? BucketId { get; set; }
+    public string? Token { get; set; }
+    public List<string> WarningPatterns { get; set; } = [];
 }
 
 public class ConfigManager
 {
-    private readonly string _path;
+    private static ConfigManager? instance;
+    public static ConfigManager Instance => instance ??= new("config.json");
 
+    private readonly string _path;
     public ConfigManager(string path) => 
         _path = path;
 
