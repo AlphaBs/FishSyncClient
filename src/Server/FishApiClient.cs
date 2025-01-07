@@ -1,3 +1,4 @@
+using System.Collections;
 using FishSyncClient.Files;
 using FishSyncClient.Server.BucketSyncActions;
 using System.Net.Http.Headers;
@@ -6,7 +7,12 @@ using System.Threading;
 
 namespace FishSyncClient.Server;
 
-public class FishApiClient
+public interface IFishApiClient
+{
+    Task<FishBucketFiles> GetBucketFiles(string id, CancellationToken cancellationToken = default);
+}
+
+public class FishApiClient : IFishApiClient
 {
     private readonly HttpClient _httpClient;
     private readonly string _host;
@@ -56,6 +62,11 @@ public class FishApiClient
         using var resStream = await request(reqMessage, cancellationToken);
         var json = await JsonSerializer.DeserializeAsync<FishBucket>(resStream, cancellationToken: cancellationToken);
         return json ?? throw new FormatException();
+    }
+    
+    public async Task<FishBucketFiles> GetBucketFilesRecursively(string id, CancellationToken cancellationToken = default)
+    {
+        return await FishBucketDependencyResolver.Resolve(this, id, 8, default);
     }
 
     public async Task<FishBucketFiles> GetBucketFiles(string id, CancellationToken cancellationToken = default)

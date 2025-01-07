@@ -14,30 +14,22 @@ public class FishBucket
     [JsonPropertyName("limitations")]
     public FishBucketLimitations? Limitations { get; set; }
 
-    [JsonPropertyName("files")]
-    public FishBucketFile[]? Files { get; set; }
+    [JsonPropertyName("files")] public IReadOnlyCollection<FishBucketFile> Files { get; set; } = [];
 }
 
 public class FishBucketFiles
 {
-    [JsonPropertyName("id")]
-    public string? Id { get; set; }
-
-    [JsonPropertyName("lastUpdated")]
-    public DateTimeOffset LastUpdated { get; set; }
-
-    [JsonPropertyName("files")]
-    public FishBucketFile[]? Files { get; set; }
-
+    [JsonPropertyName("id")] public string? Id { get; set; }
+    [JsonPropertyName("lastUpdated")] public DateTimeOffset LastUpdated { get; set; }
+    [JsonPropertyName("files")] public IReadOnlyCollection<FishBucketFile> Files { get; set; } = [];
+    [JsonPropertyName("dependencies")] public IReadOnlyCollection<string> Dependencies { get; set; } = [];
+    
     public IEnumerable<SyncFile> GetSyncFiles(HttpClient httpClient, PathOptions options)
     {
-        if (Files == null)
-            return [];
-
         return Files.Select(file => 
             new ReadableHttpSyncFile(RootedPath.FromSubPath(file.Path, options), httpClient)
             {
-                Location = new Uri(file.Location),
+                Location = (file.Location == null) ? null : new Uri(file.Location),
                 Uploaded = file.Metadata.LastUpdated,
                 Metadata = new SyncFileMetadata()
                 { 
