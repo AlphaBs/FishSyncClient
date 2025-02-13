@@ -110,6 +110,11 @@ public class SyncFileComparerTests : SyncerTestBase
 
     public static SyncFileCollectionSyncer CreateSyncer()
     {
-        return new SyncFileCollectionSyncer(new ParallelSyncFilePairSyncer(1));
+        var pathOptions = new PathOptions
+        {
+            CaseInsensitive = false
+        };
+        var syncer = new ParallelSyncFilePairSyncer(1);
+        return new SyncFileCollectionSyncer(syncer, pathOptions);
     }
 }

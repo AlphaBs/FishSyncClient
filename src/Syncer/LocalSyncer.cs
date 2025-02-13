@@ -17,7 +17,7 @@ public class LocalSyncer : SyncFileCollectionSyncer
     public LocalSyncer(
         string root,
         PathOptions pathOptions,
-        ISyncFilePairSyncer syncer) : base(syncer)
+        ISyncFilePairSyncer syncer) : base(syncer, pathOptions)
     {
         _root = PathHelper.NormalizeRoot(root, pathOptions);
         _pathOptions = pathOptions;

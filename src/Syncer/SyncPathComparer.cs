@@ -4,10 +4,14 @@ namespace FishSyncClient.Syncer;
 
 public class SyncPathComparer
 {
-    public SyncFilePathCompareResult ComparePaths(IEnumerable<SyncFile> source, IEnumerable<SyncFile> target)
+    public SyncFilePathCompareResult ComparePaths(
+        IEnumerable<SyncFile> source, 
+        IEnumerable<SyncFile> target,
+        PathOptions pathOptions)
     {
-        var sourceDict = source.ToDictionary(s => s.Path.SubPath, s => s);
-        var targetDict = target.ToDictionary(t => t.Path.SubPath, t => t);
+        var comparer = pathOptions.CaseInsensitive ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var sourceDict = source.ToDictionary(s => s.Path.SubPath, s => s, comparer);
+        var targetDict = target.ToDictionary(t => t.Path.SubPath, t => t, comparer);
 
         var intersects = new List<SyncFilePair>();
         foreach (var sourceKv in sourceDict)

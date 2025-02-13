@@ -7,9 +7,10 @@ namespace FishSyncClient;
 public class SyncFileCollectionSyncer
 {
     private readonly ISyncFilePairSyncer _filePairSyncer;
+    private readonly PathOptions _pathOptions;
 
-    public SyncFileCollectionSyncer(ISyncFilePairSyncer pairSyncer) =>
-        _filePairSyncer = pairSyncer;
+    public SyncFileCollectionSyncer(ISyncFilePairSyncer pairSyncer, PathOptions pathOptions) =>
+        (_filePairSyncer, _pathOptions) = (pairSyncer, pathOptions);
 
     public async Task<SyncFileCollectionComparerResult> CompareFiles(
         IEnumerable<SyncFile> sources,
@@ -21,7 +22,7 @@ public class SyncFileCollectionSyncer
         var filter = GlobPatternMatcher.ParseFrom(options.Includes, options.Excludes);
 
         var pathComparer = new SyncPathComparer();
-        var pathCompareResult = pathComparer.ComparePaths(sources, targets);
+        var pathCompareResult = pathComparer.ComparePaths(sources, targets, _pathOptions);
 
         var fileCompareResult = await _filePairSyncer.CompareFilePairs(
             pathCompareResult.DuplicatedFiles.Where(pair => filter.Match(pair.Source.Path.SubPath)),
@@ -47,7 +48,7 @@ public class SyncFileCollectionSyncer
         var filter = GlobPatternMatcher.ParseFrom(options.Includes, options.Excludes);
 
         var pathComparer = new SyncPathComparer();
-        var pathCompareResult = pathComparer.ComparePaths(sources, targets);
+        var pathCompareResult = pathComparer.ComparePaths(sources, targets, _pathOptions);
 
         var addedFilePairs = CreateFilePairs(pathCompareResult.AddedFiles);
         var duplicatedFilePairs = pathCompareResult.DuplicatedFiles.Where(pair => filter.Match(pair.Source.Path.SubPath));
