@@ -1,4 +1,4 @@
-﻿using FishSyncClient.Server;
+﻿using FishBucket.ApiClient;
 using gui;
 using System.Text.Json.Serialization;
 using System.Windows;

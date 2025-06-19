@@ -5,7 +5,8 @@ namespace FishSyncClient.Gui;
 
 public class Config
 {
-    public string? Root { get; set; } 
+    public string ClientVersion => "20250101";
+    public string? Root { get; set; }
     public string? Host { get; set; }
     public string? BucketId { get; set; }
     public string? Token { get; set; }
@@ -15,10 +16,10 @@ public class Config
 public class ConfigManager
 {
     private static ConfigManager? instance;
-    public static ConfigManager Instance => instance ??= new("config.json");
+    public static ConfigManager Instance => instance ??= new("config/config.json");
 
     private readonly string _path;
-    public ConfigManager(string path) => 
+    public ConfigManager(string path) =>
         _path = path;
 
     private Config? _config;

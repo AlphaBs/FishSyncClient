@@ -1,19 +1,21 @@
-﻿using FishSyncClient.FileComparers;
+﻿using FishBucket;
+using FishBucket.ApiClient;
+using FishBucket.SyncClient;
+using FishSyncClient.FileComparers;
 using FishSyncClient.Files;
 using FishSyncClient.Progress;
-using FishSyncClient.Server;
-using FishSyncClient.Server.BucketSyncActions;
 using FishSyncClient.Syncer;
+using gui;
 using Microsoft.Win32;
+using System.Diagnostics;
 using System.IO;
+using System.Net.Http.Json;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
 
 namespace FishSyncClient.Gui;
 
-/// <summary>
-/// Interaction logic for MainWindow.xaml
-/// </summary>
 public partial class MainWindow : Window
 {
     private readonly PathOptions _pathOptions = new();
@@ -31,6 +33,8 @@ public partial class MainWindow : Window
     {
         Logger.Instance.Append += (s, e) => appendLog(e);
         await ConfigManager.Instance.LoadConfig();
+
+        checkUpdate();
 
         txtHost.Text = configManager.Config.Host;
         txtRoot.Text = configManager.Config.Root;
@@ -112,26 +116,26 @@ public partial class MainWindow : Window
         targetSyncFiles.Clear();
         var apiClient = createApiClient();
         var files = await apiClient.GetBucketFiles(id, cancellationToken);
-        var syncFiles = files.Files?.Select(createFishSyncFile) ?? [];
+        var syncFiles = files.Files.Select(createFishSyncFile);
         addFiles(host, syncFiles, targetSyncFiles, cancellationToken);
     }
 
     private SyncFile createLocalSyncFile(RootedPath path)
     {
-        var fileinfo = new FileInfo(path.GetFullPath());
-        using var fs = File.OpenRead(fileinfo.FullName);
+        var fileInfo = new FileInfo(path.GetFullPath());
+        using var fs = File.OpenRead(fileInfo.FullName);
         var checksum = ChecksumAlgorithms.ComputeMD5(fs);
         return new LocalSyncFile(path)
         {
             Metadata = new SyncFileMetadata()
             {
-                Size = fileinfo.Length,
+                Size = fileInfo.Length,
                 Checksum = new SyncFileChecksum(ChecksumAlgorithmNames.MD5, checksum)
             }
         };
     }
 
-    private SyncFile createFishSyncFile(FishBucketFile file)
+    private SyncFile createFishSyncFile(BucketFile file)
     {
         if (string.IsNullOrEmpty(file.Path) || string.IsNullOrEmpty(file.Location))
             throw new ArgumentException();
@@ -178,10 +182,12 @@ public partial class MainWindow : Window
             var sources = sourceSyncFiles.GetFiles();
             var targets = targetSyncFiles.GetFiles();
 
-            var syncer = new SyncFileCollectionSyncer(new ParallelSyncFilePairSyncer());
+            var syncer = new SyncFileCollectionSyncer(
+                new ParallelSyncFilePairSyncer(),
+                new PathOptions() { CaseInsensitive = true });
             var result = await syncer.CompareFiles(
-                sources, 
-                targets, 
+                sources,
+                targets,
                 new FileChecksumMetadataComparer(),
                 new SyncerOptions());
 
@@ -315,8 +321,8 @@ public partial class MainWindow : Window
                     "경고: 아래 파일은 동기화가 금지되어 있습니다.\n\n" +
                     $"파일: {warningFilePath}\n" +
                     $"패턴: {warningPattern}\n\n" +
-                    "동기화를 시도할 경우 실패할 수 있습니다. 그래도 동기화를 시도할까요?", 
-                    "경고", 
+                    "동기화를 시도할 경우 실패할 수 있습니다. 그래도 동기화를 시도할까요?",
+                    "경고",
                     MessageBoxButton.YesNo);
 
                 if (mbResult == MessageBoxResult.No)
@@ -346,7 +352,7 @@ public partial class MainWindow : Window
             if (result.IsSuccess)
                 MessageBox.Show($"PUSH 성공, UpdatedAt {result.UpdatedAt}");
             else
-                MessageBox.Show("PUSH 실패\n" + string.Join("\n", result.Actions));
+                MessageBox.Show("PUSH 실패\n" + string.Join("\n", result.RequiredActions));
 
         }
         catch (ActionRequiredException actionRequiredException)
@@ -397,5 +403,79 @@ public partial class MainWindow : Window
     private void btnCancel_Click(object sender, RoutedEventArgs e)
     {
         cancellationTokenSource.Cancel();
+    }
+
+    private void btnOpenWeb_Click_1(object sender, RoutedEventArgs e)
+    {
+        OpenUrl($"https://fish.alphabeta.pw/Web/Buckets/List?id={txtBucketId.Text}&handler=RedirectToBucket");
+    }
+
+    private void OpenUrl(string url)
+    {
+        try
+        {
+            Process.Start(url);
+        }
+        catch
+        {
+            // hack because of this: https://github.com/dotnet/corefx/issues/10361
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                url = url.Replace("&", "^&");
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                Process.Start("xdg-open", url);
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                Process.Start("open", url);
+            }
+            else
+            {
+                throw;
+            }
+        }
+    }
+
+    private void btnCheckUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        checkUpdate();
+    }
+
+    private async void checkUpdate()
+    {
+        try
+        {
+            var version = await HttpUtil.HttpClient.GetFromJsonAsync<UpdateVersion>("https://alphabeta.pw/home/shares/fish/win-x64/version.json");
+            if (string.IsNullOrEmpty(version?.Version))
+                throw new FormatException("version?.Version was null or empty");
+
+            var currentVersion = configManager.Config.ClientVersion;
+            if (version.Version == currentVersion)
+            {
+                MessageBox.Show($"FISH 동기화 클라이언트\n버전: {currentVersion}\n최신 버전입니다.");
+            }
+            else
+            {
+                var dialogResult = MessageBox.Show($"새로운 업데이트가 있습니다.\n\n" +
+                    $"현재 버전: {currentVersion}\n" +
+                    $"최신 버전: {version.Version}\n\n" +
+                    $"최신 버전을 다운로드 할까요?",
+                    "업데이트",
+                    MessageBoxButton.YesNo);
+
+                if (dialogResult == MessageBoxResult.Yes)
+                {
+                    OpenUrl(version.Download ?? "https://fish.alphabeta.pw/Web/Home");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.ToString());
+            Environment.Exit(-1);
+        }
     }
 }

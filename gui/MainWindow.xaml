@@ -11,7 +11,7 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="60"/>
+            <RowDefinition Height="90"/>
             <RowDefinition Height="40"/>
             <RowDefinition/>
             <RowDefinition Height="100"/>
@@ -20,6 +20,7 @@
         <Grid x:Name="gridTop" Grid.Row="0">
             <Grid>
                 <Grid.RowDefinitions>
+                    <RowDefinition/>
                     <RowDefinition/>
                     <RowDefinition/>
                 </Grid.RowDefinitions>
@@ -78,6 +79,20 @@
                 <Button x:Name="btnFishLogin"
                         Grid.Row="1" Grid.Column="4"
                         Margin="5" Content="로그인" Click="btnFishLogin_Click"/>
+
+                <StackPanel Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Left" Grid.Column="1" Grid.ColumnSpan="4" Orientation="Horizontal">
+                    <Button x:Name="btnOpenWeb"
+                            Content="웹에서 열기"
+                            Margin="0,0,10,0"
+                            Padding="10,0"
+                            Click="btnOpenWeb_Click_1"/>
+
+                    <Button x:Name="btnCheckUpdate"
+                            Content="업데이트 확인"
+                            Margin="0,0,10,0"
+                            Padding="10,0"
+                            Click="btnCheckUpdate_Click"/>
+                </StackPanel>
             </Grid>
         </Grid>
 
