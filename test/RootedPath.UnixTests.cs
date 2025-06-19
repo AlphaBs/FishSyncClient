@@ -1,5 +1,5 @@
-using System.Runtime.InteropServices;
 using FishSyncClient;
+using System.Runtime.InteropServices;
 
 namespace FishSyncClientTest;
 

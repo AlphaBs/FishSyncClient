@@ -1,8 +1,8 @@
-using System.Collections.Concurrent;
-using System.Threading.Tasks.Dataflow;
 using FishSyncClient.FileComparers;
 using FishSyncClient.Files;
 using FishSyncClient.Progress;
+using System.Collections.Concurrent;
+using System.Threading.Tasks.Dataflow;
 
 namespace FishSyncClient.Syncer;
 
@@ -25,8 +25,8 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
     }
 
     public async Task<SyncFilePairCollectionCompareResult> CompareFilePairs(
-        IEnumerable<SyncFilePair> pairs, 
-        IFileComparer comparer, 
+        IEnumerable<SyncFilePair> pairs,
+        IFileComparer comparer,
         IProgress<FileProgressEvent>? fileProgress,
         IProgress<SyncFileByteProgress>? byteProgress,
         CancellationToken cancellationToken)
@@ -59,7 +59,7 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
     }
 
     public async Task SyncFilePairs(
-        IEnumerable<SyncFilePair> pairs, 
+        IEnumerable<SyncFilePair> pairs,
         IProgress<FileProgressEvent>? fileProgress,
         IProgress<SyncFileByteProgress>? byteProgress,
         CancellationToken cancellationToken)
@@ -98,7 +98,7 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
             var areEqual = await comparer.AreEqual(pair, cancellationToken);
             if (areEqual)
             {
-                var size = pair.Source.Metadata?.Size ?? 0; 
+                var size = pair.Source.Metadata?.Size ?? 0;
                 byteProgress?.Report(new SyncFileByteProgress(pair.Source, new ByteProgress(0, size)));
                 identicalFiles.Add(pair);
             }
@@ -126,9 +126,9 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
         );
 
         static async Task syncContent(
-            SyncFilePair pair, 
-            IFileComparer comparer, 
-            IProgress<SyncFileByteProgress>? byteProgress, 
+            SyncFilePair pair,
+            IFileComparer comparer,
+            IProgress<SyncFileByteProgress>? byteProgress,
             CancellationToken cancellationToken)
         {
             await pair.SyncContent(byteProgress, cancellationToken);
@@ -144,7 +144,7 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
         public int ProgressedFiles = 0;
 
         public async Task ProcessBlock(
-            IEnumerable<SyncFilePair> pairs, 
+            IEnumerable<SyncFilePair> pairs,
             ActionBlock<SyncFilePair> block,
             IProgress<FileProgressEvent>? fileProgress,
             IProgress<SyncFileByteProgress>? byteProgress,
