@@ -10,8 +10,8 @@ public class SyncPathComparer
         PathOptions pathOptions)
     {
         var comparer = pathOptions.CaseInsensitive ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
-        var sourceDict = source.ToDictionary(s => s.Path.SubPath, s => s, comparer);
-        var targetDict = target.ToDictionary(t => t.Path.SubPath, t => t, comparer);
+        var sourceDict = createPathDictionary(source, "source", comparer);
+        var targetDict = createPathDictionary(target, "target", comparer);
 
         var intersects = new List<SyncFilePair>();
         foreach (var sourceKv in sourceDict)
@@ -38,6 +38,24 @@ public class SyncPathComparer
             .ToArray();
 
         return new SyncFilePathCompareResult(added, duplicated, deleted);
+    }
+
+    private static Dictionary<string, SyncFile> createPathDictionary(
+        IEnumerable<SyncFile> files,
+        string collectionName,
+        IEqualityComparer<string> comparer)
+    {
+        var dictionary = new Dictionary<string, SyncFile>(comparer);
+        foreach (var file in files)
+        {
+            var subPath = file.Path.SubPath;
+            if (dictionary.ContainsKey(subPath))
+                throw new ArgumentException($"Duplicate {collectionName} path: {subPath}");
+
+            dictionary.Add(subPath, file);
+        }
+
+        return dictionary;
     }
 }
 

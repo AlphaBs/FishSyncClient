@@ -1,18 +1,10 @@
 using FishSyncClient;
-using System.Runtime.InteropServices;
-
 namespace FishSyncClientTest;
 
 [Trait("Platform", "Unix")]
 public class RootedPathUnixTests
 {
-    public RootedPathUnixTests()
-    {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            throw new PlatformNotSupportedException("NOT LINUX");
-    }
-
-    [Theory]
+    [UnixOnlyTheory]
     [InlineData("/", "/", "/", "", "/")]
     [InlineData("/a", "/", "/a/", "", "/a/")]
     [InlineData("/", "subpath", "/", "subpath", "/subpath")]
@@ -31,7 +23,7 @@ public class RootedPathUnixTests
         Assert.Equal(expectedFullPath, rootedPath.GetFullPath());
     }
 
-    [Theory]
+    [UnixOnlyTheory]
     [InlineData("/", "/root/subpath", "root/subpath")]
     [InlineData("/root", "/root/subpath", "subpath")]
     [InlineData("/root/", "/root/subpath", "subpath")]
@@ -43,7 +35,36 @@ public class RootedPathUnixTests
         Assert.Equal(expectedSubPath, rootedPath.SubPath);
     }
 
-    [Theory]
+    [UnixOnlyFact]
+    public void find_subpath_with_case_insensitive_root()
+    {
+        var rootedPath = RootedPath.FromFullPath(
+            "/Root",
+            "/root/subpath",
+            new PathOptions
+            {
+                CaseInsensitive = true
+            });
+
+        Assert.Equal("subpath", rootedPath.SubPath);
+    }
+
+    [UnixOnlyFact]
+    public void cannot_find_subpath_with_different_case_when_case_sensitive()
+    {
+        Assert.Throws<ArgumentException>(() =>
+        {
+            RootedPath.FromFullPath(
+                "/Root",
+                "/root/subpath",
+                new PathOptions
+                {
+                    CaseInsensitive = false
+                });
+        });
+    }
+
+    [UnixOnlyTheory]
     [InlineData("/", "")]
     [InlineData("subpath", "subpath")]
     [InlineData("/subpath", "subpath")]
@@ -56,7 +77,7 @@ public class RootedPathUnixTests
         Assert.Equal(expectedSubPath, rootedPath.SubPath);
     }
 
-    [Theory]
+    [UnixOnlyTheory]
     [InlineData("dir/")]
     [InlineData(".")]
     [InlineData("././././dir")]
@@ -69,7 +90,7 @@ public class RootedPathUnixTests
         });
     }
 
-    [Theory]
+    [UnixOnlyTheory]
     [InlineData(".")]
     [InlineData("dir")]
     [InlineData("dir/")]
@@ -85,7 +106,7 @@ public class RootedPathUnixTests
         });
     }
 
-    [Theory]
+    [UnixOnlyTheory]
     [InlineData("/p1/p2", "/p1")]
     public void find_subpath_from_fullpath_and_child_root(string root, string fullPath)
     {
@@ -95,7 +116,7 @@ public class RootedPathUnixTests
         });
     }
 
-    [Theory]
+    [UnixOnlyTheory]
     [InlineData("/pppp", "/p1")]
     [InlineData("/p1/p2/", "/p1/p2")] // /p1/p2 is a file, its root can be '/' or '/p1/'
     public void find_subpath_from_fullpath_and_unrelated(string root, string fullPath)
@@ -106,7 +127,7 @@ public class RootedPathUnixTests
         });
     }
 
-    [Theory]
+    [UnixOnlyTheory]
     [InlineData(".", "/root1/")]
     [InlineData("/.", "/root1/")]
     [InlineData("./", "/root1/")]
@@ -117,7 +138,7 @@ public class RootedPathUnixTests
         Assert.Equal(expected, actual.GetFullPath());
     }
 
-    [Fact]
+    [UnixOnlyFact]
     public void relative_double_dots_in_subpath_is_not_allowed()
     {
         Assert.Throws<ArgumentException>(() =>
@@ -126,7 +147,7 @@ public class RootedPathUnixTests
         });
     }
 
-    [Theory]
+    [UnixOnlyTheory]
     [InlineData("a/.hidden", "/root1/a/.hidden")]
     [InlineData("a/hi.txt", "/root1/a/hi.txt")]
     [InlineData("a/file.", "/root1/a/file.")]

@@ -184,4 +184,66 @@ public class SyncPathComparerTests : SyncerTestBase
         AssertEqualPathCollection(duplicated, result.DuplicatedFiles.Select(pair => pair.Source));
         AssertEqualPathCollection(deleted, result.DeletedFiles);
     }
+
+    [Fact]
+    public void throw_clear_exception_when_case_insensitive_source_paths_conflict()
+    {
+        // Given
+        var sut = new SyncPathComparer();
+        var pathOptions = new PathOptions
+        {
+            CaseInsensitive = true
+        };
+
+        // When
+        var exception = Assert.Throws<ArgumentException>(() =>
+            sut.ComparePaths(
+                source: CreateSourcePaths("file.txt", "FILE.txt"),
+                target: CreateTargetPaths(),
+                pathOptions));
+
+        // Then
+        Assert.Contains("Duplicate source path", exception.Message);
+    }
+
+    [Fact]
+    public void throw_clear_exception_when_case_insensitive_target_paths_conflict()
+    {
+        // Given
+        var sut = new SyncPathComparer();
+        var pathOptions = new PathOptions
+        {
+            CaseInsensitive = true
+        };
+
+        // When
+        var exception = Assert.Throws<ArgumentException>(() =>
+            sut.ComparePaths(
+                source: CreateSourcePaths(),
+                target: CreateTargetPaths("file.txt", "FILE.txt"),
+                pathOptions));
+
+        // Then
+        Assert.Contains("Duplicate target path", exception.Message);
+    }
+
+    [Fact]
+    public void allow_paths_that_differ_only_by_case_when_case_sensitive()
+    {
+        // Given
+        var sut = new SyncPathComparer();
+        var pathOptions = new PathOptions
+        {
+            CaseInsensitive = false
+        };
+
+        // When
+        var result = sut.ComparePaths(
+            source: CreateSourcePaths("file.txt", "FILE.txt"),
+            target: CreateTargetPaths(),
+            pathOptions);
+
+        // Then
+        AssertEqualPathCollection(CreateSourcePaths("file.txt", "FILE.txt"), result.AddedFiles);
+    }
 }

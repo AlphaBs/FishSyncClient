@@ -1,18 +1,10 @@
 using FishSyncClient;
-using System.Runtime.InteropServices;
-
 namespace FishSyncClientTest;
 
 [Trait("Platform", "Windows")]
 public class RootedPathWindowsTests
 {
-    public RootedPathWindowsTests()
-    {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            throw new PlatformNotSupportedException("NOT WINDOWS");
-    }
-
-    [Theory]
+    [WindowsOnlyTheory]
     [InlineData("C:/", "/", "C:/", "", "C:/")]
     [InlineData("C:/a", "/", "C:/a/", "", "C:/a/")]
     [InlineData("C:/", "subpath", "C:/", "subpath", "C:/subpath")]
@@ -31,7 +23,7 @@ public class RootedPathWindowsTests
         Assert.Equal(expectedFullPath, rootedPath.GetFullPath());
     }
 
-    [Theory]
+    [WindowsOnlyTheory]
     [InlineData("C:/", "C:/root/subpath", "root/subpath")]
     [InlineData("C:/root", "C:/root/subpath", "subpath")]
     [InlineData("C:/root/", "C:/root/subpath", "subpath")]
@@ -43,7 +35,36 @@ public class RootedPathWindowsTests
         Assert.Equal(expectedSubPath, rootedPath.SubPath);
     }
 
-    [Theory]
+    [WindowsOnlyFact]
+    public void find_subpath_with_case_insensitive_root()
+    {
+        var rootedPath = RootedPath.FromFullPath(
+            "C:/Root",
+            "C:/root/subpath",
+            new PathOptions
+            {
+                CaseInsensitive = true
+            });
+
+        Assert.Equal("subpath", rootedPath.SubPath);
+    }
+
+    [WindowsOnlyFact]
+    public void cannot_find_subpath_with_different_case_when_case_sensitive()
+    {
+        Assert.Throws<ArgumentException>(() =>
+        {
+            RootedPath.FromFullPath(
+                "C:/Root",
+                "C:/root/subpath",
+                new PathOptions
+                {
+                    CaseInsensitive = false
+                });
+        });
+    }
+
+    [WindowsOnlyTheory]
     [InlineData("/", "")]
     [InlineData("subpath", "subpath")]
     [InlineData("/subpath", "subpath")]
@@ -56,7 +77,7 @@ public class RootedPathWindowsTests
         Assert.Equal(expectedSubPath, rootedPath.SubPath);
     }
 
-    [Theory]
+    [WindowsOnlyTheory]
     [InlineData("dir/")]
     [InlineData(".")]
     [InlineData("././././dir")]
@@ -69,14 +90,14 @@ public class RootedPathWindowsTests
         });
     }
 
-    [Theory]
+    [WindowsOnlyTheory]
     [InlineData(".")]
     [InlineData("dir")]
     [InlineData("dir/")]
     [InlineData("././././")]
     [InlineData("././././dir")]
     [InlineData(".//////.")]
-    [InlineData("/dir")] // Windows ������ / ���� �����ϴ� ��δ� �ùٸ� ��ΰ� �ƴ�
+    [InlineData("/dir")]
     public void prevent_to_create_with_relative_root_path(string root)
     {
         Assert.Throws<ArgumentException>(() =>
@@ -85,7 +106,7 @@ public class RootedPathWindowsTests
         });
     }
 
-    [Theory]
+    [WindowsOnlyTheory]
     [InlineData("C:/p1/p2", "C:/p1")]
     public void find_subpath_from_fullpath_and_child_root(string root, string fullPath)
     {
@@ -95,7 +116,7 @@ public class RootedPathWindowsTests
         });
     }
 
-    [Theory]
+    [WindowsOnlyTheory]
     [InlineData("C:/pppp", "C:/p1")]
     [InlineData("C:/p1/p2/", "C:/p1/p2")] // /p1/p2 is a file, its root can be '/' or '/p1/'
     public void find_subpath_from_fullpath_and_unrelated(string root, string fullPath)
@@ -106,7 +127,7 @@ public class RootedPathWindowsTests
         });
     }
 
-    [Theory]
+    [WindowsOnlyTheory]
     [InlineData(".", "C:/root1/")]
     [InlineData("/.", "C:/root1/")]
     [InlineData("./", "C:/root1/")]
@@ -117,7 +138,7 @@ public class RootedPathWindowsTests
         Assert.Equal(expected, actual.GetFullPath());
     }
 
-    [Fact]
+    [WindowsOnlyFact]
     public void relative_double_dots_in_subpath_is_not_allowed()
     {
         Assert.Throws<ArgumentException>(() =>
@@ -126,7 +147,7 @@ public class RootedPathWindowsTests
         });
     }
 
-    [Theory]
+    [WindowsOnlyTheory]
     [InlineData("a/.hidden", "C:/root1/a/.hidden")]
     [InlineData("a/hi.txt", "C:/root1/a/hi.txt")]
     [InlineData("a/file.", "C:/root1/a/file.")]

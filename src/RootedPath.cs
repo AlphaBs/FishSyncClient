@@ -102,9 +102,9 @@ public readonly struct RootedPath
         return ToString().GetHashCode();
     }
 
-    public override bool Equals(object obj)
+    public override bool Equals(object? obj)
     {
-        return obj.ToString() == this.ToString();
+        return obj is RootedPath path && path.ToString() == this.ToString();
     }
 
     public static bool operator ==(RootedPath a, RootedPath b)
