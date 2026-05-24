@@ -1,7 +1,8 @@
-﻿using FishBucket.ApiClient;
+using Avalonia.Controls;
+using Avalonia.Interactivity;
+using FishBucket.ApiClient;
 using gui;
 using System.Text.Json.Serialization;
-using System.Windows;
 
 namespace FishSyncClient.Gui;
 
@@ -10,14 +11,21 @@ public partial class LoginWindow : Window
     private readonly ConfigManager _configManager = ConfigManager.Instance;
     private readonly FishApiClient _apiClient;
 
+    // Parameterless constructor for the Avalonia designer.
+    public LoginWindow() : this(new FishApiClient("", HttpUtil.HttpClient))
+    {
+    }
+
     public LoginWindow(FishApiClient apiClient)
     {
         _apiClient = apiClient;
         InitializeComponent();
     }
 
-    private void Window_Loaded(object sender, RoutedEventArgs e)
+    protected override void OnLoaded(RoutedEventArgs e)
     {
+        base.OnLoaded(e);
+
         var token = _configManager.Config.Token;
         if (string.IsNullOrEmpty(token))
             return;
@@ -25,20 +33,20 @@ public partial class LoginWindow : Window
         updateTokenInfo(token);
     }
 
-    private async void Button_Click(object sender, RoutedEventArgs e)
+    private async void Button_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
             this.IsEnabled = false;
 
-            var token = await _apiClient.Login(tbUsername.Text, tbPassword.Password);
+            var token = await _apiClient.Login(tbUsername.Text ?? "", tbPassword.Text ?? "");
             _configManager.Config.Token = token;
 
-            MessageBox.Show("로그인 성공");
+            await MessageBox.Show("로그인 성공");
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.ToString());
+            await MessageBox.Show(ex.ToString());
         }
         finally
         {
@@ -47,20 +55,20 @@ public partial class LoginWindow : Window
         }
     }
 
-    private void Button_Click_1(object sender, RoutedEventArgs e)
+    private async void Button_Click_1(object? sender, RoutedEventArgs e)
     {
         _apiClient.ApiKey = "";
         _configManager.Config.Token = "";
-        MessageBox.Show("로그아웃 완료");
+        await MessageBox.Show("로그아웃 완료");
 
         updateTokenInfo(_configManager.Config.Token ?? "");
     }
 
-    private void updateTokenInfo(string token)
+    private async void updateTokenInfo(string token)
     {
         try
         {
-            tbTokenExpired.Visibility = Visibility.Hidden;
+            tbTokenExpired.IsVisible = false;
             tbToken.Text = token;
 
             var payload = JwtDecoder.DecodePayload<FishTokenPayload>(token);
@@ -74,12 +82,12 @@ public partial class LoginWindow : Window
             tbExp.Text = exp.ToString();
             if (exp < DateTimeOffset.Now)
             {
-                tbTokenExpired.Visibility = Visibility.Visible;
+                tbTokenExpired.IsVisible = true;
             }
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.ToString());
+            await MessageBox.Show(ex.ToString());
 
             tbRoles.Text = "";
             tbUsername.Text = "";

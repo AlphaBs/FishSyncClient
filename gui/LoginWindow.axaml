@@ -1,0 +1,32 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:FishSyncClient.Gui"
+        mc:Ignorable="d"
+        x:Class="FishSyncClient.Gui.LoginWindow"
+        Icon="/icon.ico"
+        Title="로그인"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Width="400" Height="430">
+
+    <StackPanel Margin="10" Spacing="4">
+        <TextBlock Text="Username" />
+        <TextBox x:Name="tbUsername" />
+        <TextBlock Text="Password" />
+        <TextBox x:Name="tbPassword" PasswordChar="*" />
+        <TextBlock Text="Token" />
+        <TextBox x:Name="tbToken" IsReadOnly="True" />
+        <TextBlock Text="roles" />
+        <TextBox x:Name="tbRoles" IsReadOnly="True" />
+        <TextBlock Text="exp" />
+        <TextBox x:Name="tbExp" IsReadOnly="True" />
+        <TextBlock x:Name="tbTokenExpired" Text="토큰이 만료되었습니다! 다시 로그인을 해주세요."
+                   Foreground="Red" IsVisible="False" />
+        <Button Content="로그인" Height="32" Margin="0,12" HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center" Click="Button_Click" />
+        <Button Content="로그아웃" Height="32" Margin="0,4" HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center" Click="Button_Click_1" />
+    </StackPanel>
+</Window>

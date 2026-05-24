@@ -4,7 +4,7 @@ using FishSyncClient.Progress;
 
 namespace FishSyncClient.Gui;
 
-internal partial class SyncFileItem : ObservableObject
+public partial class SyncFileItem : ObservableObject
 {
     public SyncFileItem(SyncFile file)
     {

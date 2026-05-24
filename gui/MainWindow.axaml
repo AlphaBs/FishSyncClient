@@ -1,0 +1,143 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:FishSyncClient.Gui"
+        mc:Ignorable="d"
+        x:Class="FishSyncClient.Gui.MainWindow"
+        Icon="/icon.ico"
+        Loaded="Window_Loaded"
+        Title="FISH 동기화 클라이언트" Height="800" Width="1200">
+
+    <Grid RowDefinitions="Auto,Auto,3*,Auto,*" Margin="4">
+
+        <Border Grid.Row="0"
+                BorderBrush="Gray" BorderThickness="1" CornerRadius="4"
+                Margin="4" Padding="6">
+            <Grid x:Name="gridTop"
+                  RowDefinitions="Auto,Auto,Auto"
+                  ColumnDefinitions="60,*,50,160,90">
+
+                <TextBlock Grid.Column="0" Grid.Row="0"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Right"
+                           Margin="5"
+                           Text="로컬 :" />
+
+                <TextBox x:Name="txtRoot"
+                         Grid.Column="1"
+                         Grid.ColumnSpan="3"
+                         VerticalContentAlignment="Center"
+                         Margin="5"
+                         Text="" />
+
+                <Button x:Name="btnOpen"
+                        Grid.Row="0" Grid.Column="4"
+                        Margin="5" MinHeight="32"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        VerticalAlignment="Stretch" VerticalContentAlignment="Center"
+                        Content="열기" Click="btnOpen_Click" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Right"
+                           Margin="5"
+                           Text="서버 :" />
+
+                <TextBox x:Name="txtHost"
+                         Grid.Row="1" Grid.Column="1"
+                         VerticalContentAlignment="Center"
+                         Margin="5"
+                         Text="" />
+
+                <TextBlock Grid.Row="1" Grid.Column="2"
+                           Text="버킷 :"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Right"
+                           Margin="5" />
+
+                <TextBox x:Name="txtBucketId"
+                         Grid.Row="1" Grid.Column="3"
+                         VerticalContentAlignment="Center"
+                         Margin="5"
+                         Text="" />
+
+                <Button x:Name="btnFishLogin"
+                        Grid.Row="1" Grid.Column="4"
+                        Margin="5" MinHeight="32"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        VerticalAlignment="Stretch" VerticalContentAlignment="Center"
+                        Content="로그인" Click="btnFishLogin_Click" />
+
+                <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="4"
+                            VerticalAlignment="Center" HorizontalAlignment="Left"
+                            Margin="5,8"
+                            Orientation="Horizontal" Spacing="10">
+                    <Button x:Name="btnOpenWeb"
+                            Content="웹에서 열기"
+                            MinHeight="32" Padding="14,4"
+                            Click="btnOpenWeb_Click" />
+
+                    <Button x:Name="btnCheckUpdate"
+                            Content="업데이트 확인"
+                            MinHeight="32" Padding="14,4"
+                            Click="btnCheckUpdate_Click" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1"
+                BorderBrush="Gray" BorderThickness="1" CornerRadius="4"
+                Margin="4" Padding="6">
+            <Grid ColumnDefinitions="*,*,*">
+                <Button x:Name="btnPull" Grid.Column="0"
+                        Margin="2" MinHeight="56"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        VerticalAlignment="Stretch" VerticalContentAlignment="Center"
+                        Content=" PULL 동기화&#10;로컬 &lt;= 서버" Click="btnPull_Click" />
+                <Button x:Name="btnCompare" Grid.Column="1"
+                        Margin="2" MinHeight="56"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        VerticalAlignment="Stretch" VerticalContentAlignment="Center"
+                        Content="비교" Click="btnCompare_Click" />
+                <Button x:Name="btnPush" Grid.Column="2"
+                        Margin="2" MinHeight="56"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        VerticalAlignment="Stretch" VerticalContentAlignment="Center"
+                        Content=" PUSH 동기화&#10;로컬 =&gt; 서버" Click="btnPush_Click" />
+                <Button x:Name="btnCancel" Grid.Column="0" Grid.ColumnSpan="3"
+                        Margin="2" MinHeight="56"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        VerticalAlignment="Stretch" VerticalContentAlignment="Center"
+                        Content="취소" IsVisible="False" Click="btnCancel_Click" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2"
+                BorderBrush="Gray" BorderThickness="1" CornerRadius="4"
+                Margin="4" Padding="6">
+            <Grid ColumnDefinitions="*,8,*">
+                <local:SyncFileCollectionControl x:Name="sourceSyncFiles" Grid.Column="0" />
+                <local:SyncFileCollectionControl x:Name="targetSyncFiles" Grid.Column="2" />
+            </Grid>
+        </Border>
+
+        <GridSplitter Grid.Row="3" Height="5"
+                      ResizeDirection="Rows"
+                      HorizontalAlignment="Stretch" />
+
+        <Border Grid.Row="4"
+                BorderBrush="Gray" BorderThickness="1" CornerRadius="4"
+                Margin="4" Padding="6">
+            <Grid>
+                <ScrollViewer x:Name="logScroll" VerticalScrollBarVisibility="Visible">
+                    <SelectableTextBlock x:Name="txtLogs" TextWrapping="Wrap" Margin="4" />
+                </ScrollViewer>
+                <CheckBox x:Name="cbScrollLog" IsChecked="True" Content="자동 스크롤"
+                          HorizontalAlignment="Right" VerticalAlignment="Top"
+                          Margin="0,4,30,0"
+                          IsCheckedChanged="cbScrollLog_Checked" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

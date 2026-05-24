@@ -1,12 +1,12 @@
-﻿using NeoSmart.PrettySize;
+using Avalonia.Data.Converters;
+using NeoSmart.PrettySize;
 using System.Globalization;
-using System.Windows.Data;
 
 namespace FishSyncClient.Gui;
 
 public class HumanSizeConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is long longSize)
         {
@@ -19,7 +19,7 @@ public class HumanSizeConverter : IValueConverter
         }
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         return value;
     }

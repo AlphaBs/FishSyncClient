@@ -1,4 +1,8 @@
-﻿using FishBucket;
+using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
+using Avalonia.Threading;
+using FishBucket;
 using FishBucket.ApiClient;
 using FishBucket.SyncClient;
 using FishSyncClient.FileComparers;
@@ -6,13 +10,12 @@ using FishSyncClient.Files;
 using FishSyncClient.Progress;
 using FishSyncClient.Syncer;
 using gui;
-using Microsoft.Win32;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http.Json;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
-using System.Windows;
 
 namespace FishSyncClient.Gui;
 
@@ -26,15 +29,30 @@ public partial class MainWindow : Window
     }
 
     bool needSync = true;
+    bool _configSaved = false;
     ConfigManager configManager = ConfigManager.Instance;
     CancellationTokenSource cancellationTokenSource = new();
 
-    private async void Window_Loaded(object sender, RoutedEventArgs e)
+    // Log lines arrive at high frequency (one per file event) and from multiple threads.
+    // Buffer them and flush to the UI on a timer instead of mutating the text box per line,
+    // which would re-layout the whole (ever-growing) string on every append.
+    private readonly object _logLock = new();
+    private readonly StringBuilder _logBuffer = new();
+    private bool _logDirty;
+    private DispatcherTimer? _logTimer;
+    private const int MaxLogLength = 100_000;
+
+    private async void Window_Loaded(object? sender, RoutedEventArgs e)
     {
-        Logger.Instance.Append += (s, e) => appendLog(e);
+        Logger.Instance.Append += (s, ev) => appendLog(ev);
+
+        _logTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        _logTimer.Tick += (_, _) => flushLogs();
+        _logTimer.Start();
+
         await ConfigManager.Instance.LoadConfig();
 
-        checkUpdate();
+        await checkUpdate();
 
         txtHost.Text = configManager.Config.Host;
         txtRoot.Text = configManager.Config.Root;
@@ -44,52 +62,86 @@ public partial class MainWindow : Window
         targetSyncFiles.CollectionName = "서버";
     }
 
-    private async void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+    protected override async void OnClosing(WindowClosingEventArgs e)
     {
+        base.OnClosing(e);
+
+        if (_configSaved)
+            return;
+
+        // Defer the close until the configuration has been persisted.
+        e.Cancel = true;
+
         configManager.Config.Host = txtHost.Text;
         configManager.Config.Root = txtRoot.Text;
         configManager.Config.BucketId = txtBucketId.Text;
 
         await configManager.SaveConfig();
+
+        _configSaved = true;
+        Close();
     }
 
     private FishApiClient createApiClient()
     {
-        var apiClient = new FishApiClient(txtHost.Text, HttpUtil.HttpClient);
+        var apiClient = new FishApiClient(txtHost.Text ?? "", HttpUtil.HttpClient);
         apiClient.ApiKey = configManager.Config.Token;
         return apiClient;
     }
 
     private void appendLog(string message)
     {
-        Dispatcher.Invoke(() =>
+        lock (_logLock)
         {
-            txtLogs.AppendText(message);
-            txtLogs.AppendText("\n");
+            _logBuffer.Append(message).Append('\n');
+            _logDirty = true;
+        }
+    }
 
-            if (cbScrollLog.IsChecked ?? false)
-                txtLogs.ScrollToEnd();
+    private void flushLogs()
+    {
+        string pending;
+        lock (_logLock)
+        {
+            if (!_logDirty)
+                return;
+
+            pending = _logBuffer.ToString();
+            _logBuffer.Clear();
+            _logDirty = false;
+        }
+
+        var text = (txtLogs.Text ?? "") + pending;
+        if (text.Length > MaxLogLength)
+            text = text.Substring(text.Length - MaxLogLength);
+
+        txtLogs.Text = text;
+
+        if (cbScrollLog.IsChecked ?? false)
+            logScroll.ScrollToEnd();
+    }
+
+    private void cbScrollLog_Checked(object? sender, RoutedEventArgs e)
+    {
+        logScroll.ScrollToEnd();
+    }
+
+    private async void btnOpen_Click(object? sender, RoutedEventArgs e)
+    {
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            AllowMultiple = false
         });
-    }
 
-    private void cbScrollLog_Checked(object sender, RoutedEventArgs e)
-    {
-        txtLogs.ScrollToEnd();
-    }
-
-    private void btnOpen_Click(object sender, RoutedEventArgs e)
-    {
-        var folderDialog = new OpenFolderDialog();
-        folderDialog.Multiselect = false;
-        folderDialog.ShowDialog();
-        txtRoot.Text = folderDialog.FolderName;
+        if (folders.Count > 0)
+            txtRoot.Text = folders[0].Path.LocalPath;
     }
 
     private async Task loadFiles(CancellationToken cancellationToken)
     {
-        var root = txtRoot.Text;
-        var host = txtHost.Text;
-        var id = txtBucketId.Text;
+        var root = txtRoot.Text ?? "";
+        var host = txtHost.Text ?? "";
+        var id = txtBucketId.Text ?? "";
 
         var sourceTask = loadSource(root, cancellationToken);
         var targetTask = loadTarget(host, id, cancellationToken);
@@ -160,7 +212,7 @@ public partial class MainWindow : Window
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            Dispatcher.Invoke(() =>
+            Dispatcher.UIThread.Invoke(() =>
             {
                 control.Add(file);
             });
@@ -169,7 +221,7 @@ public partial class MainWindow : Window
         Logger.Instance.LogInformation($"[로드] {name} 불러오기 완료. 총 갯수 {control.TotalFiles}, 용량 {control.TotalBytes:##,#} bytes");
     }
 
-    private async void btnCompare_Click(object sender, RoutedEventArgs e)
+    private async void btnCompare_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
@@ -215,7 +267,7 @@ public partial class MainWindow : Window
 
             needSync = result.UpdatedFilePairs.Any() || result.AddedFiles.Any() || result.DeletedFiles.Any();
 
-            MessageBox.Show($"비교 결과: \n" +
+            await MessageBox.Show($"비교 결과: \n" +
                 $"동일한 파일 {result.IdenticalFilePairs.Count}개\n" +
                 $"바뀐 파일 {result.UpdatedFilePairs.Count}개\n" +
                 $"로컬 파일 {result.AddedFiles.Count}개\n" +
@@ -224,7 +276,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             Logger.Instance.LogError("[비교] 예외 발생 " + ex.ToString());
-            MessageBox.Show(ex.ToString());
+            await MessageBox.Show(ex.ToString());
         }
         finally
         {
@@ -232,7 +284,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void btnPull_Click(object sender, RoutedEventArgs e)
+    private async void btnPull_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
@@ -242,21 +294,23 @@ public partial class MainWindow : Window
             var cancellationToken = cancellationTokenSource.Token;
             Logger.Instance.LogInformation($"[PULL] {targetSyncFiles.Count} items");
 
-            var fileProgress = new Progress<FileProgressEvent>(e =>
+            var fileProgress = new Progress<FileProgressEvent>(ev =>
             {
-                Logger.Instance.LogInformation($"[PULL] {e.EventType}: {e.CurrentFileName}");
-                targetSyncFiles.SetStatus(e.CurrentFileName, e.EventType);
+                Logger.Instance.LogInformation($"[PULL] {ev.EventType}: {ev.CurrentFileName}");
+                targetSyncFiles.SetStatus(ev.CurrentFileName, ev.EventType);
             });
-            var byteProgress = new Progress<SyncFileByteProgress>(e =>
+            // High-frequency byte progress is accumulated off the UI thread and flushed in
+            // batches by the control's timer, so it must NOT go through Progress<T>.
+            var byteProgress = new SynchronousProgress<SyncFileByteProgress>(ev =>
             {
-                targetSyncFiles.AddProgress(e.SyncFile, e.Progress);
+                targetSyncFiles.AddProgress(ev.SyncFile, ev.Progress);
             });
 
             var sourceFiles = sourceSyncFiles.GetFiles().ToArray();
             var targetFiles = targetSyncFiles.GetFiles().ToArray();
 
             var syncer = new LocalSyncer(
-                txtRoot.Text,
+                txtRoot.Text ?? "",
                 new PathOptions(),
                 new ParallelSyncFilePairSyncer());
             var syncResult = await syncer.CompareAndSyncFiles(
@@ -275,12 +329,12 @@ public partial class MainWindow : Window
                 $"추가 {syncResult.AddedFiles.Count} 개, " +
                 $"삭제 {syncResult.DeletedFiles.Count} 개, " +
                 $"동일한 파일 {syncResult.IdenticalFilePairs.Count} 개");
-            MessageBox.Show($"PULL 성공");
+            await MessageBox.Show($"PULL 성공");
         }
         catch (Exception ex)
         {
             Logger.Instance.LogError($"[PULL] 예외 발생: {ex}");
-            MessageBox.Show(ex.ToString());
+            await MessageBox.Show(ex.ToString());
         }
         finally
         {
@@ -289,7 +343,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void btnPush_Click(object sender, RoutedEventArgs e)
+    private async void btnPush_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
@@ -297,11 +351,11 @@ public partial class MainWindow : Window
 
             if (!needSync)
             {
-                var mbResult = MessageBox.Show(
+                var mbResult = await MessageBox.Show(
                     "경고: 모든 파일이 서버와 동일하여 동기화가 필요 없습니다.\n\n" +
                     "동기화 횟수가 차감됩니다. 그래도 동기화를 시도할까요?",
                     "경고",
-                    MessageBoxButton.YesNo);
+                    MessageBoxButtons.YesNo);
 
                 if (mbResult == MessageBoxResult.No)
                     return;
@@ -317,13 +371,13 @@ public partial class MainWindow : Window
             if (warningFilePath != null)
             {
                 var warningPattern = patterns.First(pattern => pattern.IsMatch(warningFilePath));
-                var mbResult = MessageBox.Show(
+                var mbResult = await MessageBox.Show(
                     "경고: 아래 파일은 동기화가 금지되어 있습니다.\n\n" +
                     $"파일: {warningFilePath}\n" +
                     $"패턴: {warningPattern}\n\n" +
                     "동기화를 시도할 경우 실패할 수 있습니다. 그래도 동기화를 시도할까요?",
                     "경고",
-                    MessageBoxButton.YesNo);
+                    MessageBoxButtons.YesNo);
 
                 if (mbResult == MessageBoxResult.No)
                     return;
@@ -333,26 +387,27 @@ public partial class MainWindow : Window
             var cancellationToken = cancellationTokenSource.Token;
             Logger.Instance.LogInformation($"[PUSH] {sourceSyncFiles.Count} items");
 
-            var actionProgress = new Progress<SyncActionProgress>(e =>
+            var actionProgress = new Progress<SyncActionProgress>(ev =>
             {
-                Logger.Instance.LogInformation($"[PUSH] BucketSyncAction {e.EventType}: {e.Action.Action.Type}, {e.Action.Path}");
-                sourceSyncFiles.SetStatus(e.Action.Path, e.EventType);
+                Logger.Instance.LogInformation($"[PUSH] BucketSyncAction {ev.EventType}: {ev.Action.Action.Type}, {ev.Action.Path}");
+                sourceSyncFiles.SetStatus(ev.Action.Path, ev.EventType);
             });
-            var byteProgress = new Progress<SyncActionByteProgress>(e =>
+            // See PULL: byte progress is batched off the UI thread, not marshalled per report.
+            var byteProgress = new SynchronousProgress<SyncActionByteProgress>(ev =>
             {
-                sourceSyncFiles.AddProgress(e.Path, e.Progress);
+                sourceSyncFiles.AddProgress(ev.Path, ev.Progress);
             });
 
             var handler = new SimpleBucketSyncActionCollectionHandler(6, actionProgress, byteProgress);
             handler.Add(new HttpBucketSyncActionHandler(HttpUtil.HttpClient));
 
             var apiClient = createApiClient();
-            var result = await apiClient.Sync(txtBucketId.Text, sourceSyncFiles, handler, cancellationToken);
+            var result = await apiClient.Sync(txtBucketId.Text ?? "", sourceSyncFiles, handler, cancellationToken);
 
             if (result.IsSuccess)
-                MessageBox.Show($"PUSH 성공, UpdatedAt {result.UpdatedAt}");
+                await MessageBox.Show($"PUSH 성공, UpdatedAt {result.UpdatedAt}");
             else
-                MessageBox.Show("PUSH 실패\n" + string.Join("\n", result.RequiredActions));
+                await MessageBox.Show("PUSH 실패\n" + string.Join("\n", result.RequiredActions));
 
         }
         catch (ActionRequiredException actionRequiredException)
@@ -362,12 +417,12 @@ public partial class MainWindow : Window
                 Logger.Instance.LogError($"[PUSH] 처리할 수 없는 SyncAction: {action.Path}, {action.Action.Type}, {JsonSerializer.Serialize(action.Action.Parameters)}");
             }
             var errorMessage = string.Join('\n', actionRequiredException.Actions.Select(action => $"{action.Path}: {action.Action.Type}"));
-            MessageBox.Show("처리할 수 없는 작업이 있습니다: \n" + errorMessage);
+            await MessageBox.Show("처리할 수 없는 작업이 있습니다: \n" + errorMessage);
         }
         catch (Exception ex)
         {
             Logger.Instance.LogError("[PUSH] 예외 발생 " + ex.ToString());
-            MessageBox.Show(ex.ToString());
+            await MessageBox.Show(ex.ToString());
         }
         finally
         {
@@ -386,26 +441,22 @@ public partial class MainWindow : Window
         btnPull.IsEnabled = value;
         btnPush.IsEnabled = value;
 
-        if (value)
-            btnCancel.Visibility = Visibility.Collapsed;
-        else
-            btnCancel.Visibility = Visibility.Visible;
+        btnCancel.IsVisible = !value;
     }
 
-    private void btnFishLogin_Click(object sender, RoutedEventArgs e)
+    private async void btnFishLogin_Click(object? sender, RoutedEventArgs e)
     {
         var apiClient = createApiClient();
         var loginWindow = new LoginWindow(apiClient);
-        loginWindow.Owner = this;
-        loginWindow.ShowDialog();
+        await loginWindow.ShowDialog(this);
     }
 
-    private void btnCancel_Click(object sender, RoutedEventArgs e)
+    private void btnCancel_Click(object? sender, RoutedEventArgs e)
     {
         cancellationTokenSource.Cancel();
     }
 
-    private void btnOpenWeb_Click_1(object sender, RoutedEventArgs e)
+    private void btnOpenWeb_Click(object? sender, RoutedEventArgs e)
     {
         OpenUrl($"https://fish.alphabeta.pw/Web/Buckets/List?id={txtBucketId.Text}&handler=RedirectToBucket");
     }
@@ -439,12 +490,12 @@ public partial class MainWindow : Window
         }
     }
 
-    private void btnCheckUpdate_Click(object sender, RoutedEventArgs e)
+    private async void btnCheckUpdate_Click(object? sender, RoutedEventArgs e)
     {
-        checkUpdate();
+        await checkUpdate();
     }
 
-    private async void checkUpdate()
+    private async Task checkUpdate()
     {
         try
         {
@@ -455,16 +506,16 @@ public partial class MainWindow : Window
             var currentVersion = configManager.Config.ClientVersion;
             if (version.Version == currentVersion)
             {
-                MessageBox.Show($"FISH 동기화 클라이언트\n버전: {currentVersion}\n최신 버전입니다.");
+                await MessageBox.Show($"FISH 동기화 클라이언트\n버전: {currentVersion}\n최신 버전입니다.");
             }
             else
             {
-                var dialogResult = MessageBox.Show($"새로운 업데이트가 있습니다.\n\n" +
+                var dialogResult = await MessageBox.Show($"새로운 업데이트가 있습니다.\n\n" +
                     $"현재 버전: {currentVersion}\n" +
                     $"최신 버전: {version.Version}\n\n" +
                     $"최신 버전을 다운로드 할까요?",
                     "업데이트",
-                    MessageBoxButton.YesNo);
+                    MessageBoxButtons.YesNo);
 
                 if (dialogResult == MessageBoxResult.Yes)
                 {
@@ -474,7 +525,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.ToString());
+            await MessageBox.Show(ex.ToString());
             Environment.Exit(-1);
         }
     }

@@ -48,6 +48,10 @@ public class ConfigManager
     {
         try
         {
+            var directory = Path.GetDirectoryName(_path);
+            if (!string.IsNullOrEmpty(directory))
+                Directory.CreateDirectory(directory);
+
             using var fs = File.Create(_path);
             await JsonSerializer.SerializeAsync(fs, _config);
             Logger.Instance.LogInformation("설정 저장 성공");

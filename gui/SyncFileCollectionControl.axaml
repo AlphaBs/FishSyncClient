@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:FishSyncClient.Gui"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="FishSyncClient.Gui.SyncFileCollectionControl">
+
+    <UserControl.Resources>
+        <local:HumanSizeConverter x:Key="HumanSizeConverter" />
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="Auto,Auto,*">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="3" Margin="2">
+            <TextBlock x:Name="lbName" Text="" />
+            <TextBlock Text="전체 파일 수: " />
+            <TextBlock x:Name="lbTotalCount" Text="?개" />
+            <TextBlock Text=", 총 용량 : " />
+            <TextBlock x:Name="lbTotalSize" Text="0" />
+        </StackPanel>
+
+        <Grid Grid.Row="1" Margin="2">
+            <ProgressBar x:Name="pbProgress" Value="0" Minimum="0" />
+            <TextBlock x:Name="lbProgress" Text="대기"
+                       VerticalAlignment="Center" HorizontalAlignment="Center" />
+        </Grid>
+
+        <DataGrid x:Name="lvFiles" Grid.Row="2"
+                  IsReadOnly="True"
+                  CanUserSortColumns="False"
+                  CanUserReorderColumns="False"
+                  GridLinesVisibility="Horizontal">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="경로" Binding="{Binding Name}" Width="300" />
+                <DataGridTextColumn Header="상태" Binding="{Binding Status}" Width="100" />
+                <DataGridTextColumn Header="용량" Binding="{Binding Size, Converter={StaticResource HumanSizeConverter}}" Width="100" />
+                <DataGridTextColumn Header="체크섬" Binding="{Binding Checksum}" Width="300" />
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</UserControl>
