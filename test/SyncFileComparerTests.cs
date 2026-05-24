@@ -2,6 +2,7 @@ using FishSyncClient;
 using FishSyncClient.FileComparers;
 using FishSyncClient.Files;
 using FishSyncClient.PathMatchers;
+using FishSyncClient.Progress;
 using FishSyncClient.Syncer;
 using Moq;
 
@@ -29,7 +30,6 @@ public class SyncFileComparerTests : SyncerTestBase
             });
 
         // Then
-        // TargetPathMatcher 는 Source 에 추가된 파일들에 대해서 matching 을 수행하지 않음
         var expected = CreateSourcePaths("file1", "file2", "file222", "file34"); 
         var actual = result.AddedFiles.ToArray();
         AssertEqualPathCollection(expected, actual);
@@ -85,6 +85,40 @@ public class SyncFileComparerTests : SyncerTestBase
         AssertEqualPathCollection(expected, actual);
     }
 
+    [Fact]
+    public async Task compare_and_sync_syncs_all_added_files_and_only_matching_duplicated_files()
+    {
+        // Given
+        var pathOptions = new PathOptions
+        {
+            CaseInsensitive = false
+        };
+        var pairSyncer = new RecordingPairSyncer();
+        var sut = new TestSyncFileCollectionSyncer(pairSyncer, pathOptions);
+        var mockComparer = new Mock<IFileComparer>();
+
+        // When
+        var result = await sut.CompareAndSyncFiles(
+            CreateSourcePaths("added-unmatched", "match-added", "match-duplicate", "skip-duplicate"),
+            CreateTargetPaths("match-duplicate", "skip-duplicate", "match-deleted", "skip-deleted"),
+            mockComparer.Object,
+            new SyncerOptions
+            {
+                TargetPathMatcher = new PrefixPathMatcher("match")
+            });
+
+        // Then
+        AssertEqualPathCollection(
+            CreateSourcePaths("added-unmatched", "match-added"),
+            result.AddedFiles);
+        AssertEqualPathCollection(
+            CreateTargetPaths("match-deleted"),
+            result.DeletedFiles);
+        Assert.Equal(
+            new[] { "added-unmatched", "match-added", "match-duplicate" }.ToHashSet(),
+            pairSyncer.SyncedPairs.Select(pair => pair.Source.Path.SubPath).ToHashSet());
+    }
+
     public static SyncFileCollectionSyncer CreateSyncer()
     {
         var pathOptions = new PathOptions
@@ -93,5 +127,67 @@ public class SyncFileComparerTests : SyncerTestBase
         };
         var syncer = new ParallelSyncFilePairSyncer(1);
         return new SyncFileCollectionSyncer(syncer, pathOptions);
+    }
+
+    private sealed class TestSyncFileCollectionSyncer : SyncFileCollectionSyncer
+    {
+        public TestSyncFileCollectionSyncer(ISyncFilePairSyncer pairSyncer, PathOptions pathOptions)
+            : base(pairSyncer, pathOptions)
+        {
+        }
+
+        protected override IEnumerable<SyncFilePair> CreateFilePairs(IEnumerable<SyncFile> sourceFiles)
+        {
+            return sourceFiles.Select(source => new SyncFilePair(
+                source,
+                new VirtualSyncFile(RootedPath.FromSubPath(source.Path.SubPath, new PathOptions()))));
+        }
+    }
+
+    private sealed class RecordingPairSyncer : ISyncFilePairSyncer
+    {
+        public List<SyncFilePair> SyncedPairs { get; } = new();
+
+        public Task<SyncFilePairCollectionCompareResult> CompareFilePairs(
+            IEnumerable<SyncFilePair> pairs,
+            IFileComparer comparer,
+            IProgress<FileProgressEvent>? fileProgress,
+            IProgress<SyncFileByteProgress>? byteProgress,
+            CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task SyncFilePairs(
+            IEnumerable<SyncFilePair> pairs,
+            IProgress<FileProgressEvent>? fileProgress,
+            IProgress<SyncFileByteProgress>? byteProgress,
+            CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<SyncFilePairCollectionCompareResult> CompareAndSyncFilePairs(
+            IEnumerable<SyncFilePair> pairs,
+            IFileComparer comparer,
+            IProgress<FileProgressEvent>? fileProgress,
+            IProgress<SyncFileByteProgress>? byteProgress,
+            CancellationToken cancellationToken)
+        {
+            SyncedPairs.AddRange(pairs);
+            return Task.FromResult(new SyncFilePairCollectionCompareResult(SyncedPairs, Array.Empty<SyncFilePair>()));
+        }
+    }
+
+    private sealed class PrefixPathMatcher : IPathMatcher
+    {
+        private readonly string _prefix;
+
+        public PrefixPathMatcher(string prefix)
+        {
+            _prefix = prefix;
+        }
+
+        public bool Match(string subPath) => subPath.StartsWith(_prefix, StringComparison.Ordinal);
     }
 }

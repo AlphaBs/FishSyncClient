@@ -21,6 +21,9 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
 
     public ParallelSyncFilePairSyncer(int maxDegreeOfParallelism)
     {
+        if (maxDegreeOfParallelism < 1)
+            throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism));
+
         _maxDegreeOfParallelism = maxDegreeOfParallelism;
     }
 
@@ -48,8 +51,8 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
 
             Interlocked.Increment(ref processor.ProgressedFiles);
             fileProgress?.Report(new FileProgressEvent(
-                FileProgressEventType.DoneSync, processor.ProgressedFiles, processor.TotalFiles, pair.Source.Path.SubPath));
-        });
+                FileProgressEventType.DoneCompare, processor.ProgressedFiles, processor.TotalFiles, pair.Source.Path.SubPath));
+        }, CreateBlockOptions(cancellationToken));
 
         await processor.ProcessBlock(pairs, block, fileProgress, byteProgress, cancellationToken);
 
@@ -74,7 +77,7 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
             Interlocked.Increment(ref processor.ProgressedFiles);
             fileProgress?.Report(new FileProgressEvent(
                 FileProgressEventType.DoneSync, processor.ProgressedFiles, processor.TotalFiles, pair.Source.Path.SubPath));
-        });
+        }, CreateBlockOptions(cancellationToken));
 
         await processor.ProcessBlock(pairs, block, fileProgress, byteProgress, cancellationToken);
     }
@@ -111,12 +114,7 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
             Interlocked.Increment(ref processor.ProgressedFiles);
             fileProgress?.Report(new FileProgressEvent(
                 FileProgressEventType.DoneSync, processor.ProgressedFiles, processor.TotalFiles, pair.Source.Path.SubPath));
-        }, new ExecutionDataflowBlockOptions
-        {
-            MaxDegreeOfParallelism = _maxDegreeOfParallelism,
-            CancellationToken = cancellationToken,
-            EnsureOrdered = false
-        });
+        }, CreateBlockOptions(cancellationToken));
 
         await processor.ProcessBlock(pairs, block, fileProgress, byteProgress, cancellationToken);
 
@@ -136,6 +134,16 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
             if (!areEqual)
                 throw new FileIntegrityException(pair.Target.Path.ToString());
         }
+    }
+
+    private ExecutionDataflowBlockOptions CreateBlockOptions(CancellationToken cancellationToken)
+    {
+        return new ExecutionDataflowBlockOptions
+        {
+            MaxDegreeOfParallelism = _maxDegreeOfParallelism,
+            CancellationToken = cancellationToken,
+            EnsureOrdered = false
+        };
     }
 
     class SyncProcessor
