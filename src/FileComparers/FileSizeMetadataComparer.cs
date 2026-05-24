@@ -24,7 +24,7 @@ public class FileSizeMetadataComparer : IFileComparer
             var targetSize = getSize(pair.Target);
             return new ValueTask<bool>(sourceSize == targetSize);
         }
-        catch (FileComparerException ex)
+        catch (FileComparerException)
         {
             switch (_errorMode)
             {
@@ -34,7 +34,7 @@ public class FileSizeMetadataComparer : IFileComparer
                     return new ValueTask<bool>(false);
                 case ComparerErrorHandlingModes.ThrowException:
                 default:
-                    throw ex;
+                    throw;
             }
         }
     }

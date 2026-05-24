@@ -24,20 +24,44 @@ public class FileChecksumMetadataComparer : IFileComparer
 
     private bool compare(SyncFile source, SyncFile target)
     {
-        if (source.Metadata?.Checksum?.AlgorithmName != target.Metadata?.Checksum?.AlgorithmName)
+        var sourceChecksum = source.Metadata?.Checksum;
+        var targetChecksum = target.Metadata?.Checksum;
+
+        if (!hasChecksum(sourceChecksum))
+            return true;
+
+        if (!hasChecksum(targetChecksum))
+            return handleCannotCompare();
+
+        var sourceChecksumValue = sourceChecksum.GetValueOrDefault();
+        var targetChecksumValue = targetChecksum.GetValueOrDefault();
+
+        if (sourceChecksumValue.AlgorithmName != targetChecksumValue.AlgorithmName)
         {
-            switch (_errorMode)
-            {
-                case ComparerErrorHandlingModes.ReturnEqual:
-                    return true;
-                case ComparerErrorHandlingModes.ReturnNotEqual:
-                    return false;
-                case ComparerErrorHandlingModes.ThrowException:
-                default:
-                    throw new FileComparerException("Cannot compare checksum with different checksum algorithm");
-            }
+            return handleCannotCompare();
         }
         
-        return source.Metadata?.Checksum?.ChecksumHexString == target.Metadata?.Checksum?.ChecksumHexString;
+        return sourceChecksumValue.ChecksumHexString == targetChecksumValue.ChecksumHexString;
+    }
+
+    private static bool hasChecksum(SyncFileChecksum? checksum)
+    {
+        return checksum.HasValue &&
+            !string.IsNullOrEmpty(checksum.Value.AlgorithmName) &&
+            !string.IsNullOrEmpty(checksum.Value.ChecksumHexString);
+    }
+
+    private bool handleCannotCompare()
+    {
+        switch (_errorMode)
+        {
+            case ComparerErrorHandlingModes.ReturnEqual:
+                return true;
+            case ComparerErrorHandlingModes.ReturnNotEqual:
+                return false;
+            case ComparerErrorHandlingModes.ThrowException:
+            default:
+                throw new FileComparerException("Cannot compare checksum");
+        }
     }
 }
