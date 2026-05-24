@@ -13,7 +13,9 @@ public class ConcurrentByteProgressAggregator : IProgress<ByteProgress>, IDispos
 
     public void Clear()
     {
+        var oldStorage = _progressStorage;
         _progressStorage = createProgressStorage();
+        oldStorage.Dispose();
     }
 
     public ByteProgress AggregateProgress()

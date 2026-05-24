@@ -91,6 +91,10 @@ public class SyncFileProgressCollection : ISyncFileCollection
     public void ClearProgress()
     {
         _progressAggregator.Clear();
+        foreach (var item in _collection.Values)
+        {
+            item.Progress = new ByteProgress();
+        }
     }
 
     public ByteProgress AggregateProgress()

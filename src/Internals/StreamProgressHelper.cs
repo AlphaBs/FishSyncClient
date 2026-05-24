@@ -20,8 +20,7 @@ internal class StreamProgressHelper
         var copyBuffer = new byte[bufferSize];
         while (true)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return;
+            cancellationToken.ThrowIfCancellationRequested();
 
             int bytesRead = await source.ReadAsync(
                 copyBuffer, 
@@ -71,6 +70,10 @@ internal class StreamProgressHelper
             await Task.WhenAny(task, Task.Delay(interval));
         }
         await task;
+
+        var lastDelta = stream.Position - previousPosition;
+        if (lastDelta != 0)
+            delta?.Report(lastDelta);
     }
 
     public static long GetBufferSize(long size)

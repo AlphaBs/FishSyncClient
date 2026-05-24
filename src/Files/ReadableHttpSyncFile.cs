@@ -25,20 +25,28 @@ public class ReadableHttpSyncFile : SyncFile
             HttpCompletionOption.ResponseHeadersRead, 
             cancellationToken);
 
-        response.EnsureSuccessStatusCode();
-
-        var contentLength = response.Content.Headers.ContentLength ?? -1;
-        if (contentLength > 0)
+        try
         {
-            this.Metadata ??= new(); 
-            this.Metadata.Size = contentLength;
-        }
+            response.EnsureSuccessStatusCode();
 
-        var stream = await response.Content.ReadAsStreamAsync();
-        if (stream.CanTimeout)
-            stream.ReadTimeout = 10000;
+            var contentLength = response.Content.Headers.ContentLength ?? -1;
+            if (contentLength >= 0)
+            {
+                this.Metadata ??= new();
+                this.Metadata.Size = contentLength;
+            }
+
+            var stream = await response.Content.ReadAsStreamAsync();
+            if (stream.CanTimeout)
+                stream.ReadTimeout = 10000;
             
-        return stream;
+            return new ResponseStream(stream, response);
+        }
+        catch
+        {
+            response.Dispose();
+            throw;
+        }
     }
 
     public override ValueTask<Stream> OpenWriteStream(CancellationToken cancellationToken = default)
@@ -61,5 +69,73 @@ public class ReadableHttpSyncFile : SyncFile
             new SyncProgress<long>(read => 
                 progress?.Report(new ByteProgress(0, read))),
             cancellationToken);
+    }
+
+    private sealed class ResponseStream : Stream
+    {
+        private readonly Stream _inner;
+        private readonly HttpResponseMessage _response;
+
+        public ResponseStream(Stream inner, HttpResponseMessage response) =>
+            (_inner, _response) = (inner, response);
+
+        public override bool CanRead => _inner.CanRead;
+        public override bool CanSeek => _inner.CanSeek;
+        public override bool CanWrite => _inner.CanWrite;
+        public override long Length => _inner.Length;
+
+        public override long Position
+        {
+            get => _inner.Position;
+            set => _inner.Position = value;
+        }
+
+        public override void Flush() => _inner.Flush();
+
+        public override Task FlushAsync(CancellationToken cancellationToken) =>
+            _inner.FlushAsync(cancellationToken);
+
+        public override int Read(byte[] buffer, int offset, int count) =>
+            _inner.Read(buffer, offset, count);
+
+        public override Task<int> ReadAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken) =>
+            _inner.ReadAsync(buffer, offset, count, cancellationToken);
+
+        public override long Seek(long offset, SeekOrigin origin) =>
+            _inner.Seek(offset, origin);
+
+        public override void SetLength(long value) =>
+            _inner.SetLength(value);
+
+        public override void Write(byte[] buffer, int offset, int count) =>
+            _inner.Write(buffer, offset, count);
+
+        public override Task WriteAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken) =>
+            _inner.WriteAsync(buffer, offset, count, cancellationToken);
+
+        public override Task CopyToAsync(
+            Stream destination,
+            int bufferSize,
+            CancellationToken cancellationToken) =>
+            _inner.CopyToAsync(destination, bufferSize, cancellationToken);
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _inner.Dispose();
+                _response.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
     }
 }

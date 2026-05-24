@@ -11,7 +11,7 @@ public readonly struct ByteProgress
         ProgressedBytes = progressedBytes;
     }
 
-    public double GetRatio() => (double)ProgressedBytes / TotalBytes;
+    public double GetRatio() => TotalBytes == 0 ? 0 : (double)ProgressedBytes / TotalBytes;
 
     public static ByteProgress operator +(ByteProgress a, ByteProgress b)
     {
@@ -27,7 +27,7 @@ public readonly struct ByteProgress
         return new ByteProgress
         (
             totalBytes: a.TotalBytes - b.TotalBytes,
-            progressedBytes: b.TotalBytes - b.TotalBytes
+            progressedBytes: a.ProgressedBytes - b.ProgressedBytes
         );
     }
 }
