@@ -1,13 +1,14 @@
 using CommandLine;
+using FishBucket;
+using FishBucket.ApiClient;
+using FishBucket.SyncClient;
 using FishSyncClient.Files;
 using FishSyncClient.Progress;
-using FishSyncClient.Server;
-using FishSyncClient.Server.BucketSyncActions;
 using System.Text.Json;
 
 namespace FishSyncClient.Cli;
 
-[Verb("push")]
+[Verb("push", HelpText = "Upload local files to the bucket.")]
 public class PushCommand : CommandBase
 {
     private readonly static JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
@@ -15,22 +16,15 @@ public class PushCommand : CommandBase
         WriteIndented = true
     };
 
-    [Value(0, Required = true)]
-    public string? Id { get; set; }
+    [Value(0, Required = false, MetaName = "bucket-id", HelpText = "Bucket id. Defaults to config BucketId.")]
+    public string? BucketId { get; set; }
 
     protected override async ValueTask<int> RunAsync()
     {
-        if (string.IsNullOrEmpty(Id))
-            throw new ArgumentException("Id");
-        if (string.IsNullOrEmpty(Root))
-            Root = Environment.CurrentDirectory;
-        
-        var host = GetHost();
-        if (string.IsNullOrEmpty(host))
-            throw new ArgumentException("host");
+        var settings = await GetSettings(BucketId);
 
-        var httpClient = new HttpClient();
-        var syncFiles = RootedPath.FromDirectory(Root, new PathOptions()).Select(createLocalSyncFile);
+        using var httpClient = new HttpClient { Timeout = TimeSpan.FromHours(1) };
+        var syncFiles = CliSyncFiles.EnumerateLocalFiles(settings.Root, new PathOptions());
         var syncCollection = new SyncFileCollection(syncFiles);
         var progressAggregator = new ConcurrentByteProgressAggregator();
         var actionProgress = new SyncProgress<SyncActionProgress>(e =>
@@ -44,8 +38,8 @@ public class PushCommand : CommandBase
 
         var handler = new SimpleBucketSyncActionCollectionHandler(6, actionProgress, byteProgress);
         handler.Add(new HttpBucketSyncActionHandler(httpClient));
-        var apiClient = new FishApiClient(host, httpClient);
-        var syncTask = apiClient.Sync(Id, syncCollection, handler);
+        var apiClient = CreateApiClient(settings, httpClient);
+        var syncTask = apiClient.Sync(settings.BucketId, syncCollection, handler);
 
         while (!syncTask.IsCompleted)
         {
@@ -66,27 +60,12 @@ public class PushCommand : CommandBase
             Console.WriteLine();
         }
 
-        foreach (var action in result.Actions)
+        foreach (var action in result.RequiredActions)
         {
             Console.WriteLine($"{action.Path}: {action.Action.Type}");
             Console.WriteLine(JsonSerializer.Serialize(action.Action.Parameters, _jsonOptions));
         }
 
         return 0;
-    }
-
-    private SyncFile createLocalSyncFile(RootedPath path)
-    {
-        var fileinfo = new FileInfo(path.GetFullPath());
-        using var fs = File.OpenRead(fileinfo.FullName);
-        var checksum = ChecksumAlgorithms.ComputeMD5(fs);
-        return new LocalSyncFile(path)
-        {
-            Metadata = new SyncFileMetadata()
-            {
-                Size = fileinfo.Length,
-                Checksum = new SyncFileChecksum(ChecksumAlgorithmNames.MD5, checksum)
-            }
-        };
     }
 }

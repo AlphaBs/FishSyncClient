@@ -1,34 +1,28 @@
 using CommandLine;
+using FishBucket;
+using FishBucket.ApiClient;
 using FishSyncClient.FileComparers;
 using FishSyncClient.Progress;
-using FishSyncClient.Server;
 using FishSyncClient.Syncer;
 
 namespace FishSyncClient.Cli;
 
-[Verb("pull")]
+[Verb("pull", HelpText = "Download bucket files into the local root.")]
 public class PullCommand : CommandBase
 {
-    [Value(0, Required = true)]
-    public string? Id { get; set; }
+    [Value(0, Required = false, MetaName = "bucket-id", HelpText = "Bucket id. Defaults to config BucketId.")]
+    public string? BucketId { get; set; }
 
     protected override async ValueTask<int> RunAsync()
     {
-        if (string.IsNullOrEmpty(Id))
-            throw new ArgumentException("Id");
-        if (string.IsNullOrEmpty(Root))
-            Root = Environment.CurrentDirectory;
+        var settings = await GetSettings(BucketId);
 
-        var host = GetHost();
-        if (string.IsNullOrEmpty(host))
-            throw new ArgumentException("host");
-
-        var httpClient = new HttpClient();
+        using var httpClient = new HttpClient { Timeout = TimeSpan.FromHours(1) };
         var pathOptions = new PathOptions();
 
-        var apiClient = new FishApiClient(host, httpClient);
-        var bucketFiles = await apiClient.GetBucketFiles(Id);
-        var syncFiles = bucketFiles.GetSyncFiles(httpClient, pathOptions);
+        var apiClient = CreateApiClient(settings, httpClient);
+        var bucketFiles = await apiClient.GetBucketFiles(settings.BucketId);
+        var syncFiles = bucketFiles.Files.Select(file => CliSyncFiles.CreateHttpFile(file, httpClient, pathOptions)).ToArray();
 
         var progressAggregator = new ConcurrentByteProgressAggregator();
         var fileProgress = new SyncProgress<FileProgressEvent>(e =>
@@ -42,7 +36,7 @@ public class PullCommand : CommandBase
 
         var comparerFactory = new LocalFileComparerFactory();
         var syncer = new LocalSyncer(
-            Root,
+            settings.Root,
             pathOptions,
             new ParallelSyncFilePairSyncer());
 

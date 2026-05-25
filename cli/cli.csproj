@@ -6,6 +6,9 @@
 
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <PackageReference Include="FishBucket" Version="0.0.2" />
+    <PackageReference Include="FishBucket.ApiClient" Version="0.0.1" />
+    <PackageReference Include="FishBucket.SyncClient" Version="0.0.1" />
   </ItemGroup>
 
   <PropertyGroup>
