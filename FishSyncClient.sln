@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -12,6 +12,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FishSyncClientTest", "test\FishSyncClientTest.csproj", "{4D1756EC-E7FD-4674-BF8A-05A116826614}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "gui", "gui\gui.csproj", "{1D68457F-86B9-4FB5-BF07-4E32EF3D9412}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "gui.tests", "gui.tests\gui.tests.csproj", "{186101E7-57D2-42D9-8389-B85EB471AFD2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +41,10 @@ Global
 		{1D68457F-86B9-4FB5-BF07-4E32EF3D9412}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1D68457F-86B9-4FB5-BF07-4E32EF3D9412}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1D68457F-86B9-4FB5-BF07-4E32EF3D9412}.Release|Any CPU.Build.0 = Release|Any CPU
+		{186101E7-57D2-42D9-8389-B85EB471AFD2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{186101E7-57D2-42D9-8389-B85EB471AFD2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{186101E7-57D2-42D9-8389-B85EB471AFD2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{186101E7-57D2-42D9-8389-B85EB471AFD2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -5,6 +5,7 @@ namespace FishSyncClient.Gui;
 
 public class Config
 {
+    public string? Username { get; set; }
     public string ClientVersion => "20250101";
     public string? Root { get; set; }
     public string? Host { get; set; }
@@ -16,7 +17,7 @@ public class Config
 public class ConfigManager
 {
     private static ConfigManager? instance;
-    public static ConfigManager Instance => instance ??= new("config/config.json");
+    public static ConfigManager Instance => instance ??= new(Path.Combine(AppContext.BaseDirectory, "config", "config.json"));
 
     private readonly string _path;
     public ConfigManager(string path) =>
@@ -52,13 +53,23 @@ public class ConfigManager
             if (!string.IsNullOrEmpty(directory))
                 Directory.CreateDirectory(directory);
 
-            using var fs = File.Create(_path);
-            await JsonSerializer.SerializeAsync(fs, _config);
+            var temporaryPath = _path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                await using (var fs = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                    await JsonSerializer.SerializeAsync(fs, _config);
+                File.Move(temporaryPath, _path, true);
+            }
+            finally
+            {
+                if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            }
             Logger.Instance.LogInformation("설정 저장 성공");
         }
         catch (Exception ex)
         {
             Logger.Instance.LogError("설정 저장 실패: " + ex.ToString());
+            throw;
         }
     }
 }

@@ -1,532 +1,530 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
+using Avalonia.Media;
 using Avalonia.Threading;
-using FishBucket;
-using FishBucket.ApiClient;
-using FishBucket.SyncClient;
-using FishSyncClient.FileComparers;
-using FishSyncClient.Files;
 using FishSyncClient.Progress;
-using FishSyncClient.Syncer;
-using gui;
+using System.Collections.ObjectModel;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
-using System.Net.Http.Json;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Text.Json;
+using System.Net.Http;
 
 namespace FishSyncClient.Gui;
 
 public partial class MainWindow : Window
 {
-    private readonly PathOptions _pathOptions = new();
+    private readonly string _applicationDirectory;
+    private readonly HttpClient _http;
+    private readonly ConfigManager _config;
+    private readonly Action<string>? _folderOpener;
+    private readonly ObservableCollection<WorkspaceFileItem> _files = [];
+    private readonly CancellationTokenSource _lifetime = new();
+    private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly DispatcherTimer _listTimer = new() { Interval = TimeSpan.FromSeconds(5) };
+    private readonly DispatcherTimer _usageTimer = new() { Interval = TimeSpan.FromSeconds(60) };
+    private readonly DispatcherTimer _eventTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
+    private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+    private readonly object _progressLock = new();
+    private ByteProgress _bytes;
+    private string? _pendingStatus;
+    private CancellationTokenSource? _operation;
+    private FileSystemWatcher? _watcher;
+    private BucketSession? _session;
+    private Comparison? _preview;
+    private bool _busy;
+    private bool _refreshingUsage;
+    private bool _refreshingList;
+    private bool _ready;
+    private bool _closed;
+    private bool _loaded;
+    private bool _watcherFailed;
+    private string? _localStamp;
+    private string? _remoteStamp;
+    private BucketUsage? _usage;
+    private long _localBytes;
+    private int _localFileCount;
+    private Dictionary<string, UploadFileItem> _uploadItems = new(WorkspaceFiles.Comparer);
+    private ConcurrentQueue<FileUploadProgress> _fileProgress = new();
 
-    public MainWindow()
+    public MainWindow() : this(AppContext.BaseDirectory, HttpUtil.HttpClient, ConfigManager.Instance) { }
+
+    public MainWindow(string applicationDirectory, HttpClient http, ConfigManager config, Action<string>? folderOpener = null)
     {
+        _applicationDirectory = applicationDirectory;
+        _http = http;
+        _config = config;
+        _folderOpener = folderOpener;
         InitializeComponent();
+        fileList.ItemsSource = _files;
+        _listTimer.Tick += async (_, _) => await RefreshList();
+        _usageTimer.Tick += async (_, _) => await RefreshUsage();
+        _eventTimer.Tick += async (_, _) => { _eventTimer.Stop(); await RefreshList(); };
+        _progressTimer.Tick += (_, _) => FlushProgress();
     }
-
-    bool needSync = true;
-    bool _configSaved = false;
-    ConfigManager configManager = ConfigManager.Instance;
-    CancellationTokenSource cancellationTokenSource = new();
-
-    // Log lines arrive at high frequency (one per file event) and from multiple threads.
-    // Buffer them and flush to the UI on a timer instead of mutating the text box per line,
-    // which would re-layout the whole (ever-growing) string on every append.
-    private readonly object _logLock = new();
-    private readonly StringBuilder _logBuffer = new();
-    private bool _logDirty;
-    private DispatcherTimer? _logTimer;
-    private const int MaxLogLength = 100_000;
 
     private async void Window_Loaded(object? sender, RoutedEventArgs e)
     {
-        Logger.Instance.Append += (s, ev) => appendLog(ev);
-
-        _logTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
-        _logTimer.Tick += (_, _) => flushLogs();
-        _logTimer.Start();
-
-        await ConfigManager.Instance.LoadConfig();
-
-        await checkUpdate();
-
-        txtHost.Text = configManager.Config.Host;
-        txtRoot.Text = configManager.Config.Root;
-        txtBucketId.Text = configManager.Config.BucketId;
-
-        sourceSyncFiles.CollectionName = "로컬";
-        targetSyncFiles.CollectionName = "서버";
+        if (_loaded) return;
+        _loaded = true;
+        btnNext.IsEnabled = false;
+        var config = await _config.LoadConfig();
+        if (_closed) return;
+        txtUsername.Text = config.Username;
+        txtBucketId.Text = config.BucketId;
+        txtHost.Text = string.IsNullOrWhiteSpace(config.Host) ? "https://fish.snowfrost.kr/api" : config.Host;
+        btnNext.IsEnabled = true;
     }
 
-    protected override async void OnClosing(WindowClosingEventArgs e)
+    private async Task Run(string message, Func<CancellationToken, Task> action)
     {
-        base.OnClosing(e);
+        if (_busy || _closed) return;
+        _busy = true;
+        _fileProgress = new();
+        _uploadItems.Clear();
+        var succeeded = false;
+        _operation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        var ct = _operation.Token;
+        lock (_progressLock) { _bytes = default; _pendingStatus = null; }
+        statusText.Text = message;
+        postUploadNotice.IsVisible = false;
+        transferText.Text = "";
+        transferBar.IsVisible = true;
+        transferBar.Value = 0;
+        transferBar.IsIndeterminate = true;
+        SetEnabled();
+        _progressTimer.Start();
+        var acquired = false;
+        try
+        {
+            await _gate.WaitAsync(ct);
+            acquired = true;
+            await action(ct);
+            succeeded = true;
+            lock (_progressLock) _pendingStatus = null;
+            transferBar.IsIndeterminate = false;
+            transferBar.Value = 100;
+        }
+        catch (OperationCanceledException)
+        {
+            statusText.Text = "작업을 취소했습니다. 일부 변경이 반영되었을 수 있습니다. 다시 비교하거나 초기화를 재시도해 주세요.";
+            MarkStale();
+        }
+        catch (Exception ex)
+        {
+            statusText.Text = $"작업을 완료하지 못했습니다: {ex.Message}";
+            MarkStale();
+        }
+        finally
+        {
+            if (acquired) _gate.Release();
+            _progressTimer.Stop();
+            FlushProgress(false);
+            foreach (var item in _uploadItems.Values) item.Finish(succeeded, ct.IsCancellationRequested);
+            transferBar.IsIndeterminate = false;
+            _operation.Dispose();
+            _operation = null;
+            _busy = false;
+            if (_ready)
+            {
+                _preview = null;
+                previewPanel.IsVisible = false;
+                workspacePanel.IsVisible = true;
+            }
+            SetEnabled();
+            if (_ready && !_closed) await RefreshList();
+        }
+    }
 
-        if (_configSaved)
+    private IProgress<string> StatusProgress() => new SynchronousProgress<string>(message =>
+    {
+        lock (_progressLock) _pendingStatus = message;
+    });
+
+    private IProgress<ByteProgress> ByteProgress() => new SynchronousProgress<ByteProgress>(progress =>
+    {
+        lock (_progressLock) _bytes += progress;
+    });
+
+    private void FlushProgress(bool includeStatus = true)
+    {
+        while (_fileProgress.TryDequeue(out var update))
+            if (_uploadItems.TryGetValue(update.Path.Replace('\\', '/'), out var item)) item.Apply(update);
+        ByteProgress bytes;
+        string? message;
+        lock (_progressLock) { bytes = _bytes; message = _pendingStatus; _pendingStatus = null; }
+        if (includeStatus && message != null) statusText.Text = message;
+        if (bytes.TotalBytes > 0)
+        {
+            transferBar.IsIndeterminate = false;
+            transferBar.Value = Math.Min(100, bytes.GetRatio() * 100);
+            transferText.Text = $"{bytes.GetRatio():P0} · {FormatSize(bytes.ProgressedBytes)} / {FormatSize(bytes.TotalBytes)} (전송량)";
+        }
+    }
+
+    private void SetEnabled()
+    {
+        loginPanel.IsEnabled = !_busy;
+        btnCompare.IsEnabled = !_busy;
+        UpdateRefreshButton();
+        btnCancel.IsVisible = _busy;
+        btnCancel.IsEnabled = true;
+    }
+
+    private void UpdateRefreshButton()
+    {
+        var refreshing = _refreshingUsage || _refreshingList;
+        btnUsage.IsEnabled = !_busy && !refreshing && !_closed;
+        btnUsage.Content = refreshing ? "새로고침 중..." : "새로고침";
+    }
+
+    private async void Next_Click(object? sender, RoutedEventArgs e)
+    {
+        var username = txtUsername.Text?.Trim() ?? "";
+        var password = txtPassword.Text ?? "";
+        var bucket = txtBucketId.Text?.Trim() ?? "";
+        if (username.Length == 0 || password.Length == 0 || bucket.Length == 0)
+        {
+            statusText.Text = "아이디, 비밀번호, 버킷 ID를 모두 입력해 주세요.";
             return;
-
-        // Defer the close until the configuration has been persisted.
-        e.Cancel = true;
-
-        configManager.Config.Host = txtHost.Text;
-        configManager.Config.Root = txtRoot.Text;
-        configManager.Config.BucketId = txtBucketId.Text;
-
-        await configManager.SaveConfig();
-
-        _configSaved = true;
-        Close();
-    }
-
-    private FishApiClient createApiClient()
-    {
-        var apiClient = new FishApiClient(txtHost.Text ?? "", HttpUtil.HttpClient);
-        apiClient.ApiKey = configManager.Config.Token;
-        return apiClient;
-    }
-
-    private void appendLog(string message)
-    {
-        lock (_logLock)
-        {
-            _logBuffer.Append(message).Append('\n');
-            _logDirty = true;
         }
-    }
-
-    private void flushLogs()
-    {
-        string pending;
-        lock (_logLock)
+        await Run("로그인하고 버킷을 확인하는 중…", async ct =>
         {
-            if (!_logDirty)
-                return;
-
-            pending = _logBuffer.ToString();
-            _logBuffer.Clear();
-            _logDirty = false;
-        }
-
-        var text = (txtLogs.Text ?? "") + pending;
-        if (text.Length > MaxLogLength)
-            text = text.Substring(text.Length - MaxLogLength);
-
-        txtLogs.Text = text;
-
-        if (cbScrollLog.IsChecked ?? false)
-            logScroll.ScrollToEnd();
-    }
-
-    private void cbScrollLog_Checked(object? sender, RoutedEventArgs e)
-    {
-        logScroll.ScrollToEnd();
-    }
-
-    private async void btnOpen_Click(object? sender, RoutedEventArgs e)
-    {
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            AllowMultiple = false
-        });
-
-        if (folders.Count > 0)
-            txtRoot.Text = folders[0].Path.LocalPath;
-    }
-
-    private async Task loadFiles(CancellationToken cancellationToken)
-    {
-        var root = txtRoot.Text ?? "";
-        var host = txtHost.Text ?? "";
-        var id = txtBucketId.Text ?? "";
-
-        var sourceTask = loadSource(root, cancellationToken);
-        var targetTask = loadTarget(host, id, cancellationToken);
-
-        await Task.WhenAll(sourceTask, targetTask);
-        await sourceTask; // get exception
-        await targetTask; // get exception
-    }
-
-    private async Task loadSource(string root, CancellationToken cancellationToken)
-    {
-        sourceSyncFiles.ClearProgress();
-        sourceSyncFiles.Clear();
-        await Task.Run(() =>
-        {
-            var files = RootedPath.FromDirectory(root, new PathOptions()).Select(createLocalSyncFile);
-            addFiles(root, files, sourceSyncFiles, cancellationToken);
+            var host = txtHost.Text?.Trim().TrimEnd('/') ?? "";
+            _session = new(host, bucket, _applicationDirectory, _http);
+            await _session.Login(username, password, ct);
+            await _session.ReadRemote(ct);
+            var config = _config.Config;
+            config.Username = username;
+            config.BucketId = bucket;
+            config.Host = host;
+            config.Root = _session.Workspace.Root;
+            config.Token = null;
+            await _config.SaveConfig();
+            statusText.Text = "서버 파일을 비교하고 내려받는 중…";
+            await Task.Run(() => _session.Pull(StatusProgress(), ByteProgress(), ct), ct);
+            ct.ThrowIfCancellationRequested();
+            txtPassword.Text = "";
+            _ready = true;
+            loginPanel.IsVisible = false;
+            workspacePanel.IsVisible = true;
+            btnFolder.IsVisible = true;
+            subtitle.Text = $"{bucket} · {username}";
+            pathText.Text = _session.Workspace.Root;
+            StartWatching();
+            _listTimer.Start();
+            _usageTimer.Start();
+            await UpdateList(ct);
+            await UpdateUsage(ct);
+            statusText.Text = "";
+            OpenFolder();
         });
     }
 
-    private async Task loadTarget(string host, string id, CancellationToken cancellationToken)
+    private void StartWatching()
     {
-        targetSyncFiles.ClearProgress();
-        targetSyncFiles.Clear();
-        var apiClient = createApiClient();
-        var files = await apiClient.GetBucketFiles(id, cancellationToken);
-        var syncFiles = files.Files.Select(createFishSyncFile);
-        addFiles(host, syncFiles, targetSyncFiles, cancellationToken);
-    }
-
-    private SyncFile createLocalSyncFile(RootedPath path)
-    {
-        var fileInfo = new FileInfo(path.GetFullPath());
-        using var fs = File.OpenRead(fileInfo.FullName);
-        var checksum = ChecksumAlgorithms.ComputeMD5(fs);
-        return new LocalSyncFile(path)
-        {
-            Metadata = new SyncFileMetadata()
-            {
-                Size = fileInfo.Length,
-                Checksum = new SyncFileChecksum(ChecksumAlgorithmNames.MD5, checksum)
-            }
-        };
-    }
-
-    private SyncFile createFishSyncFile(BucketFile file)
-    {
-        if (string.IsNullOrEmpty(file.Path) || string.IsNullOrEmpty(file.Location))
-            throw new ArgumentException();
-
-        var path = RootedPath.FromSubPath(file.Path, _pathOptions);
-        return new ReadableHttpSyncFile(path, HttpUtil.HttpClient)
-        {
-            Location = new Uri(file.Location),
-            Metadata = new SyncFileMetadata
-            {
-                Size = file.Metadata.Size,
-                Checksum = new SyncFileChecksum(ChecksumAlgorithmNames.MD5, file.Metadata.Checksum)
-            }
-        };
-    }
-
-    private void addFiles(string name, IEnumerable<SyncFile> files, SyncFileCollectionControl control, CancellationToken cancellationToken)
-    {
-        Logger.Instance.LogInformation($"[로드] {name}");
-
-        foreach (var file in files)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            Dispatcher.UIThread.Invoke(() =>
-            {
-                control.Add(file);
-            });
-        }
-
-        Logger.Instance.LogInformation($"[로드] {name} 불러오기 완료. 총 갯수 {control.TotalFiles}, 용량 {control.TotalBytes:##,#} bytes");
-    }
-
-    private async void btnCompare_Click(object? sender, RoutedEventArgs e)
-    {
+        _watcher?.Dispose();
         try
         {
-            setUIEnables(false);
-
-            cancellationTokenSource = new();
-            var cancellationToken = cancellationTokenSource.Token;
-            await loadFiles(cancellationToken);
-
-            var sources = sourceSyncFiles.GetFiles();
-            var targets = targetSyncFiles.GetFiles();
-
-            var syncer = new SyncFileCollectionSyncer(
-                new ParallelSyncFilePairSyncer(),
-                new PathOptions() { CaseInsensitive = true });
-            var result = await syncer.CompareFiles(
-                sources,
-                targets,
-                new FileChecksumMetadataComparer(),
-                new SyncerOptions());
-
-            foreach (var identical in result.IdenticalFilePairs)
+            _watcher = new FileSystemWatcher(_session!.Workspace.Root)
             {
-                sourceSyncFiles.SetStatus(identical.Source, "동일");
-                targetSyncFiles.SetStatus(identical.Target, "동일");
-            }
-
-            foreach (var updated in result.UpdatedFilePairs)
+                IncludeSubdirectories = true,
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite | NotifyFilters.Size,
+                InternalBufferSize = 32768
+            };
+            _watcher.Created += OnFileEvent;
+            _watcher.Deleted += OnFileEvent;
+            _watcher.Changed += OnFileEvent;
+            _watcher.Renamed += OnFileEvent;
+            _watcher.Error += (_, _) => Dispatcher.UIThread.Post(() =>
             {
-                sourceSyncFiles.SetStatus(updated.Source, "업데이트");
-                targetSyncFiles.SetStatus(updated.Target, "업데이트");
-            }
-
-            foreach (var added in result.AddedFiles)
-            {
-                sourceSyncFiles.SetStatus(added, "로컬");
-            }
-
-            foreach (var deleted in result.DeletedFiles)
-            {
-                targetSyncFiles.SetStatus(deleted, "서버");
-            }
-
-            needSync = result.UpdatedFilePairs.Any() || result.AddedFiles.Any() || result.DeletedFiles.Any();
-
-            await MessageBox.Show($"비교 결과: \n" +
-                $"동일한 파일 {result.IdenticalFilePairs.Count}개\n" +
-                $"바뀐 파일 {result.UpdatedFilePairs.Count}개\n" +
-                $"로컬 파일 {result.AddedFiles.Count}개\n" +
-                $"서버 파일 {result.DeletedFiles.Count}개");
+                if (_closed) return;
+                _watcherFailed = true;
+                QueueRefresh();
+            });
+            _watcher.EnableRaisingEvents = true;
+            _watcherFailed = false;
         }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            _watcherFailed = true;
+            listStatus.Text = "파일 감시를 시작하지 못해 5초 주기로 갱신합니다.";
+        }
+    }
+
+    private void OnFileEvent(object sender, FileSystemEventArgs e) => Dispatcher.UIThread.Post(QueueRefresh);
+
+    private void QueueRefresh()
+    {
+        if (_closed) return;
+        if (!_busy) MarkStale();
+        _eventTimer.Stop();
+        _eventTimer.Start();
+    }
+
+    private void MarkStale()
+    {
+        if (_preview == null) return;
+        previewSummary.Text = "파일 상태가 변경되었거나 작업이 중단되었습니다. 다시 동기화해 주세요.";
+    }
+
+    private async Task RefreshList()
+    {
+        if (!_ready || _busy || _closed || !_gate.Wait(0)) return;
+        try
+        {
+            await UpdateList(_lifetime.Token);
+            if (_watcherFailed) StartWatching();
+        }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            Logger.Instance.LogError("[비교] 예외 발생 " + ex.ToString());
-            await MessageBox.Show(ex.ToString());
+            listStatus.Text = $"파일 목록 갱신 실패 · {ex.Message} · 5초 후 재시도";
+            MarkStale();
+        }
+        finally { _gate.Release(); }
+    }
+
+    private async Task UpdateList(CancellationToken ct)
+    {
+        _listTimer.Stop();
+        _refreshingList = true;
+        UpdateRefreshButton();
+        try
+        {
+            var local = await Task.Run(() => _session!.Workspace.Scan(ct), ct);
+            ct.ThrowIfCancellationRequested();
+            _localBytes = local.Where(x => !x.IsDirectory).Sum(x => x.Size);
+            _localFileCount = local.Count(x => !x.IsDirectory);
+            UpdateUsageBars();
+            var stamp = string.Join('\n', local.OrderBy(x => x.Path, WorkspaceFiles.Comparer)
+                .Select(x => $"{x.Path}:{x.Size}:{x.Checksum}:{x.IsDirectory}"));
+            if (_localStamp != null && _localStamp != stamp) MarkStale();
+            _localStamp = stamp;
+            WorkspaceFileItem.Reconcile(_files, local, _session!.Remote);
+            var changes = WorkspaceFiles.Compare(local, _session.Remote);
+            addedCount.Text = $"추가 {changes.Count(x => x.Kind == "추가"):N0}";
+            deletedCount.Text = $"삭제 {changes.Count(x => x.Kind == "삭제"):N0}";
+            updatedCount.Text = $"갱신 {changes.Count(x => x.Kind == "갱신"):N0}";
+            listStatus.Text = $"{local.Count(x => !x.IsDirectory):N0}개 파일 · {DateTime.Now:HH:mm:ss} 갱신";
         }
         finally
         {
-            setUIEnables(true);
+            _refreshingList = false;
+            UpdateRefreshButton();
+            if (_ready && !_closed) _listTimer.Start();
         }
     }
 
-    private async void btnPull_Click(object? sender, RoutedEventArgs e)
+    private void UpdateUsageBars()
     {
-        try
+        if (_usage is not { } usage) return;
+        var limit = usage.Limits;
+        var bytes = _localBytes;
+        var count = _localFileCount;
+        var sizeExceeded = limit.MaxBucketSize > 0 && bytes > limit.MaxBucketSize;
+        var countExceeded = limit.MaxNumberOfFiles > 0 && count > limit.MaxNumberOfFiles;
+        usageText.Text = limit.MaxBucketSize > 0
+            ? $"{FormatSize(bytes)} / {FormatSize(limit.MaxBucketSize)} ({(double)bytes / limit.MaxBucketSize:P0})"
+            : $"{FormatSize(bytes)} · 제한값 {limit.MaxBucketSize}";
+        fileCountText.Text = limit.MaxNumberOfFiles > 0
+            ? $"{count:N0} / {limit.MaxNumberOfFiles:N0}개 ({(double)count / limit.MaxNumberOfFiles:P0})"
+            : $"{count:N0}개 · 제한값 {limit.MaxNumberOfFiles}";
+        if (sizeExceeded) usageText.Text += " · 로컬 초과";
+        if (countExceeded) fileCountText.Text += " · 로컬 초과";
+        usageBar.Value = limit.MaxBucketSize > 0 ? Math.Min(100, 100d * bytes / limit.MaxBucketSize) : 0;
+        fileCountBar.Value = limit.MaxNumberOfFiles > 0 ? Math.Min(100, 100d * count / limit.MaxNumberOfFiles) : 0;
+        SetExceeded(usageBar, sizeExceeded);
+        SetExceeded(fileCountBar, countExceeded);
+
+        static void SetExceeded(ProgressBar bar, bool exceeded)
         {
-            setUIEnables(false);
-
-            cancellationTokenSource = new();
-            var cancellationToken = cancellationTokenSource.Token;
-            Logger.Instance.LogInformation($"[PULL] {targetSyncFiles.Count} items");
-
-            var fileProgress = new Progress<FileProgressEvent>(ev =>
-            {
-                Logger.Instance.LogInformation($"[PULL] {ev.EventType}: {ev.CurrentFileName}");
-                targetSyncFiles.SetStatus(ev.CurrentFileName, ev.EventType);
-            });
-            // High-frequency byte progress is accumulated off the UI thread and flushed in
-            // batches by the control's timer, so it must NOT go through Progress<T>.
-            var byteProgress = new SynchronousProgress<SyncFileByteProgress>(ev =>
-            {
-                targetSyncFiles.AddProgress(ev.SyncFile, ev.Progress);
-            });
-
-            var sourceFiles = sourceSyncFiles.GetFiles().ToArray();
-            var targetFiles = targetSyncFiles.GetFiles().ToArray();
-
-            var syncer = new LocalSyncer(
-                txtRoot.Text ?? "",
-                new PathOptions(),
-                new ParallelSyncFilePairSyncer());
-            var syncResult = await syncer.CompareAndSyncFiles(
-                targetFiles,
-                sourceFiles,
-                new LocalFileChecksumComparer(),
-                new SyncerOptions
-                {
-                    FileProgress = fileProgress,
-                    ByteProgress = byteProgress,
-                    CancellationToken = cancellationToken
-                });
-
-            Logger.Instance.LogInformation($"[PULL] 완료: " +
-                $"업데이트 {syncResult.UpdatedFilePairs.Count} 개, " +
-                $"추가 {syncResult.AddedFiles.Count} 개, " +
-                $"삭제 {syncResult.DeletedFiles.Count} 개, " +
-                $"동일한 파일 {syncResult.IdenticalFilePairs.Count} 개");
-            await MessageBox.Show($"PULL 성공");
+            if (exceeded) bar.Foreground = Brushes.Red;
+            else bar.ClearValue(ProgressBar.ForegroundProperty);
         }
-        catch (Exception ex)
-        {
-            Logger.Instance.LogError($"[PULL] 예외 발생: {ex}");
-            await MessageBox.Show(ex.ToString());
-        }
+    }
+
+    private async Task RefreshUsage()
+    {
+        if (!_ready || _busy || _closed || !_gate.Wait(0)) return;
+        _refreshingUsage = true;
+        UpdateRefreshButton();
+        try { await UpdateUsage(_lifetime.Token); await UpdateList(_lifetime.Token); }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { usageStatus.Text = $"조회 실패: {ex.Message}"; }
         finally
         {
-            setUIEnables(true);
-            btnCompare_Click(this, e);
+            _gate.Release();
+            _refreshingUsage = false;
+            UpdateRefreshButton();
         }
     }
 
-    private async void btnPush_Click(object? sender, RoutedEventArgs e)
+    private async Task UpdateUsage(CancellationToken ct)
     {
         try
         {
-            setUIEnables(false);
-
-            if (!needSync)
-            {
-                var mbResult = await MessageBox.Show(
-                    "경고: 모든 파일이 서버와 동일하여 동기화가 필요 없습니다.\n\n" +
-                    "동기화 횟수가 차감됩니다. 그래도 동기화를 시도할까요?",
-                    "경고",
-                    MessageBoxButtons.YesNo);
-
-                if (mbResult == MessageBoxResult.No)
-                    return;
-            }
-
-            var patterns = configManager.Config.WarningPatterns
-                .Select(DotNet.Globbing.Glob.Parse)
-                .ToList();
-            var warningFilePath = sourceSyncFiles.GetFiles()
-                .Select(file => file.Path.SubPath)
-                .Where(path => patterns.Any(pattern => pattern.IsMatch(path)))
-                .FirstOrDefault();
-            if (warningFilePath != null)
-            {
-                var warningPattern = patterns.First(pattern => pattern.IsMatch(warningFilePath));
-                var mbResult = await MessageBox.Show(
-                    "경고: 아래 파일은 동기화가 금지되어 있습니다.\n\n" +
-                    $"파일: {warningFilePath}\n" +
-                    $"패턴: {warningPattern}\n\n" +
-                    "동기화를 시도할 경우 실패할 수 있습니다. 그래도 동기화를 시도할까요?",
-                    "경고",
-                    MessageBoxButtons.YesNo);
-
-                if (mbResult == MessageBoxResult.No)
-                    return;
-            }
-
-            cancellationTokenSource = new();
-            var cancellationToken = cancellationTokenSource.Token;
-            Logger.Instance.LogInformation($"[PUSH] {sourceSyncFiles.Count} items");
-
-            var actionProgress = new Progress<SyncActionProgress>(ev =>
-            {
-                Logger.Instance.LogInformation($"[PUSH] BucketSyncAction {ev.EventType}: {ev.Action.Action.Type}, {ev.Action.Path}");
-                sourceSyncFiles.SetStatus(ev.Action.Path, ev.EventType);
-            });
-            // See PULL: byte progress is batched off the UI thread, not marshalled per report.
-            var byteProgress = new SynchronousProgress<SyncActionByteProgress>(ev =>
-            {
-                sourceSyncFiles.AddProgress(ev.Path, ev.Progress);
-            });
-
-            var handler = new SimpleBucketSyncActionCollectionHandler(6, actionProgress, byteProgress);
-            handler.Add(new HttpBucketSyncActionHandler(HttpUtil.HttpClient));
-
-            var apiClient = createApiClient();
-            var result = await apiClient.Sync(txtBucketId.Text ?? "", sourceSyncFiles, handler, cancellationToken);
-
-            if (result.IsSuccess)
-                await MessageBox.Show($"PUSH 성공, UpdatedAt {result.UpdatedAt}");
-            else
-                await MessageBox.Show("PUSH 실패\n" + string.Join("\n", result.RequiredActions));
-
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromSeconds(20));
+            var usage = await _session!.ReadUsage(timeout.Token);
+            var stamp = string.Join('\n', _session.Remote.OrderBy(x => x.Path, WorkspaceFiles.Comparer)
+                .Select(x => $"{x.Path}:{x.Metadata.Size}:{x.Metadata.Checksum}"));
+            if (_remoteStamp != null && stamp != _remoteStamp) MarkStale();
+            _remoteStamp = stamp;
+            var limit = usage.Limits;
+            _usage = usage;
+            UpdateUsageBars();
+            quotaText.Text = limit.MonthlyMaxSyncCount >= 0
+                ? $"{Math.Max(0, limit.MonthlyMaxSyncCount - usage.MonthlySyncCount):N0}회 남음 / {limit.MonthlyMaxSyncCount:N0}회"
+                : $"{usage.MonthlySyncCount:N0}회 사용 · 제한값 {limit.MonthlyMaxSyncCount}";
+            expiryText.Text = limit.ExpiredAt == default ? "만료일 정보 없음" :
+                $"{(limit.ExpiredAt <= DateTimeOffset.UtcNow ? "만료됨" : $"{Math.Ceiling((limit.ExpiredAt - DateTimeOffset.UtcNow).TotalDays):N0}일 남음")} · {limit.ExpiredAt.ToLocalTime():yyyy-MM-dd}";
+            usageStatus.Text = $"{(limit.IsReadOnly ? "읽기 전용" : "읽기·쓰기")} · {usage.FileCount:N0}개 파일";
         }
-        catch (ActionRequiredException actionRequiredException)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            foreach (var action in actionRequiredException.Actions)
-            {
-                Logger.Instance.LogError($"[PUSH] 처리할 수 없는 SyncAction: {action.Path}, {action.Action.Type}, {JsonSerializer.Serialize(action.Action.Parameters)}");
-            }
-            var errorMessage = string.Join('\n', actionRequiredException.Actions.Select(action => $"{action.Path}: {action.Action.Type}"));
-            await MessageBox.Show("처리할 수 없는 작업이 있습니다: \n" + errorMessage);
+            usageStatus.Text = $"조회 실패: {(ex is OperationCanceledException ? "응답 시간 초과" : ex.Message)}";
         }
-        catch (Exception ex)
+    }
+
+    private async void Compare_Click(object? sender, RoutedEventArgs e) => await Run("최신 로컬 파일과 서버 파일을 비교하는 중…", async ct =>
+    {
+        _preview = null;
+        workspacePanel.IsVisible = false;
+        previewPanel.IsVisible = true;
+        changesGrid.ItemsSource = null;
+        previewSummary.Text = "변경사항 비교 중…";
+        var comparison = await _session!.Compare(ct);
+        await UpdateList(ct);
+        ShowPreview(comparison);
+        if (comparison.Changes.Count == 0)
         {
-            Logger.Instance.LogError("[PUSH] 예외 발생 " + ex.ToString());
-            await MessageBox.Show(ex.ToString());
+            statusText.Text = "동기화할 변경사항이 없습니다.";
+            return;
         }
-        finally
+        statusText.Text = "서버 업로드 중…";
+        await Upload(comparison, ct);
+    });
+
+    private void ShowPreview(Comparison comparison)
+    {
+        _preview = comparison;
+        workspacePanel.IsVisible = false;
+        previewPanel.IsVisible = true;
+        var items = comparison.Changes.Select(x => new UploadFileItem(x)).ToList();
+        _uploadItems = items.ToDictionary(x => x.Path, WorkspaceFiles.Comparer);
+        changesGrid.ItemsSource = items;
+        previewSummary.Text = $"추가 {comparison.Changes.Count(x => x.Kind == "추가")}개 · " +
+            $"삭제 {comparison.Changes.Count(x => x.Kind == "삭제")}개 · 갱신 {comparison.Changes.Count(x => x.Kind == "갱신")}개. " +
+            "삭제 항목은 서버에서도 삭제됩니다.";
+    }
+
+    private async Task Upload(Comparison latest, CancellationToken ct)
+    {
+        var usage = await _session!.ReadUsage(ct);
+        _usage = usage;
+        _localBytes = latest.Local.Where(x => !x.IsDirectory).Sum(x => x.Size);
+        _localFileCount = latest.Local.Count(x => !x.IsDirectory);
+        UpdateUsageBars();
+        if (usage.Limits.IsReadOnly) throw new IOException("읽기 전용 버킷입니다.");
+        if (usage.Limits.ExpiredAt != default && usage.Limits.ExpiredAt <= DateTimeOffset.UtcNow)
+            throw new IOException("버킷 사용 기간이 만료되었습니다.");
+        // Positive limits have unambiguous meaning; the server validates special values.
+        if (usage.Limits.MonthlyMaxSyncCount > 0 && usage.MonthlySyncCount >= usage.Limits.MonthlyMaxSyncCount)
+            throw new IOException("이번 달 동기화 횟수를 모두 사용했습니다.");
+        if (usage.Limits.MaxBucketSize > 0 && latest.Local.Where(x => !x.IsDirectory).Sum(x => x.Size) > usage.Limits.MaxBucketSize)
+            throw new IOException("동기화할 파일의 총 용량이 버킷 제한을 초과합니다.");
+        if (usage.Limits.MaxFileSize > 0 && latest.Local.Any(x => !x.IsDirectory && x.Size > usage.Limits.MaxFileSize))
+            throw new IOException("파일 하나의 크기가 버킷의 파일당 용량 제한을 초과합니다.");
+        if (usage.Limits.MaxNumberOfFiles > 0 && latest.Local.Count(x => !x.IsDirectory) > usage.Limits.MaxNumberOfFiles)
+            throw new IOException("파일 수가 버킷 제한을 초과합니다.");
+        var patterns = _config.Config.WarningPatterns.Select(DotNet.Globbing.Glob.Parse).ToArray();
+        var forbidden = latest.Local.FirstOrDefault(x => !x.IsDirectory && patterns.Any(p => p.IsMatch(x.Path)));
+        if (forbidden != null) throw new IOException($"동기화 제한 패턴에 해당하는 파일입니다: {forbidden.Path}");
+        var queue = _fileProgress;
+        var fileProgress = new SynchronousProgress<FileUploadProgress>(queue.Enqueue);
+        var result = await Task.Run(() => _session.Push(latest, StatusProgress(), ByteProgress(), ct, fileProgress), ct);
+        lock (_progressLock) _pendingStatus = null;
+        _preview = null;
+        previewPanel.IsVisible = false;
+        workspacePanel.IsVisible = true;
+        statusText.Text = "서버 업로드 완료.";
+        postUploadNotice.Text = result.VerificationWarning;
+        postUploadNotice.IsVisible = result.VerificationWarning != null;
+        // These are display refreshes after a confirmed server commit. A locked local
+        // file or a cancelled refresh must not be reported as an upload failure.
+        await RefreshAfterUpload(ct);
+    }
+
+    private async Task RefreshAfterUpload(CancellationToken ct)
+    {
+        try { await UpdateList(ct); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or OperationCanceledException)
         {
-            setUIEnables(true);
-            btnCompare_Click(this, e);
+            listStatus.Text = "로컬 파일 목록을 갱신하지 못했습니다. 자동으로 다시 확인합니다.";
         }
-    }
-
-    private void setUIEnables(bool value)
-    {
-        txtHost.IsEnabled = value;
-        txtRoot.IsEnabled = value;
-        btnOpen.IsEnabled = value;
-        btnFishLogin.IsEnabled = value;
-        btnCompare.IsEnabled = value;
-        btnPull.IsEnabled = value;
-        btnPush.IsEnabled = value;
-
-        btnCancel.IsVisible = !value;
-    }
-
-    private async void btnFishLogin_Click(object? sender, RoutedEventArgs e)
-    {
-        var apiClient = createApiClient();
-        var loginWindow = new LoginWindow(apiClient);
-        await loginWindow.ShowDialog(this);
-    }
-
-    private void btnCancel_Click(object? sender, RoutedEventArgs e)
-    {
-        cancellationTokenSource.Cancel();
-    }
-
-    private void btnOpenWeb_Click(object? sender, RoutedEventArgs e)
-    {
-        OpenUrl($"https://fish.alphabeta.pw/Web/Buckets/List?id={txtBucketId.Text}&handler=RedirectToBucket");
-    }
-
-    private void OpenUrl(string url)
-    {
-        try
+        try { await UpdateUsage(ct); }
+        catch (OperationCanceledException)
         {
-            Process.Start(url);
-        }
-        catch
-        {
-            // hack because of this: https://github.com/dotnet/corefx/issues/10361
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                url = url.Replace("&", "^&");
-                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                Process.Start("xdg-open", url);
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                Process.Start("open", url);
-            }
-            else
-            {
-                throw;
-            }
+            usageStatus.Text = "상태 조회가 취소되었습니다. 새로고침해 주세요.";
         }
     }
 
-    private async void btnCheckUpdate_Click(object? sender, RoutedEventArgs e)
+    private async void RefreshUsage_Click(object? sender, RoutedEventArgs e) => await RefreshUsage();
+    private void Cancel_Click(object? sender, RoutedEventArgs e)
     {
-        await checkUpdate();
+        _operation?.Cancel();
+        btnCancel.IsEnabled = false;
+        statusText.Text = "작업을 취소하는 중…";
     }
+    private void OpenFolder_Click(object? sender, RoutedEventArgs e) => OpenFolder();
 
-    private async Task checkUpdate()
+    private void OpenFolder()
     {
         try
         {
-            var version = await HttpUtil.HttpClient.GetFromJsonAsync<UpdateVersion>("https://alphabeta.pw/home/shares/fish/win-x64/version.json");
-            if (string.IsNullOrEmpty(version?.Version))
-                throw new FormatException("version?.Version was null or empty");
-
-            var currentVersion = configManager.Config.ClientVersion;
-            if (version.Version == currentVersion)
+            var path = _session!.Workspace.Root;
+            WorkspaceFiles.EnsureNoLinks(path);
+            if (_folderOpener != null) { _folderOpener(path); return; }
+            var start = new ProcessStartInfo
             {
-                await MessageBox.Show($"FISH 동기화 클라이언트\n버전: {currentVersion}\n최신 버전입니다.");
-            }
-            else
-            {
-                var dialogResult = await MessageBox.Show($"새로운 업데이트가 있습니다.\n\n" +
-                    $"현재 버전: {currentVersion}\n" +
-                    $"최신 버전: {version.Version}\n\n" +
-                    $"최신 버전을 다운로드 할까요?",
-                    "업데이트",
-                    MessageBoxButtons.YesNo);
-
-                if (dialogResult == MessageBoxResult.Yes)
-                {
-                    OpenUrl(version.Download ?? "https://fish.alphabeta.pw/Web/Home");
-                }
-            }
+                FileName = OperatingSystem.IsWindows() ? "explorer.exe" : OperatingSystem.IsMacOS() ? "open" : "xdg-open",
+                UseShellExecute = false
+            };
+            start.ArgumentList.Add(path);
+            Process.Start(start);
         }
-        catch (Exception ex)
+        catch (Exception ex) { statusText.Text = $"폴더를 열지 못했습니다: {ex.Message}. 경로: {_session?.Workspace.Root}"; }
+    }
+
+    public static string FormatSize(long bytes)
+    {
+        string[] units = ["B", "KB", "MB", "GB", "TB"];
+        double value = bytes;
+        var index = 0;
+        while (value >= 1024 && index < units.Length - 1) { value /= 1024; index++; }
+        return $"{value:0.##} {units[index]}";
+    }
+
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        if (_busy)
         {
-            await MessageBox.Show(ex.ToString());
-            Environment.Exit(-1);
+            e.Cancel = true;
+            _operation?.Cancel();
+            statusText.Text = "작업을 취소하는 중입니다. 정리가 끝나면 창을 닫아 주세요.";
         }
+        base.OnClosing(e);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _closed = true;
+        _lifetime.Cancel();
+        _watcher?.Dispose();
+        _listTimer.Stop();
+        _usageTimer.Stop();
+        _eventTimer.Stop();
+        _progressTimer.Stop();
+        base.OnClosed(e);
     }
 }

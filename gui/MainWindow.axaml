@@ -1,142 +1,150 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FishSyncClient.Gui"
-        mc:Ignorable="d"
         x:Class="FishSyncClient.Gui.MainWindow"
-        Icon="/icon.ico"
-        Loaded="Window_Loaded"
-        Title="FISH 동기화 클라이언트" Height="800" Width="1200">
-
-    <Grid RowDefinitions="Auto,Auto,3*,Auto,*" Margin="4">
-
-        <Border Grid.Row="0"
-                BorderBrush="Gray" BorderThickness="1" CornerRadius="4"
-                Margin="4" Padding="6">
-            <Grid x:Name="gridTop"
-                  RowDefinitions="Auto,Auto,Auto"
-                  ColumnDefinitions="60,*,50,160,90">
-
-                <TextBlock Grid.Column="0" Grid.Row="0"
-                           VerticalAlignment="Center"
-                           HorizontalAlignment="Right"
-                           Margin="5"
-                           Text="로컬 :" />
-
-                <TextBox x:Name="txtRoot"
-                         Grid.Column="1"
-                         Grid.ColumnSpan="3"
-                         VerticalContentAlignment="Center"
-                         Margin="5"
-                         Text="" />
-
-                <Button x:Name="btnOpen"
-                        Grid.Row="0" Grid.Column="4"
-                        Margin="5" MinHeight="32"
-                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                        VerticalAlignment="Stretch" VerticalContentAlignment="Center"
-                        Content="열기" Click="btnOpen_Click" />
-
-                <TextBlock Grid.Row="1" Grid.Column="0"
-                           VerticalAlignment="Center"
-                           HorizontalAlignment="Right"
-                           Margin="5"
-                           Text="서버 :" />
-
-                <TextBox x:Name="txtHost"
-                         Grid.Row="1" Grid.Column="1"
-                         VerticalContentAlignment="Center"
-                         Margin="5"
-                         Text="" />
-
-                <TextBlock Grid.Row="1" Grid.Column="2"
-                           Text="버킷 :"
-                           VerticalAlignment="Center"
-                           HorizontalAlignment="Right"
-                           Margin="5" />
-
-                <TextBox x:Name="txtBucketId"
-                         Grid.Row="1" Grid.Column="3"
-                         VerticalContentAlignment="Center"
-                         Margin="5"
-                         Text="" />
-
-                <Button x:Name="btnFishLogin"
-                        Grid.Row="1" Grid.Column="4"
-                        Margin="5" MinHeight="32"
-                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                        VerticalAlignment="Stretch" VerticalContentAlignment="Center"
-                        Content="로그인" Click="btnFishLogin_Click" />
-
-                <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="4"
-                            VerticalAlignment="Center" HorizontalAlignment="Left"
-                            Margin="5,8"
-                            Orientation="Horizontal" Spacing="10">
-                    <Button x:Name="btnOpenWeb"
-                            Content="웹에서 열기"
-                            MinHeight="32" Padding="14,4"
-                            Click="btnOpenWeb_Click" />
-
-                    <Button x:Name="btnCheckUpdate"
-                            Content="업데이트 확인"
-                            MinHeight="32" Padding="14,4"
-                            Click="btnCheckUpdate_Click" />
-                </StackPanel>
+        Icon="/icon.ico" Title="FISH · 버킷 동기화" Width="1100" Height="800"
+        MinWidth="760" MinHeight="620" Loaded="Window_Loaded">
+    <Window.Styles>
+        <Style Selector="Button"><Setter Property="Padding" Value="18,10" /></Style>
+        <Style Selector="TextBox"><Setter Property="MinHeight" Value="40" /></Style>
+        <Style Selector="ListBox.fileRows">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+    </Window.Styles>
+    <Window.Resources>
+        <ControlTheme x:Key="FileListItemTheme" TargetType="ListBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Background="Transparent"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Padding="{TemplateBinding Padding}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+        <DataTemplate x:Key="FileRowTemplate">
+            <Border Background="{Binding Background}" CornerRadius="4" Padding="8,7">
+                <Grid ColumnDefinitions="*,80,120" ColumnSpacing="18">
+                    <TextBlock Text="{Binding Path}" Foreground="#17251E" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}" />
+                    <TextBlock Grid.Column="1" Text="{Binding Kind}" Foreground="#17251E" />
+                    <TextBlock Grid.Column="2" Text="{Binding SizeText}" Foreground="#17251E" HorizontalAlignment="Right" />
+                </Grid>
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="UploadRowTemplate">
+            <Border Background="{Binding Background}" CornerRadius="4" Padding="8,7">
+                <Grid ColumnDefinitions="*,60,90,180" ColumnSpacing="18">
+                    <TextBlock Text="{Binding Path}" Foreground="#17251E" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding Kind}" Foreground="#17251E" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Text="{Binding SizeText}" Foreground="#17251E" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="3" Text="{Binding ProgressText}" Foreground="#17251E" VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+    <Grid Margin="28" RowDefinitions="Auto,*,Auto" RowSpacing="18">
+        <StackPanel Spacing="4">
+            <TextBlock Text="FISH" FontSize="28" FontWeight="Bold" />
+            <TextBlock x:Name="subtitle" Text="버킷에 연결하고 파일 작업을 시작하세요." Opacity="0.7" />
+        </StackPanel>
+        <Grid Grid.Row="1">
+            <ScrollViewer x:Name="loginPanel" VerticalScrollBarVisibility="Auto">
+            <StackPanel MaxWidth="920" HorizontalAlignment="Stretch" VerticalAlignment="Center" Spacing="10" Margin="0,8">
+                <TextBlock Text="버킷에 로그인" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,8" />
+                <TextBlock Text="계정 아이디" />
+                <TextBox x:Name="txtUsername" Watermark="아이디" />
+                <TextBlock Text="비밀번호" />
+                <TextBox x:Name="txtPassword" PasswordChar="●" Watermark="비밀번호" />
+                <TextBlock Text="버킷 ID" />
+                <TextBox x:Name="txtBucketId" Watermark="버킷 ID" />
+                <TextBlock Text="서버 API 주소" />
+                <TextBox x:Name="txtHost" Text="https://fish.snowfrost.kr/api" />
+                <Button x:Name="btnNext" Content="다음" IsEnabled="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="Next_Click" />
+            </StackPanel>
+            </ScrollViewer>
+            <Grid x:Name="workspacePanel" IsVisible="False" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="12">
+                <Border BorderBrush="#40808080" BorderThickness="1" CornerRadius="8" Padding="16">
+                    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,*,*,*" ColumnSpacing="22" RowSpacing="8">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="로컬 용량 / 서버 용량" Opacity="0.7" />
+                            <TextBlock x:Name="usageText" Text="조회 중…" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <ProgressBar x:Name="usageBar" Height="6" Maximum="100" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="6">
+                            <TextBlock Text="로컬 파일 수 / 서버 파일 수" Opacity="0.7" />
+                            <TextBlock x:Name="fileCountText" Text="조회 중…" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <ProgressBar x:Name="fileCountBar" Height="6" Maximum="100" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="6">
+                            <TextBlock Text="이번 달 동기화" Opacity="0.7" />
+                            <TextBlock x:Name="quotaText" Text="조회 중…" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="3" Spacing="6">
+                            <TextBlock Text="남은 기간" Opacity="0.7" />
+                            <TextBlock x:Name="expiryText" Text="조회 중…" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <TextBlock x:Name="usageStatus" Grid.Row="1" Grid.ColumnSpan="4" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                    </Grid>
+                </Border>
+                <TextBlock x:Name="pathText" Grid.Row="1" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <Border Grid.Row="2" BorderBrush="#40808080" BorderThickness="1" CornerRadius="6" Padding="6">
+                    <Grid RowDefinitions="Auto,*">
+                        <Grid ColumnDefinitions="*,80,120" ColumnSpacing="18" Margin="8,8,8,12">
+                            <TextBlock Text="파일 경로" Opacity="0.6" />
+                            <TextBlock Grid.Column="1" Text="상태" Opacity="0.6" />
+                            <TextBlock Grid.Column="2" Text="크기" Opacity="0.6" HorizontalAlignment="Right" />
+                        </Grid>
+                        <ListBox x:Name="fileList" Grid.Row="1" Classes="fileRows" ItemContainerTheme="{StaticResource FileListItemTheme}" ItemTemplate="{StaticResource FileRowTemplate}" />
+                    </Grid>
+                </Border>
+                <Grid Grid.Row="3" ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center" Spacing="4" Margin="0,0,12,0">
+                        <WrapPanel>
+                            <TextBlock x:Name="addedCount" Text="추가 0" Foreground="#17803D" FontWeight="Bold" FontSize="16" Margin="0,0,16,0" />
+                            <TextBlock x:Name="deletedCount" Text="삭제 0" Foreground="#C62828" FontWeight="Bold" FontSize="16" Margin="0,0,16,0" />
+                            <TextBlock x:Name="updatedCount" Text="갱신 0" Foreground="#A66B00" FontWeight="Bold" FontSize="16" />
+                        </WrapPanel>
+                        <TextBlock x:Name="listStatus" Text="파일 변경을 감시하고 있습니다." FontSize="12" Opacity="0.65" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                        <Button x:Name="btnFolder" Content="폴더 열기" Click="OpenFolder_Click" IsVisible="False" />
+                        <Button x:Name="btnUsage" Content="새로고침" Click="RefreshUsage_Click" />
+                        <Button x:Name="btnCompare" Content="동기화" Click="Compare_Click" />
+                    </StackPanel>
+                </Grid>
             </Grid>
-        </Border>
-
-        <Border Grid.Row="1"
-                BorderBrush="Gray" BorderThickness="1" CornerRadius="4"
-                Margin="4" Padding="6">
-            <Grid ColumnDefinitions="*,*,*">
-                <Button x:Name="btnPull" Grid.Column="0"
-                        Margin="2" MinHeight="56"
-                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                        VerticalAlignment="Stretch" VerticalContentAlignment="Center"
-                        Content=" PULL 동기화&#10;로컬 &lt;= 서버" Click="btnPull_Click" />
-                <Button x:Name="btnCompare" Grid.Column="1"
-                        Margin="2" MinHeight="56"
-                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                        VerticalAlignment="Stretch" VerticalContentAlignment="Center"
-                        Content="비교" Click="btnCompare_Click" />
-                <Button x:Name="btnPush" Grid.Column="2"
-                        Margin="2" MinHeight="56"
-                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                        VerticalAlignment="Stretch" VerticalContentAlignment="Center"
-                        Content=" PUSH 동기화&#10;로컬 =&gt; 서버" Click="btnPush_Click" />
-                <Button x:Name="btnCancel" Grid.Column="0" Grid.ColumnSpan="3"
-                        Margin="2" MinHeight="56"
-                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                        VerticalAlignment="Stretch" VerticalContentAlignment="Center"
-                        Content="취소" IsVisible="False" Click="btnCancel_Click" />
+            <Grid x:Name="previewPanel" IsVisible="False" RowDefinitions="Auto,Auto,*" RowSpacing="14">
+                <TextBlock Text="서버에 반영할 변경사항" FontSize="24" FontWeight="SemiBold" />
+                <TextBlock x:Name="previewSummary" Grid.Row="1" TextWrapping="Wrap" />
+                <Border Grid.Row="2" BorderBrush="#40808080" BorderThickness="1" CornerRadius="6" Padding="6">
+                    <Grid RowDefinitions="Auto,*">
+                        <Grid ColumnDefinitions="*,60,90,180" ColumnSpacing="18" Margin="8,8,8,12">
+                            <TextBlock Text="파일 경로" Opacity="0.6" />
+                            <TextBlock Grid.Column="1" Text="상태" Opacity="0.6" />
+                            <TextBlock Grid.Column="2" Text="크기" Opacity="0.6" HorizontalAlignment="Right" />
+                            <TextBlock Grid.Column="3" Text="진행 상황" Opacity="0.6" />
+                        </Grid>
+                        <ListBox x:Name="changesGrid" Grid.Row="1" Classes="fileRows" ItemContainerTheme="{StaticResource FileListItemTheme}" ItemTemplate="{StaticResource UploadRowTemplate}" />
+                    </Grid>
+                </Border>
             </Grid>
-        </Border>
-
-        <Border Grid.Row="2"
-                BorderBrush="Gray" BorderThickness="1" CornerRadius="4"
-                Margin="4" Padding="6">
-            <Grid ColumnDefinitions="*,8,*">
-                <local:SyncFileCollectionControl x:Name="sourceSyncFiles" Grid.Column="0" />
-                <local:SyncFileCollectionControl x:Name="targetSyncFiles" Grid.Column="2" />
-            </Grid>
-        </Border>
-
-        <GridSplitter Grid.Row="3" Height="5"
-                      ResizeDirection="Rows"
-                      HorizontalAlignment="Stretch" />
-
-        <Border Grid.Row="4"
-                BorderBrush="Gray" BorderThickness="1" CornerRadius="4"
-                Margin="4" Padding="6">
-            <Grid>
-                <ScrollViewer x:Name="logScroll" VerticalScrollBarVisibility="Visible">
-                    <SelectableTextBlock x:Name="txtLogs" TextWrapping="Wrap" Margin="4" />
-                </ScrollViewer>
-                <CheckBox x:Name="cbScrollLog" IsChecked="True" Content="자동 스크롤"
-                          HorizontalAlignment="Right" VerticalAlignment="Top"
-                          Margin="0,4,30,0"
-                          IsCheckedChanged="cbScrollLog_Checked" />
+        </Grid>
+        <Border Grid.Row="2" BorderBrush="#40808080" BorderThickness="0,1,0,0" Padding="0,14,0,0">
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="8" ColumnSpacing="14">
+                <TextBlock x:Name="statusText" Text="준비되었습니다." TextWrapping="Wrap" />
+                <Button x:Name="btnCancel" Grid.Column="1" Grid.RowSpan="3" Content="취소" IsVisible="False" Click="Cancel_Click" />
+                <ProgressBar x:Name="transferBar" Grid.Row="1" Height="8" Maximum="100" IsVisible="False" />
+                <TextBlock x:Name="transferText" Grid.Row="2" FontSize="12" Opacity="0.7" />
+                <TextBlock x:Name="postUploadNotice" Grid.Row="3" IsVisible="False" TextWrapping="Wrap" Foreground="#A66B00" FontSize="12" />
             </Grid>
         </Border>
     </Grid>
