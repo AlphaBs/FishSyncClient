@@ -14,12 +14,7 @@ internal sealed class SyncRuleEvaluator
         if (options.Context == null)
             throw new ArgumentException("Context cannot be null.", nameof(options));
 
-        _pathOptions = new PathOptions
-        {
-            PathSeparator = pathOptions.PathSeparator,
-            AltPathSeparator = pathOptions.AltPathSeparator,
-            CaseInsensitive = pathOptions.CaseInsensitive
-        };
+        _pathOptions = pathOptions;
         var globOptions = new GlobOptions
         {
             Evaluation = new EvaluationOptions { CaseInsensitive = _pathOptions.CaseInsensitive }

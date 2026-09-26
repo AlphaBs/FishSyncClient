@@ -1,6 +1,6 @@
 # 규칙 기반 파일 동기화 명세
 
-대상 버전: 0.3.0 (기존 API와 호환되지 않는 변경)
+대상 버전: 1.0.0 (기존 API와 호환되지 않는 변경)
 
 ## 1. 목적과 범위
 
@@ -221,6 +221,19 @@ var options = new SyncerOptions
 ```
 
 `Context`를 생략하면 두 플래그 모두 `false`다. `Context = null`은 설정 오류다.
+`PathOptions`, `SyncerOptions`, `SyncRule`, `SyncContext`는 모두 `sealed record`이며 속성은 `init`으로 설정한다.
+기존 객체의 속성을 대입하여 변경하는 대신 `with`로 새 객체를 생성한다.
+
+```csharp
+var forcedOptions = options with { Context = options.Context with { IsForced = true } };
+var caseSensitivePaths = new PathOptions() with { CaseInsensitive = false };
+```
+
+`with`는 얕은 복사다. `SyncerOptions.Rules`의 목록과 progress 객체는 복사본과 공유된다.
+`IReadOnlyList`는 원본 목록 자체의 변경을 막지 않으므로 전달한 목록을 실행 중 변경하지 않는다.
+record 동등성은 각 속성의 동등성에 따르며, `Rules` 목록 원소를 순서대로 비교하는 구조적 동등성을 제공하지 않는다.
+기존 일반 클래스 상속 및 생성 후 속성 대입에 의존하던 소비자는 코드 수정과 재빌드가 필요하다.
+
 각 실행을 시작할 때 규칙과 조건을 평가할 문맥을 읽어 고정한다.
 설정은 실행 시작과 동시에 다른 스레드에서 변경하지 않는다.
 

@@ -105,7 +105,10 @@ public sealed class SyncRulesTests : IDisposable
                 { "action": "installOnly", "pattern": "**" }
             ] }
             """)!;
-        options.Context = new SyncContext { IsNewVersion = isNewVersion, IsForced = isForced };
+        options = options with
+        {
+            Context = new SyncContext { IsNewVersion = isNewVersion, IsForced = isForced }
+        };
         var result = await Run(options, apply);
         var active = isNewVersion || isForced;
 

@@ -1,8 +1,8 @@
 namespace FishSyncClient;
 
-public class PathOptions
+public sealed record PathOptions
 {
-    public char PathSeparator { get; set; } = '/';
-    public char AltPathSeparator { get; set; } = '\\';
-    public bool CaseInsensitive { get; set; } = true;
+    public char PathSeparator { get; init; } = '/';
+    public char AltPathSeparator { get; init; } = '\\';
+    public bool CaseInsensitive { get; init; } = true;
 }

@@ -3,15 +3,15 @@ using FishSyncClient.Progress;
 
 namespace FishSyncClient.Syncer;
 
-public class SyncerOptions
+public sealed record SyncerOptions
 {
     /// <summary>Ordered rules. Missing rules are invalid; an empty list excludes every file.</summary>
     [JsonPropertyName("rules")]
-    public IReadOnlyList<SyncRule>? Rules { get; set; }
+    public IReadOnlyList<SyncRule>? Rules { get; init; }
 
     [JsonPropertyName("context")]
-    public SyncContext Context { get; set; } = new();
-    public IProgress<FileProgressEvent>? FileProgress { get; set; }
-    public IProgress<SyncFileByteProgress>? ByteProgress { get; set; }
-    public CancellationToken CancellationToken { get; set; }
+    public SyncContext Context { get; init; } = new();
+    public IProgress<FileProgressEvent>? FileProgress { get; init; }
+    public IProgress<SyncFileByteProgress>? ByteProgress { get; init; }
+    public CancellationToken CancellationToken { get; init; }
 }
