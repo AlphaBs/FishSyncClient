@@ -4,6 +4,7 @@ using FishBucket.ApiClient;
 using FishSyncClient.FileComparers;
 using FishSyncClient.Progress;
 using FishSyncClient.Syncer;
+using SyncAction = FishSyncClient.Syncer.SyncAction;
 
 namespace FishSyncClient.Cli;
 
@@ -42,6 +43,7 @@ public class PullCommand : CommandBase
 
         var syncTask = syncer.CompareAndSyncFiles(syncFiles, comparerFactory.CreateFullComparer(), new SyncerOptions
         {
+            Rules = [new SyncRule { Action = SyncAction.FullSync, Pattern = "**" }],
             FileProgress = fileProgress,
             ByteProgress = byteProgress
         });

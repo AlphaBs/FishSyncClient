@@ -18,13 +18,12 @@ public class SyncFileCollectionSyncer
         IFileComparer comparer,
         SyncerOptions? options)
     {
-        options ??= new();
-
-        var pathComparer = new SyncPathComparer();
-        var pathCompareResult = pathComparer.ComparePaths(sources, targets, _pathOptions);
+        if (options == null)
+            throw new ArgumentNullException(nameof(options), "Sync options with explicit Rules are required.");
+        var pathCompareResult = SelectFiles(sources, targets, options);
 
         var fileCompareResult = await _filePairSyncer.CompareFilePairs(
-            pathCompareResult.DuplicatedFiles.Where(pair => options.TargetPathMatcher.Match(pair.Source.Path.SubPath)),
+            pathCompareResult.DuplicatedFiles,
             comparer,
             options.FileProgress,
             options.ByteProgress,
@@ -34,7 +33,7 @@ public class SyncFileCollectionSyncer
             pathCompareResult.AddedFiles,
             fileCompareResult.UpdatedFiles,
             fileCompareResult.IdenticalFiles,
-            pathCompareResult.DeletedFiles.Where(file => options.TargetPathMatcher.Match(file.Path.SubPath)).ToList());
+            pathCompareResult.DeletedFiles);
     }
 
     public async Task<SyncFileCollectionComparerResult> CompareAndSyncFiles(
@@ -43,13 +42,12 @@ public class SyncFileCollectionSyncer
         IFileComparer comparer,
         SyncerOptions? options)
     {
-        options ??= new();
-
-        var pathComparer = new SyncPathComparer();
-        var pathCompareResult = pathComparer.ComparePaths(sources, targets, _pathOptions);
+        if (options == null)
+            throw new ArgumentNullException(nameof(options), "Sync options with explicit Rules are required.");
+        var pathCompareResult = SelectFiles(sources, targets, options);
 
         var addedFilePairs = CreateFilePairs(pathCompareResult.AddedFiles);
-        var duplicatedFilePairs = pathCompareResult.DuplicatedFiles.Where(pair => options.TargetPathMatcher.Match(pair.Source.Path.SubPath));
+        var duplicatedFilePairs = pathCompareResult.DuplicatedFiles;
         var fileCompareResult = await _filePairSyncer.CompareAndSyncFilePairs(
             addedFilePairs.Concat(duplicatedFilePairs),
             comparer,
@@ -61,7 +59,21 @@ public class SyncFileCollectionSyncer
             pathCompareResult.AddedFiles,
             fileCompareResult.UpdatedFiles,
             fileCompareResult.IdenticalFiles,
-            pathCompareResult.DeletedFiles.Where(file => options.TargetPathMatcher.Match(file.Path.SubPath)).ToList());
+            pathCompareResult.DeletedFiles);
+    }
+
+    private SyncFilePathCompareResult SelectFiles(
+        IEnumerable<SyncFile> sources,
+        IEnumerable<SyncFile> targets,
+        SyncerOptions options)
+    {
+        var evaluator = new SyncRuleEvaluator(options, _pathOptions);
+        options.CancellationToken.ThrowIfCancellationRequested();
+        var paths = new SyncPathComparer().ComparePaths(sources, targets, _pathOptions);
+        return new SyncFilePathCompareResult(
+            paths.AddedFiles.Where(file => evaluator.Evaluate(file.Path.SubPath) != SyncAction.Exclude).ToArray(),
+            paths.DuplicatedFiles.Where(pair => evaluator.Evaluate(pair.Source.Path.SubPath) == SyncAction.FullSync).ToArray(),
+            paths.DeletedFiles.Where(file => evaluator.Evaluate(file.Path.SubPath) == SyncAction.FullSync).ToArray());
     }
 
     protected virtual IEnumerable<SyncFilePair> CreateFilePairs(IEnumerable<SyncFile> sourceFiles)

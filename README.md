@@ -8,6 +8,38 @@ FishSyncClient 는 파일 동기화를 위한 .NET 라이브러리입니다.
 - 파일 내용 비교 (파일 크기, 체크섬 비교)
 - 동기화를 위한 파일 복사, 삭제
 
+## 규칙 기반 동기화 (0.3.0)
+
+`SyncerOptions.Rules`에 순서가 있는 규칙을 전달합니다. `fullSync`는 전체 동기화,
+`installOnly`는 없는 파일만 설치, `exclude`는 다운로드를 포함한 모든 파일 작업 제외를 의미합니다.
+경로와 실행 조건이 모두 맞는 첫 번째 규칙을 적용합니다.
+
+```csharp
+var options = new SyncerOptions
+{
+    Rules =
+    [
+        new SyncRule
+        {
+            Action = SyncAction.FullSync,
+            Condition = SyncCondition.OnNewVersion,
+            Pattern = "mods/+*"
+        },
+        new SyncRule { Action = SyncAction.Exclude, Pattern = "private/**" },
+        new SyncRule { Action = SyncAction.InstallOnly, Pattern = "**" }
+    ],
+    Context = new SyncContext { IsNewVersion = true }
+};
+```
+
+위 타입은 `FishSyncClient.Syncer` 네임스페이스에 있습니다.
+`TargetPathMatcher`와 기존 `PathMatchers` API는 제거되었습니다.
+`Rules` 미지정 또는 `null`은 오류이며, 빈 목록이나 매칭되지 않는 경로는 제외됩니다.
+기존 전체 동기화는 `FullSync` / `**` 규칙을 명시해야 합니다.
+실제 삭제는 반환된 `DeletedFiles`를 `LocalSyncer.DeleteLocalFiles`에 전달하는 호출자가 수행합니다.
+
+JSON 형식, 강제 패치 조건 및 마이그레이션 방법은 [한글 명세](docs/sync-rules-spec.md)를 참고하세요.
+
 ## FishSyncServer 연동
 
 - 서버에서 파일 목록, 내용 비교

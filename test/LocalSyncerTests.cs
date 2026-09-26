@@ -20,7 +20,10 @@ public class LocalSyncerTests
             var result = await syncer.CompareAndSyncFiles(
                 new[] { source },
                 new LocalFileSizeComparer(),
-                options: null);
+                new SyncerOptions
+                {
+                    Rules = [new SyncRule { Action = SyncAction.FullSync, Pattern = "**" }]
+                });
 
             var targetPath = Path.Combine(root, "nested", "file.txt");
             Assert.True(File.Exists(targetPath));
@@ -47,7 +50,10 @@ public class LocalSyncerTests
             var result = await syncer.CompareAndSyncFiles(
                 new[] { source },
                 new LocalFileSizeComparer(),
-                options: null);
+                new SyncerOptions
+                {
+                    Rules = [new SyncRule { Action = SyncAction.FullSync, Pattern = "**" }]
+                });
 
             Assert.Equal("new content", await File.ReadAllTextAsync(Path.Combine(root, "file.txt")));
             Assert.Empty(result.AddedFiles);
@@ -72,7 +78,10 @@ public class LocalSyncerTests
             var result = await syncer.CompareAndSyncFiles(
                 Array.Empty<SyncFile>(),
                 new LocalFileSizeComparer(),
-                options: null);
+                new SyncerOptions
+                {
+                    Rules = [new SyncRule { Action = SyncAction.FullSync, Pattern = "**" }]
+                });
 
             Assert.True(File.Exists(targetPath));
             AssertEqualSubPaths(new[] { "target-only.txt" }, result.DeletedFiles);
