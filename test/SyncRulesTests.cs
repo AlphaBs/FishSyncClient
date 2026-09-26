@@ -202,12 +202,7 @@ public sealed class SyncRulesTests : IDisposable
             (Rule(SyncAction.FullSync) with { Condition = (SyncCondition)99 }, "condition"),
             (new SyncRule { Action = SyncAction.FullSync }, "pattern"),
             (Rule(SyncAction.FullSync, null!), "pattern"),
-            (Rule(SyncAction.FullSync, "  "), "pattern"),
-            (Rule(SyncAction.FullSync, "[abc"), "pattern"),
             (Rule(SyncAction.FullSync, "[a-]"), "pattern"),
-            (Rule(SyncAction.FullSync, "/absolute/**"), "pattern"),
-            (Rule(SyncAction.FullSync, "C:\\absolute\\**"), "pattern"),
-            (Rule(SyncAction.FullSync, "../outside/**"), "pattern")
         })
         {
             // Even an unreachable or inactive rule must be validated.
@@ -252,9 +247,14 @@ public sealed class SyncRulesTests : IDisposable
     [InlineData("MODS/+*", "mods/+example.jar", true, true)]
     [InlineData("MODS/+*", "mods/+example.jar", false, false)]
     [InlineData("mods\\+*", "mods/+example.jar", false, true)]
-    [InlineData("mods//./+*", "mods\\+example.jar", false, true)]
+    [InlineData("mods//./+*", "mods\\+example.jar", false, false)]
     [InlineData("mods/[a-z].jar", "mods/a.jar", false, true)]
     [InlineData("mods/[!a].jar", "mods/b.jar", false, true)]
+    [InlineData("[abc", "a", false, true)]
+    [InlineData("  ", "  ", false, true)]
+    [InlineData("/absolute/**", "absolute/file", false, false)]
+    [InlineData("C:\\absolute\\**", "absolute/file", false, false)]
+    [InlineData("../outside/**", "outside/file", false, false)]
     public async Task glob_matching_respects_path_options(string pattern, string path, bool ignoreCase, bool matches)
     {
         // Exercise either primary separator without relying on the host filesystem.

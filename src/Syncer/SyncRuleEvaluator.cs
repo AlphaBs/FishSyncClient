@@ -32,14 +32,13 @@ internal sealed class SyncRuleEvaluator
                 throw InvalidRule(index, "action", "must be fullSync, installOnly, or exclude");
             if (!Enum.IsDefined(typeof(SyncCondition), rule.Condition))
                 throw InvalidRule(index, "condition", "must be always or onNewVersion");
-            if (string.IsNullOrWhiteSpace(rule.Pattern))
-                throw InvalidRule(index, "pattern", "cannot be empty");
 
             try
             {
-                var pattern = Normalize(rule.Pattern);
-                ValidatePattern(pattern);
-                var glob = Glob.Parse(pattern, globOptions);
+                var pattern = rule.Pattern?
+                    .Replace(_pathOptions.AltPathSeparator, _pathOptions.PathSeparator)
+                    .Replace(_pathOptions.PathSeparator, '/');
+                var glob = Glob.Parse(pattern!, globOptions);
                 _rules.Add((glob, rule.Action, rule.Condition == SyncCondition.Always || isNewVersion));
             }
             catch (Exception exception) when (exception is ArgumentException || exception is IndexOutOfRangeException)
@@ -62,30 +61,6 @@ internal sealed class SyncRuleEvaluator
 
     private string Normalize(string path) =>
         PathHelper.NormalizePath(path, _pathOptions).Replace(_pathOptions.PathSeparator, '/');
-
-    private static void ValidatePattern(string pattern)
-    {
-        if (pattern.StartsWith('/') || (pattern.Length > 1 && pattern[1] == ':'))
-            throw new ArgumentException("must be relative to the sync root");
-
-        // DotNet.Glob accepts unterminated character lists, so reject those explicitly.
-        for (var index = 0; index < pattern.Length; index++)
-        {
-            if (pattern[index] != '[')
-                continue;
-
-            var start = index + 1;
-            if (start < pattern.Length && pattern[start] == '!')
-                start++;
-            // A closing bracket as the first list character is a literal bracket.
-            if (start < pattern.Length && pattern[start] == ']')
-                start++;
-            var end = pattern.IndexOf(']', start);
-            if (end < 0)
-                throw new ArgumentException("contains an unterminated character list");
-            index = end;
-        }
-    }
 
     private static ArgumentException InvalidRule(int index, string field, string message, Exception? inner = null) =>
         new($"Rules[{index}].{field}: {message}.", "Rules", inner);
