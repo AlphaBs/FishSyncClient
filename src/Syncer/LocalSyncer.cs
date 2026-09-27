@@ -1,4 +1,3 @@
-using FishSyncClient.FileComparers;
 using FishSyncClient.Files;
 
 namespace FishSyncClient.Syncer;
@@ -25,20 +24,18 @@ public class LocalSyncer : SyncFileCollectionSyncer
 
     public Task<SyncFileCollectionComparerResult> CompareFiles(
         IEnumerable<SyncFile> sources, 
-        IFileComparer comparer,
         SyncerOptions? options)
     {
         var targets = EnumerateLocalSyncFiles(_root, _pathOptions);
-        return CompareFiles(sources, targets, comparer, options);
+        return CompareFiles(sources, targets, options);
     }
 
     public Task<SyncFileCollectionComparerResult> CompareAndSyncFiles(
         IEnumerable<SyncFile> sources,
-        IFileComparer comparer,
         SyncerOptions? options)
     {
         var targets = EnumerateLocalSyncFiles(_root, _pathOptions);
-        return CompareAndSyncFiles(sources, targets, comparer, options);
+        return CompareAndSyncFiles(sources, targets, options);
     }
 
     protected override IEnumerable<SyncFilePair> CreateFilePairs(IEnumerable<SyncFile> sourceFiles)

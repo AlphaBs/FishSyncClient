@@ -1,12 +1,14 @@
-using FishSyncClient.PathMatchers;
 using FishSyncClient.Progress;
 
 namespace FishSyncClient.Syncer;
 
-public class SyncerOptions
+public sealed record SyncerOptions
 {
-    public IPathMatcher TargetPathMatcher { get; set; } = StaticPathMatcher.MatchAll();
-    public IProgress<FileProgressEvent>? FileProgress { get; set; }
-    public IProgress<SyncFileByteProgress>? ByteProgress { get; set; }
-    public CancellationToken CancellationToken { get; set; }
+    /// <summary>Ordered rules. Must contain at least one rule and cover every source and target path.</summary>
+    public IReadOnlyList<SyncRule>? Rules { get; init; }
+
+    public SyncContext Context { get; init; } = new();
+    public IProgress<FileProgressEvent>? FileProgress { get; init; }
+    public IProgress<SyncFileByteProgress>? ByteProgress { get; init; }
+    public CancellationToken CancellationToken { get; init; }
 }

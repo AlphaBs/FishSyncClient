@@ -1,7 +1,6 @@
 using FishSyncClient;
 using FishSyncClient.FileComparers;
 using FishSyncClient.Files;
-using FishSyncClient.PathMatchers;
 using FishSyncClient.Progress;
 using FishSyncClient.Syncer;
 using Moq;
@@ -11,7 +10,7 @@ namespace FishSyncClientTest;
 public class SyncFileComparerTests : SyncerTestBase
 {
     [Fact]
-    public async Task added_files_are_not_matched()
+    public async Task added_files_are_filtered_by_rules()
     {
         // Given
         var sut = CreateSyncer();
@@ -23,14 +22,17 @@ public class SyncFileComparerTests : SyncerTestBase
         var result = await sut.CompareFiles(
             CreateSourcePaths("file1", "file2", "file222", "file34", "files/a/b/c"),
             CreateTargetPaths("files/a/b/c", "file5"),
-            mockComparer.Object,
             new SyncerOptions
             {
-                TargetPathMatcher = new GlobPathMatcher("file2*")
+                Rules =
+                [
+                    new SyncRule(SyncAction.FullSync, SyncCondition.Always, "file2*", mockComparer.Object),
+                    new SyncRule(SyncAction.Exclude, SyncCondition.Always, "**", null)
+                ]
             });
 
         // Then
-        var expected = CreateSourcePaths("file1", "file2", "file222", "file34"); 
+        var expected = CreateSourcePaths("file2", "file222");
         var actual = result.AddedFiles.ToArray();
         AssertEqualPathCollection(expected, actual);
     }
@@ -48,10 +50,13 @@ public class SyncFileComparerTests : SyncerTestBase
         var result = await sut.CompareFiles(
             CreateSourcePaths("file1", "file2", "file222", "file34", "files/a/b/c"),
             CreateTargetPaths("file2", "file222", "file34", "files/a/b/c", "file5"),
-            mockComparer.Object,
             new SyncerOptions
             {
-                TargetPathMatcher = new GlobPathMatcher("file2*")
+                Rules =
+                [
+                    new SyncRule(SyncAction.FullSync, SyncCondition.Always, "file2*", mockComparer.Object),
+                    new SyncRule(SyncAction.Exclude, SyncCondition.Always, "**", null)
+                ]
             });
 
         // Then
@@ -73,10 +78,13 @@ public class SyncFileComparerTests : SyncerTestBase
         var result = await sut.CompareFiles(
             CreateSourcePaths("file1", "files/a/b/c"),
             CreateTargetPaths("file2", "file222", "file34", "files/a/b/c"),
-            mockComparer.Object,
             new SyncerOptions
             {
-                TargetPathMatcher = new GlobPathMatcher("file2*")
+                Rules =
+                [
+                    new SyncRule(SyncAction.FullSync, SyncCondition.Always, "file2*", mockComparer.Object),
+                    new SyncRule(SyncAction.Exclude, SyncCondition.Always, "**", null)
+                ]
             });
 
         // Then
@@ -86,7 +94,7 @@ public class SyncFileComparerTests : SyncerTestBase
     }
 
     [Fact]
-    public async Task compare_and_sync_syncs_all_added_files_and_only_matching_duplicated_files()
+    public async Task compare_and_sync_filters_added_existing_and_deleted_files()
     {
         // Given
         var pathOptions = new PathOptions
@@ -101,21 +109,24 @@ public class SyncFileComparerTests : SyncerTestBase
         var result = await sut.CompareAndSyncFiles(
             CreateSourcePaths("added-unmatched", "match-added", "match-duplicate", "skip-duplicate"),
             CreateTargetPaths("match-duplicate", "skip-duplicate", "match-deleted", "skip-deleted"),
-            mockComparer.Object,
             new SyncerOptions
             {
-                TargetPathMatcher = new PrefixPathMatcher("match")
+                Rules =
+                [
+                    new SyncRule(SyncAction.FullSync, SyncCondition.Always, "match*", mockComparer.Object),
+                    new SyncRule(SyncAction.Exclude, SyncCondition.Always, "**", null)
+                ]
             });
 
         // Then
         AssertEqualPathCollection(
-            CreateSourcePaths("added-unmatched", "match-added"),
+            CreateSourcePaths("match-added"),
             result.AddedFiles);
         AssertEqualPathCollection(
             CreateTargetPaths("match-deleted"),
             result.DeletedFiles);
         Assert.Equal(
-            new[] { "added-unmatched", "match-added", "match-duplicate" }.ToHashSet(),
+            new[] { "match-added", "match-duplicate" }.ToHashSet(),
             pairSyncer.SyncedPairs.Select(pair => pair.Source.Path.SubPath).ToHashSet());
     }
 
@@ -179,15 +190,4 @@ public class SyncFileComparerTests : SyncerTestBase
         }
     }
 
-    private sealed class PrefixPathMatcher : IPathMatcher
-    {
-        private readonly string _prefix;
-
-        public PrefixPathMatcher(string prefix)
-        {
-            _prefix = prefix;
-        }
-
-        public bool Match(string subPath) => subPath.StartsWith(_prefix, StringComparison.Ordinal);
-    }
 }
