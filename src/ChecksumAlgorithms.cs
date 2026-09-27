@@ -32,4 +32,23 @@ public static class ChecksumAlgorithms
 
     public static string ComputeSHA1(Stream stream) => 
         ComputeHash(ChecksumAlgorithmNames.SHA1, stream);
+
+    public static async Task<string> ComputeHashAsync(
+        string algName, Stream stream, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        using var algorithm = CreateHashAlgorithmFromName(algName);
+        var buffer = new byte[65536];
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var read = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (read == 0)
+                break;
+            algorithm.TransformBlock(buffer, 0, read, buffer, 0);
+        }
+        algorithm.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+        return HashHelper.ToHexString(algorithm.Hash!);
+    }
 }

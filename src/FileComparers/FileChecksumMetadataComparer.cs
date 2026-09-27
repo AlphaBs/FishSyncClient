@@ -41,7 +41,8 @@ public class FileChecksumMetadataComparer : IFileComparer
             return handleCannotCompare();
         }
         
-        return sourceChecksumValue.ChecksumHexString == targetChecksumValue.ChecksumHexString;
+        return string.Equals(sourceChecksumValue.ChecksumHexString, targetChecksumValue.ChecksumHexString,
+            StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool hasChecksum(SyncFileChecksum? checksum)

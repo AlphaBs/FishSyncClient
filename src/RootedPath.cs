@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using FishSyncClient.Internals;
 
 namespace FishSyncClient;
 
@@ -50,13 +51,24 @@ public readonly struct RootedPath
 
     public static IEnumerable<RootedPath> FromDirectory(string root, PathOptions options)
     {
+        LocalPathGuard.EnsureNoLinks(root);
         if (!Directory.Exists(root))
             yield break;
 
-        var files = Directory.GetFiles(root, "*", SearchOption.AllDirectories);
-        foreach (var item in files)
+        var directories = new Stack<string>();
+        directories.Push(root);
+        while (directories.Count > 0)
         {
-            yield return FromFullPath(root, item, options);
+            var directory = directories.Pop();
+            LocalPathGuard.EnsureNoLinks(directory);
+            foreach (var item in Directory.EnumerateFileSystemEntries(directory))
+            {
+                LocalPathGuard.EnsureNoLinks(item);
+                if ((File.GetAttributes(item) & FileAttributes.Directory) != 0)
+                    directories.Push(item);
+                else
+                    yield return FromFullPath(root, item, options);
+            }
         }
     }
 
