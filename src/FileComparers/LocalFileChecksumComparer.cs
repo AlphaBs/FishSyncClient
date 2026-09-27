@@ -6,6 +6,7 @@ public class LocalFileChecksumComparer : IFileComparer
 {
     public async ValueTask<bool> AreEqual(SyncFilePair pair, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var targetLocalFile = pair.Target as LocalSyncFile;
         if (targetLocalFile == null)
             throw new FileComparerException("Target should be LocalSyncFile");
@@ -17,14 +18,8 @@ public class LocalFileChecksumComparer : IFileComparer
         if (string.IsNullOrEmpty(sourceChecksum) || string.IsNullOrEmpty(sourceChecksumAlgorithmName))
             return true;
 
-        var targetChecksum = await getChecksum(sourceChecksumAlgorithmName, targetLocalFile);
-        var areEqual = sourceChecksum == targetChecksum;
-        return areEqual;
-    }
-
-    private async ValueTask<string> getChecksum(string algName, LocalSyncFile file)
-    {
-        using var readStream = await file.OpenReadStream(default);
-        return ChecksumAlgorithms.ComputeHash(algName, readStream);
+        using var readStream = await targetLocalFile.OpenReadStream(cancellationToken);
+        var targetChecksum = await ChecksumAlgorithms.ComputeHashAsync(sourceChecksumAlgorithmName, readStream, cancellationToken);
+        return string.Equals(sourceChecksum, targetChecksum, StringComparison.OrdinalIgnoreCase);
     }
 }

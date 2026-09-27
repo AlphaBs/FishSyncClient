@@ -52,7 +52,17 @@ internal class StreamProgressHelper
     {
         long initPosition = source.Position;
         var copyTask = source.CopyToAsync(target, cancellationToken);
-        await MonitorStreamPosition(copyTask, source, initPosition, interval, progress);
+        try
+        {
+            await MonitorStreamPosition(copyTask, source, initPosition, interval, progress);
+        }
+        catch
+        {
+            // A progress callback can throw while CopyToAsync is still writing.
+            try { await copyTask; }
+            catch { }
+            throw;
+        }
     }
 
     public static async Task MonitorStreamPosition(
@@ -65,8 +75,9 @@ internal class StreamProgressHelper
         long previousPosition = initPosition;
         while (!task.IsCompleted)
         {
-            delta?.Report(stream.Position - previousPosition);
-            previousPosition = stream.Position;
+            var position = stream.Position;
+            delta?.Report(position - previousPosition);
+            previousPosition = position;
             await Task.WhenAny(task, Task.Delay(interval));
         }
         await task;

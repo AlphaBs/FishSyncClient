@@ -1,4 +1,5 @@
 using FishSyncClient.Files;
+using FishSyncClient.Internals;
 
 namespace FishSyncClient.Syncer;
 
@@ -19,6 +20,7 @@ public class LocalSyncer : SyncFileCollectionSyncer
         ISyncFilePairSyncer syncer) : base(syncer, pathOptions)
     {
         _root = PathHelper.NormalizeRoot(root, pathOptions);
+        LocalPathGuard.EnsureNoLinks(_root);
         _pathOptions = pathOptions;
     }
 
@@ -54,6 +56,7 @@ public class LocalSyncer : SyncFileCollectionSyncer
                 throw new InvalidOperationException("root not matched");
                 
             var path = file.Path.GetFullPath();
+            LocalPathGuard.EnsureNoLinks(path);
             File.Delete(path);
         }
     }

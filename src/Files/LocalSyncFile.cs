@@ -9,20 +9,32 @@ public class LocalSyncFile : SyncFile
     {
     }
 
-    public bool Exists => File.Exists(Path.GetFullPath());
+    public bool Exists
+    {
+        get
+        {
+            LocalPathGuard.EnsureNoLinks(Path.GetFullPath());
+            return File.Exists(Path.GetFullPath());
+        }
+    }
     public override bool IsReadable => Path.IsRooted;
     public override bool IsWritable => Path.IsRooted;
 
     public override ValueTask<Stream> OpenReadStream(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        LocalPathGuard.EnsureNoLinks(Path.GetFullPath());
         var stream = File.OpenRead(Path.GetFullPath());
         return new ValueTask<Stream>(stream);
     }
 
     public override ValueTask<Stream> OpenWriteStream(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var fullPath = Path.GetFullPath();
+        LocalPathGuard.EnsureNoLinks(fullPath);
         PathHelper.CreateParentDirectory(fullPath);
+        LocalPathGuard.EnsureNoLinks(fullPath);
         var stream = File.Create(fullPath);
         return new ValueTask<Stream>(stream);
     }

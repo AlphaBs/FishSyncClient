@@ -15,6 +15,7 @@ public readonly struct SyncFilePair
         IProgress<SyncFileByteProgress>? progress = null, 
         CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var source = Source;
         var progressReporter = new SyncProgress<ByteProgress>(byteProgress =>
             progress?.Report(new SyncFileByteProgress(source, byteProgress)));

@@ -158,21 +158,33 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
             IProgress<SyncFileByteProgress>? byteProgress,
             CancellationToken cancellationToken)
         {
-            foreach (var pair in pairs)
+            try
             {
-                Interlocked.Increment(ref TotalFiles);
-                fileProgress?.Report(new FileProgressEvent(
-                    FileProgressEventType.Queue, ProgressedFiles, TotalFiles, pair.Source.Path.SubPath));
-                byteProgress?.Report(
-                    new SyncFileByteProgress(
-                        pair.Source,
-                        new ByteProgress
-                        (
-                            totalBytes: pair.Source.Metadata?.Size ?? 0,
-                            progressedBytes: 0
-                        )));
+                foreach (var pair in pairs)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    Interlocked.Increment(ref TotalFiles);
+                    fileProgress?.Report(new FileProgressEvent(
+                        FileProgressEventType.Queue, ProgressedFiles, TotalFiles, pair.Source.Path.SubPath));
+                    byteProgress?.Report(new SyncFileByteProgress(
+                        pair.Source, new ByteProgress(pair.Source.Metadata?.Size ?? 0, 0)));
 
-                await block.SendAsync(pair, cancellationToken);
+                    if (!await block.SendAsync(pair, cancellationToken))
+                        break;
+                }
+            }
+            catch (Exception exception)
+            {
+                ((IDataflowBlock)block).Fault(exception);
+                try
+                {
+                    await block.Completion;
+                }
+                catch
+                {
+                    // Observe worker failure, then preserve the original enqueue/iteration exception.
+                }
+                throw;
             }
 
             block.Complete();
