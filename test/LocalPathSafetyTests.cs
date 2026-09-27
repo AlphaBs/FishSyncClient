@@ -20,7 +20,13 @@ public class LocalPathSafetyTests : IDisposable
         File.WriteAllText(Path.Combine(Outside, "keep.txt"), "outside");
     }
 
-    public void Dispose() => Directory.Delete(_base, true);
+    public void Dispose()
+    {
+        // Remove the junction itself before recursively removing the test tree on Windows.
+        if (Directory.Exists(Link) && (File.GetAttributes(Link) & FileAttributes.ReparsePoint) != 0)
+            Directory.Delete(Link);
+        Directory.Delete(_base, true);
+    }
 
     [Fact]
     public void enumeration_rejects_directory_links_before_returning_external_files()
