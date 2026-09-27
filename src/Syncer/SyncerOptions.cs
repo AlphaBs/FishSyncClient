@@ -4,7 +4,7 @@ namespace FishSyncClient.Syncer;
 
 public sealed record SyncerOptions
 {
-    /// <summary>Ordered rules. Missing rules are invalid; an empty list excludes every file.</summary>
+    /// <summary>Ordered rules. Must contain at least one rule and cover every source and target path.</summary>
     public IReadOnlyList<SyncRule>? Rules { get; init; }
 
     public SyncContext Context { get; init; } = new();

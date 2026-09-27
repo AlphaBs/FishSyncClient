@@ -41,9 +41,9 @@ public class PullCommand : CommandBase
             pathOptions,
             new ParallelSyncFilePairSyncer());
 
-        var syncTask = syncer.CompareAndSyncFiles(syncFiles, comparerFactory.CreateFullComparer(), new SyncerOptions
+        var syncTask = syncer.CompareAndSyncFiles(syncFiles, new SyncerOptions
         {
-            Rules = [new SyncRule { Action = SyncAction.FullSync, Pattern = "**" }],
+            Rules = [new SyncRule(SyncAction.FullSync, SyncCondition.Always, "**", comparerFactory.CreateFullComparer())],
             FileProgress = fileProgress,
             ByteProgress = byteProgress
         });

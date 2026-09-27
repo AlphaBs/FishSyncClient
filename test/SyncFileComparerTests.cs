@@ -22,10 +22,13 @@ public class SyncFileComparerTests : SyncerTestBase
         var result = await sut.CompareFiles(
             CreateSourcePaths("file1", "file2", "file222", "file34", "files/a/b/c"),
             CreateTargetPaths("files/a/b/c", "file5"),
-            mockComparer.Object,
             new SyncerOptions
             {
-                Rules = [new SyncRule { Action = SyncAction.FullSync, Pattern = "file2*" }]
+                Rules =
+                [
+                    new SyncRule(SyncAction.FullSync, SyncCondition.Always, "file2*", mockComparer.Object),
+                    new SyncRule(SyncAction.Exclude, SyncCondition.Always, "**", null)
+                ]
             });
 
         // Then
@@ -47,10 +50,13 @@ public class SyncFileComparerTests : SyncerTestBase
         var result = await sut.CompareFiles(
             CreateSourcePaths("file1", "file2", "file222", "file34", "files/a/b/c"),
             CreateTargetPaths("file2", "file222", "file34", "files/a/b/c", "file5"),
-            mockComparer.Object,
             new SyncerOptions
             {
-                Rules = [new SyncRule { Action = SyncAction.FullSync, Pattern = "file2*" }]
+                Rules =
+                [
+                    new SyncRule(SyncAction.FullSync, SyncCondition.Always, "file2*", mockComparer.Object),
+                    new SyncRule(SyncAction.Exclude, SyncCondition.Always, "**", null)
+                ]
             });
 
         // Then
@@ -72,10 +78,13 @@ public class SyncFileComparerTests : SyncerTestBase
         var result = await sut.CompareFiles(
             CreateSourcePaths("file1", "files/a/b/c"),
             CreateTargetPaths("file2", "file222", "file34", "files/a/b/c"),
-            mockComparer.Object,
             new SyncerOptions
             {
-                Rules = [new SyncRule { Action = SyncAction.FullSync, Pattern = "file2*" }]
+                Rules =
+                [
+                    new SyncRule(SyncAction.FullSync, SyncCondition.Always, "file2*", mockComparer.Object),
+                    new SyncRule(SyncAction.Exclude, SyncCondition.Always, "**", null)
+                ]
             });
 
         // Then
@@ -100,10 +109,13 @@ public class SyncFileComparerTests : SyncerTestBase
         var result = await sut.CompareAndSyncFiles(
             CreateSourcePaths("added-unmatched", "match-added", "match-duplicate", "skip-duplicate"),
             CreateTargetPaths("match-duplicate", "skip-duplicate", "match-deleted", "skip-deleted"),
-            mockComparer.Object,
             new SyncerOptions
             {
-                Rules = [new SyncRule { Action = SyncAction.FullSync, Pattern = "match*" }]
+                Rules =
+                [
+                    new SyncRule(SyncAction.FullSync, SyncCondition.Always, "match*", mockComparer.Object),
+                    new SyncRule(SyncAction.Exclude, SyncCondition.Always, "**", null)
+                ]
             });
 
         // Then

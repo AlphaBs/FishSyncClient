@@ -1,16 +1,14 @@
-using System.Text.Json.Serialization;
+using FishSyncClient.FileComparers;
 
 namespace FishSyncClient.Syncer;
 
 /// <summary>The first rule matching both the relative path and the condition wins.</summary>
-public sealed record SyncRule
-{
-    [JsonPropertyName("action")]
-    public SyncAction Action { get; init; }
-
-    [JsonPropertyName("condition")]
-    public SyncCondition Condition { get; init; } = SyncCondition.Always;
-
-    [JsonPropertyName("pattern")]
-    public string Pattern { get; init; } = "";
-}
+/// <param name="Action">The operation to perform for matching files.</param>
+/// <param name="Condition">The execution condition required to select this rule.</param>
+/// <param name="Pattern">A glob relative to the sync root.</param>
+/// <param name="Comparer">The comparer for matching files and transfer verification. Required unless Action is Exclude.</param>
+public sealed record SyncRule(
+    SyncAction Action,
+    SyncCondition Condition,
+    string Pattern,
+    IFileComparer? Comparer);
