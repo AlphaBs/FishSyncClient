@@ -254,7 +254,8 @@ var options = new SyncerOptions
 };
 ```
 
-`rulesJson`은 규칙 배열이다. 2절처럼 `rules` 속성을 포함한 객체는 `SyncerOptions`로 역직렬화할 수 있다.
+`rulesJson`은 규칙 배열이다. 2절처럼 `rules` 속성을 포함한 설정 객체는 호출자가 해당 배열을 추출하거나 별도의 설정 DTO로 읽는다.
+`SyncerOptions`와 `SyncContext`는 JSON 설정 모델이 아닌 실행 정보다. 규칙을 읽은 뒤 버전 상태, progress, cancellation 등의 실행 정보를 지정하여 구성한다.
 JSON의 action·condition은 명세에 정의된 camelCase 문자열로 전달해야 하며 숫자 enum 값이나 여러 값을 결합한 문자열은 허용하지 않는다.
 알 수 없는 enum 값은 역직렬화 시 `JsonException`으로 보고하며, 예외의 `Path`에 규칙 인덱스와 필드가 포함된다.
 필수 필드 누락 및 glob 오류는 동기화 시작 시 검증하며, `Rules[인덱스].필드`를 포함한 `ArgumentException`으로 보고한다.

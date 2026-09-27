@@ -97,16 +97,17 @@ public sealed class SyncRulesTests : IDisposable
         WriteTarget("config/local.json", "local");
         WriteTarget("private/local.json", "local");
 
-        var options = JsonSerializer.Deserialize<SyncerOptions>("""
-            { "rules": [
+        var rules = JsonSerializer.Deserialize<SyncRule[]>("""
+            [
                 { "action": "fullSync", "condition": "onNewVersion", "pattern": "mods/+*" },
                 { "action": "fullSync", "pattern": "resourcepacks/**" },
                 { "action": "exclude", "pattern": "private/**" },
                 { "action": "installOnly", "pattern": "**" }
-            ] }
+            ]
             """)!;
-        options = options with
+        var options = new SyncerOptions
         {
+            Rules = rules,
             Context = new SyncContext { IsNewVersion = isNewVersion, IsForced = isForced }
         };
         var result = await Run(options, apply);
@@ -307,9 +308,9 @@ public sealed class SyncRulesTests : IDisposable
     [InlineData("condition", "null")]
     public void invalid_json_enum_values_report_rule_index_and_field(string field, string value)
     {
-        var json = "{\"rules\":[{\"" + field + "\":" + value + ",\"pattern\":\"**\"}]}";
-        var error = Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<SyncerOptions>(json));
-        Assert.Equal($"$.rules[0].{field}", error.Path);
+        var json = "[{\"" + field + "\":" + value + ",\"pattern\":\"**\"}]";
+        var error = Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<SyncRule[]>(json));
+        Assert.Equal($"$[0].{field}", error.Path);
     }
 
     private Task<SyncFileCollectionComparerResult> Run(SyncerOptions? options, bool apply)
