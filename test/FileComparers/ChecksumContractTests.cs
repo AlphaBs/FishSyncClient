@@ -82,15 +82,12 @@ public sealed class ChecksumContractTests : IDisposable
     [InlineData(true)]
     public async Task omitted_source_checksum_is_normal_in_every_metadata_error_mode(bool omitMetadata)
     {
-        var source = Source(null);
-        if (omitMetadata)
-            source.Metadata = null;
+        var source = Source(null, omitMetadata);
 
         // 원본이 체크섬 검증을 요구하지 않으면 대상 체크섬을 요구하거나 검사하지 않는다.
         foreach (var targetChecksum in new SyncFileChecksum?[] { null, default(SyncFileChecksum), new("md5", Md5) })
         {
-            var target = Source(targetChecksum);
-            target.Metadata!.Size = 999;
+            var target = Source(targetChecksum, size: 999);
             foreach (var mode in Enum.GetValues<ComparerErrorHandlingModes>())
                 Assert.True(await new FileChecksumMetadataComparer(mode).AreEqual(new(source, target), default));
         }
@@ -117,9 +114,7 @@ public sealed class ChecksumContractTests : IDisposable
     public async Task omitted_checksum_preserves_existing_content_without_opening_either_file(
         bool omitMetadata, string existingContent)
     {
-        var source = Source(null);
-        if (omitMetadata)
-            source.Metadata = null;
+        var source = Source(null, omitMetadata);
         var target = new TrackingLocalFile(RootedPath.Create(_root, "target.txt", _pathOptions));
         await File.WriteAllTextAsync(target.Path.GetFullPath(), existingContent);
 
@@ -139,9 +134,7 @@ public sealed class ChecksumContractTests : IDisposable
     [InlineData(true)]
     public async Task local_collection_creates_missing_file_with_omitted_checksum(bool omitMetadata)
     {
-        var source = Source(null);
-        if (omitMetadata)
-            source.Metadata = null;
+        var source = Source(null, omitMetadata);
         var targetRoot = Path.Combine(_root, "target");
         Directory.CreateDirectory(targetRoot);
         var syncer = new LocalSyncer(targetRoot, _pathOptions, new ParallelSyncFilePairSyncer(1));
@@ -180,13 +173,13 @@ public sealed class ChecksumContractTests : IDisposable
         Assert.Single(existing.IdenticalFilePairs);
     }
 
-    private TrackingLocalFile Source(SyncFileChecksum? checksum)
+    private TrackingLocalFile Source(SyncFileChecksum? checksum, bool omitMetadata = false, long size = 14)
     {
         var path = RootedPath.Create(_root, "source.txt", _pathOptions);
         File.WriteAllText(path.GetFullPath(), "source content");
         return new TrackingLocalFile(path)
         {
-            Metadata = new() { Checksum = checksum, Size = 14 }
+            Metadata = omitMetadata ? null : new() { Checksum = checksum, Size = size }
         };
     }
 

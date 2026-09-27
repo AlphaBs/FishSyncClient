@@ -525,13 +525,16 @@ public sealed class SyncRulesTests : IDisposable
         {
             Paths.Add(pair.Source.Path.SubPath);
             using var stream = await pair.Source.OpenReadStream(cancellationToken);
-            pair.Source.Metadata = new SyncFileMetadata
+            var source = new VirtualSyncFile(pair.Source.Path)
             {
-                Size = stream.Length,
-                Checksum = new SyncFileChecksum(ChecksumAlgorithmNames.SHA1,
-                    ChecksumAlgorithms.ComputeHash(ChecksumAlgorithmNames.SHA1, stream))
+                Metadata = new SyncFileMetadata
+                {
+                    Size = stream.Length,
+                    Checksum = new SyncFileChecksum(ChecksumAlgorithmNames.SHA1,
+                        ChecksumAlgorithms.ComputeHash(ChecksumAlgorithmNames.SHA1, stream))
+                }
             };
-            return await (inner ?? new LocalFileChecksumComparer()).AreEqual(pair, cancellationToken);
+            return await (inner ?? new LocalFileChecksumComparer()).AreEqual(new(source, pair.Target), cancellationToken);
         }
     }
 }

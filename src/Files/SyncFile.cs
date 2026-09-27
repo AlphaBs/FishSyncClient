@@ -10,7 +10,12 @@ public abstract class SyncFile
     }
 
     public RootedPath Path { get; }
-    public SyncFileMetadata? Metadata { get; set; }
+
+    /// <summary>
+    /// 생성 시 정하는 기대 메타데이터다. null이면 메타데이터를 제공하지 않은 상태다.
+    /// 파일의 동등성 및 해시 계산에 사용하므로 생성 후 교체하지 않는다.
+    /// </summary>
+    public SyncFileMetadata? Metadata { get; init; }
 
     public abstract bool IsReadable { get; }
     public abstract bool IsWritable { get; }
