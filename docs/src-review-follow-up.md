@@ -42,5 +42,5 @@
 - Linux 라이브러리: **224 통과, 12 Windows 전용 건너뜀**. 기존 189개에 35개 회귀 사례를 추가했다.
 - 전체 Release 솔루션 빌드: **경고 0, 오류 0**.
 - GUI 테스트: **31 통과**.
-- 새 PR의 Windows/Linux CI 결과는 실행 완료 후 이 보고서에 반영한다.
+- GitHub Actions Ubuntu/Windows 라이브러리 CI: **둘 다 통과**. Windows 정션과 파일 교체 테스트를 포함한다.
 - `.github/workflows/test.yml`에서 Ubuntu와 Windows의 라이브러리 테스트를 실행한다. Windows 정션과 파일 교체도 같은 회귀 테스트에 포함된다.
