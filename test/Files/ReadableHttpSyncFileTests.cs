@@ -30,7 +30,7 @@ public class ReadableHttpSyncFileTests
     }
 
     [Fact]
-    public async Task open_read_stream_sets_zero_length_metadata()
+    public async Task open_read_stream_does_not_create_metadata_for_zero_length_response()
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -46,8 +46,7 @@ public class ReadableHttpSyncFileTests
 
         using var stream = await file.OpenReadStream();
 
-        Assert.NotNull(file.Metadata);
-        Assert.Equal(0, file.Metadata!.Size);
+        Assert.Null(file.Metadata);
     }
 
     [Fact]

@@ -10,6 +10,8 @@ FishSyncClient 는 파일 동기화를 위한 .NET 라이브러리입니다.
 
 checksum을 생략하면 대상 파일의 존재 여부만 확인합니다. 제공된 checksum의 검증 규칙과 비교기별 책임은 [checksum 계약](docs/checksum-policy.md)에 정리되어 있습니다.
 
+기대 Metadata는 생성 시 고정하는 불변 record이며, HTTP 응답 크기는 Metadata를 변경하지 않고 진행률에 반영합니다. API 변경사항과 동등성 규칙은 [불변 Metadata와 HTTP 진행률](docs/immutable-metadata.md)을 참고하세요.
+
 ## FishSyncServer 연동
 
 - 서버에서 파일 목록, 내용 비교

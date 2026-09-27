@@ -10,7 +10,8 @@ public abstract class SyncFile
     }
 
     public RootedPath Path { get; }
-    public SyncFileMetadata? Metadata { get; set; }
+
+    public SyncFileMetadata? Metadata { get; init; }
 
     public abstract bool IsReadable { get; }
     public abstract bool IsWritable { get; }

@@ -29,18 +29,13 @@ public class ReadableHttpSyncFile : SyncFile
         {
             response.EnsureSuccessStatusCode();
 
-            var contentLength = response.Content.Headers.ContentLength ?? -1;
-            if (contentLength >= 0)
-            {
-                this.Metadata ??= new();
-                this.Metadata.Size = contentLength;
-            }
+            var contentLength = response.Content.Headers.ContentLength;
 
             var stream = await response.Content.ReadAsStreamAsync();
             if (stream.CanTimeout)
                 stream.ReadTimeout = 10000;
             
-            return new ResponseStream(stream, response);
+            return new ResponseStream(stream, response, contentLength);
         }
         catch
         {
@@ -56,12 +51,14 @@ public class ReadableHttpSyncFile : SyncFile
 
     public override async Task CopyTo(Stream destination, IProgress<ByteProgress>? progress, CancellationToken cancellationToken)
     {
-        long previousTotalBytes = Metadata?.Size ?? 0;
+        var registeredSize = Metadata?.Size ?? 0;
         using var sourceStream = await OpenReadStream(cancellationToken);
-        long currentTotalBytes = Metadata?.Size ?? 0;
-        progress?.Report(new ByteProgress(currentTotalBytes - previousTotalBytes, 0));
+        var transferSize = sourceStream is ResponseStream responseStream
+            ? responseStream.ContentLength ?? registeredSize
+            : registeredSize;
+        progress?.Report(new ByteProgress(transferSize - registeredSize, 0));
 
-        var buffer = StreamProgressHelper.GetBufferSize(currentTotalBytes);
+        var buffer = StreamProgressHelper.GetBufferSize(transferSize);
         await StreamProgressHelper.CopyStreamWithProgressPerBuffer(
             sourceStream,
             destination,
@@ -76,8 +73,10 @@ public class ReadableHttpSyncFile : SyncFile
         private readonly Stream _inner;
         private readonly HttpResponseMessage _response;
 
-        public ResponseStream(Stream inner, HttpResponseMessage response) =>
-            (_inner, _response) = (inner, response);
+        public ResponseStream(Stream inner, HttpResponseMessage response, long? contentLength) =>
+            (_inner, _response, ContentLength) = (inner, response, contentLength);
+
+        public long? ContentLength { get; }
 
         public override bool CanRead => _inner.CanRead;
         public override bool CanSeek => _inner.CanSeek;

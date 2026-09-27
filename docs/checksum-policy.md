@@ -2,6 +2,8 @@
 
 2026-09-27에 확정한 FishSyncClient의 checksum 비교 계약이다. [src 리뷰 후속 보고서](src-review-follow-up.md)의 보류 항목 4번에서 논의한 원본 checksum 생략의 의미를 정의한다.
 
+기대 메타데이터는 생성 시 고정하는 불변 값이다. record 전환과 HTTP 응답 크기의 진행률 전달 방식은 [불변 Metadata와 HTTP 진행률](immutable-metadata.md)을 참고한다.
+
 ## 결정과 의도
 
 원본 checksum은 선택 사항이다. 원본 `Metadata` 또는 `Metadata.Checksum`이 `null`이면 대상 경로에 파일이 존재하는 것으로 동기화 요구사항을 충족한다. 파일 크기와 내용은 비교하지 않으며 원본 checksum을 자동으로 계산하지 않는다.
