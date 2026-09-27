@@ -211,7 +211,7 @@ public class HttpMetadataProgressTests
                 Headers.ContentLength = length.Value;
         }
 
-        // 헤더가 없을 때 프레임워크가 본문 길이를 자동으로 채우지 않도록 한다.
+        // Content-Length 없는 응답을 재현한다.
         protected override bool TryComputeLength(out long length)
         {
             length = 0;

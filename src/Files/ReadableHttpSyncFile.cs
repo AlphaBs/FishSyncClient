@@ -53,8 +53,6 @@ public class ReadableHttpSyncFile : SyncFile
     {
         var registeredSize = Metadata?.Size ?? 0;
         using var sourceStream = await OpenReadStream(cancellationToken);
-        // 응답 크기는 진행률만 보정한다. 기대 메타데이터와 파일의 해시는 유지한다.
-        // 재정의된 OpenReadStream이 일반 스트림을 반환하면 등록된 크기를 사용한다.
         var transferSize = sourceStream is ResponseStream responseStream
             ? responseStream.ContentLength ?? registeredSize
             : registeredSize;

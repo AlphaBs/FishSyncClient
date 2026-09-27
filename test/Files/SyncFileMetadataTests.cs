@@ -62,7 +62,6 @@ public class SyncFileMetadataTests
         var lower = new SyncFileMetadata { Checksum = new("md5", "202cb962ac59075b964b07152d234b70") };
         var upper = lower with { Checksum = new("md5", "202CB962AC59075B964B07152D234B70") };
 
-        // 값 객체의 동등성과 파일 내용 비교기의 대소문자 무시 정책은 별개다.
         Assert.NotEqual(lower, upper);
     }
 }

@@ -1,8 +1,5 @@
 ﻿namespace FishSyncClient.Files;
 
-/// <summary>
-/// 파일을 비교할 때 사용하는 불변 기대 메타데이터다. 전송 중 관측한 값은 포함하지 않는다.
-/// </summary>
 public sealed record SyncFileMetadata
 {
     public long Size { get; init; }
