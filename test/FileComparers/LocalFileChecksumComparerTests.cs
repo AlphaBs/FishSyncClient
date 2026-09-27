@@ -13,7 +13,7 @@ public class LocalFileChecksumComparerTests
         var root = createTempDirectory();
         try
         {
-            var source = createSource("file.txt", ChecksumAlgorithmNames.MD5, "anything");
+            var source = createSource("file.txt", ChecksumAlgorithmNames.MD5, computeHash(ChecksumAlgorithmNames.MD5, "source content"));
             var target = new LocalSyncFile(RootedPath.Create(root, "file.txt", new PathOptions()));
             var comparer = new LocalFileChecksumComparer();
 
@@ -59,7 +59,7 @@ public class LocalFileChecksumComparerTests
         try
         {
             await File.WriteAllTextAsync(Path.Combine(root, "file.txt"), "target content");
-            var source = createSource("file.txt", ChecksumAlgorithmNames.MD5, "not-the-target-checksum");
+            var source = createSource("file.txt", ChecksumAlgorithmNames.MD5, computeHash(ChecksumAlgorithmNames.MD5, "different content"));
             var target = new LocalSyncFile(RootedPath.Create(root, "file.txt", new PathOptions()));
             var comparer = new LocalFileChecksumComparer();
 
@@ -84,7 +84,7 @@ public class LocalFileChecksumComparerTests
             var target = new LocalSyncFile(RootedPath.Create(root, "file.txt", new PathOptions()));
             var comparer = new LocalFileChecksumComparer();
 
-            await Assert.ThrowsAsync<KeyNotFoundException>(async () =>
+            await Assert.ThrowsAsync<FileComparerException>(async () =>
                 await comparer.AreEqual(new SyncFilePair(source, target), default));
         }
         finally
@@ -115,7 +115,7 @@ public class LocalFileChecksumComparerTests
     }
 
     [Fact]
-    public async Task return_equal_when_source_checksum_algorithm_is_missing_and_target_exists()
+    public async Task throw_when_source_checksum_algorithm_is_missing_and_target_exists()
     {
         var root = createTempDirectory();
         try
@@ -125,9 +125,8 @@ public class LocalFileChecksumComparerTests
             var target = new LocalSyncFile(RootedPath.Create(root, "file.txt", new PathOptions()));
             var comparer = new LocalFileChecksumComparer();
 
-            var result = await comparer.AreEqual(new SyncFilePair(source, target), default);
-
-            Assert.True(result);
+            await Assert.ThrowsAsync<FileComparerException>(async () =>
+                await comparer.AreEqual(new SyncFilePair(source, target), default));
         }
         finally
         {

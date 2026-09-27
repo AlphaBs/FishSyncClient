@@ -18,7 +18,7 @@ public class FileChecksumMetadataComparerTests
             Metadata = new SyncFileMetadata
             {
                 Size = 1111,
-                Checksum = new SyncFileChecksum("md5", "checksum")
+                Checksum = new SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70")
             }
         };
         var file2 = new VirtualSyncFile(RootedPath.FromSubPath("file2", new()))
@@ -26,7 +26,7 @@ public class FileChecksumMetadataComparerTests
             Metadata = new SyncFileMetadata
             {
                 Size = 2222,
-                Checksum = new SyncFileChecksum("md5", "checksum")
+                Checksum = new SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70")
             }
         };
         var result = await comparer.AreEqual(new SyncFilePair(file1, file2), default);
@@ -47,7 +47,7 @@ public class FileChecksumMetadataComparerTests
             Metadata = new SyncFileMetadata
             {
                 Size = 1111,
-                Checksum = new SyncFileChecksum("md5", "11111111111")
+                Checksum = new SyncFileChecksum("md5", "11111111111111111111111111111111")
             }
         };
         var file2 = new VirtualSyncFile(RootedPath.FromSubPath("file2", new()))
@@ -55,7 +55,7 @@ public class FileChecksumMetadataComparerTests
             Metadata = new SyncFileMetadata
             {
                 Size = 2222,
-                Checksum = new SyncFileChecksum("md5", "2222222222")
+                Checksum = new SyncFileChecksum("md5", "22222222222222222222222222222222")
             }
         };
         var result = await comparer.AreEqual(new SyncFilePair(file1, file2), default);
@@ -76,7 +76,7 @@ public class FileChecksumMetadataComparerTests
             Metadata = new SyncFileMetadata
             {
                 Size = 1111,
-                Checksum = new SyncFileChecksum("__algName__", "checksum")
+                Checksum = new SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70")
             }
         };
         var file2 = new VirtualSyncFile(RootedPath.FromSubPath("file2", new()))
@@ -84,7 +84,7 @@ public class FileChecksumMetadataComparerTests
             Metadata = new SyncFileMetadata
             {
                 Size = 2222,
-                Checksum = new SyncFileChecksum("### AlgorithmName ###", "checksum")
+                Checksum = new SyncFileChecksum("sha1", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
             }
         };
 
@@ -108,14 +108,14 @@ public class FileChecksumMetadataComparerTests
         {
             Metadata = new SyncFileMetadata
             {
-                Checksum = new SyncFileChecksum("md5", "checksum")
+                Checksum = new SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70")
             }
         };
         var file2 = new VirtualSyncFile(RootedPath.FromSubPath("file2", new()))
         {
             Metadata = new SyncFileMetadata
             {
-                Checksum = new SyncFileChecksum("sha1", "checksum")
+                Checksum = new SyncFileChecksum("sha1", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
             }
         };
         var result = await comparer.AreEqual(new SyncFilePair(file1, file2), default);
@@ -143,7 +143,7 @@ public class FileChecksumMetadataComparerTests
             Metadata = new SyncFileMetadata
             {
                 Size = 2222,
-                Checksum = new SyncFileChecksum("md5", "any-checksum")
+                Checksum = new SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70")
             }
         };
         var result = await comparer.AreEqual(new SyncFilePair(file1, file2), default);
@@ -164,7 +164,7 @@ public class FileChecksumMetadataComparerTests
         {
             Metadata = new SyncFileMetadata
             {
-                Checksum = new SyncFileChecksum("md5", "any-checksum")
+                Checksum = new SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70")
             }
         };
         var result = await comparer.AreEqual(new SyncFilePair(file1, file2), default);
@@ -176,7 +176,7 @@ public class FileChecksumMetadataComparerTests
     [Theory]
     [InlineData("", "checksum")]
     [InlineData("md5", "")]
-    public async Task return_equal_when_source_checksum_has_empty_value(string algorithmName, string checksum)
+    public async Task throw_when_source_checksum_has_empty_value(string algorithmName, string checksum)
     {
         // Given
         var comparer = new FileChecksumMetadataComparer();
@@ -193,13 +193,12 @@ public class FileChecksumMetadataComparerTests
         {
             Metadata = new SyncFileMetadata
             {
-                Checksum = new SyncFileChecksum("md5", "any-checksum")
+                Checksum = new SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70")
             }
         };
-        var result = await comparer.AreEqual(new SyncFilePair(file1, file2), default);
-
         // Then
-        Assert.True(result);
+        await Assert.ThrowsAsync<FileComparerException>(async () =>
+            await comparer.AreEqual(new SyncFilePair(file1, file2), default));
     }
 
     [Fact]
@@ -214,7 +213,7 @@ public class FileChecksumMetadataComparerTests
             Metadata = new SyncFileMetadata
             {
                 Size = 1111,
-                Checksum = new SyncFileChecksum("md5", "any-checksum")
+                Checksum = new SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70")
             }
         };
         var file2 = new VirtualSyncFile(RootedPath.FromSubPath("file2", new()))
@@ -242,7 +241,7 @@ public class FileChecksumMetadataComparerTests
         {
             Metadata = new SyncFileMetadata
             {
-                Checksum = new SyncFileChecksum("md5", "any-checksum")
+                Checksum = new SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70")
             }
         };
         var file2 = new VirtualSyncFile(RootedPath.FromSubPath("file2", new()))
@@ -273,7 +272,7 @@ public class FileChecksumMetadataComparerTests
         {
             Metadata = new SyncFileMetadata
             {
-                Checksum = new SyncFileChecksum("md5", "any-checksum")
+                Checksum = new SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70")
             }
         };
         var file2 = new VirtualSyncFile(RootedPath.FromSubPath("file2", new()))
@@ -297,7 +296,7 @@ public class FileChecksumMetadataComparerTests
         {
             Metadata = new SyncFileMetadata
             {
-                Checksum = new SyncFileChecksum("md5", "any-checksum")
+                Checksum = new SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70")
             }
         };
         var file2 = new VirtualSyncFile(RootedPath.FromSubPath("file2", new()));

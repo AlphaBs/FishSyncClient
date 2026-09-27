@@ -79,7 +79,7 @@ syncer.DeleteLocalFiles(result.DeletedFiles);
 
 `InstallOnly`의 기존 파일과 `Exclude` 파일에는 비교기를 호출하지 않는다. `InstallOnly`로 설치하는 새 파일에는 선택된 비교기를 적용하여 전송 전후를 확인한다. 비교 전용 API의 새 파일은 기존처럼 `AddedFiles`에만 포함하고 내용 비교를 하지 않는다.
 
-비교기의 알고리즘, 필요한 메타데이터와 판정 의미는 `IFileComparer` 구현에 따른다. 예를 들어 `LocalFileSizeComparer`에는 원본 크기, `LocalFileChecksumComparer`에는 원본 체크섬 메타데이터를 제공한다. 라이브러리는 비교기를 복제하거나 직렬화하지 않으며, 호출자는 사용하는 비교기가 병렬 호출을 지원하도록 구성한다.
+비교기의 알고리즘, 필요한 메타데이터와 판정 의미는 `IFileComparer` 구현에 따른다. 예를 들어 `LocalFileSizeComparer`에는 원본 크기를 제공한다. `LocalFileChecksumComparer`는 원본 체크섬이 있으면 내용을 비교하고, 생략되면 대상 파일 존재 여부만 확인한다. 제공된 잘못된 체크섬은 오류로 처리한다. 자세한 판정과 오류 정책은 [checksum 계약](checksum-policy.md)을 따른다. 라이브러리는 비교기를 복제하거나 직렬화하지 않으며, 호출자는 사용하는 비교기가 병렬 호출을 지원하도록 구성한다.
 
 ## 5. 규칙 평가 순서
 

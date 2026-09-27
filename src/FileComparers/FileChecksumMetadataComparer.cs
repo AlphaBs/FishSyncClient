@@ -2,6 +2,13 @@ using FishSyncClient.Files;
 
 namespace FishSyncClient.FileComparers;
 
+/// <summary>
+/// Compares checksum metadata for files whose existence is established by the caller.
+/// This comparer performs no storage access and must not be used to detect missing targets.
+/// An omitted source checksum imposes no content requirement and returns true in every error mode.
+/// When the source checksum is present, invalid checksums throw; the error mode applies to
+/// an absent target checksum or different supported algorithms.
+/// </summary>
 public class FileChecksumMetadataComparer : IFileComparer
 {
     private readonly ComparerErrorHandlingModes _errorMode;
@@ -18,6 +25,7 @@ public class FileChecksumMetadataComparer : IFileComparer
 
     public ValueTask<bool> AreEqual(SyncFilePair pair, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var areEqual = compare(pair.Source, pair.Target);
         return new ValueTask<bool>(areEqual);
     }
@@ -27,14 +35,17 @@ public class FileChecksumMetadataComparer : IFileComparer
         var sourceChecksum = source.Metadata?.Checksum;
         var targetChecksum = target.Metadata?.Checksum;
 
-        if (!hasChecksum(sourceChecksum))
+        if (!sourceChecksum.HasValue)
             return true;
 
-        if (!hasChecksum(targetChecksum))
+        ChecksumMetadataValidator.Validate(sourceChecksum.Value, "source");
+
+        if (!targetChecksum.HasValue)
             return handleCannotCompare();
 
-        var sourceChecksumValue = sourceChecksum.GetValueOrDefault();
-        var targetChecksumValue = targetChecksum.GetValueOrDefault();
+        ChecksumMetadataValidator.Validate(targetChecksum.Value, "target");
+        var sourceChecksumValue = sourceChecksum.Value;
+        var targetChecksumValue = targetChecksum.Value;
 
         if (sourceChecksumValue.AlgorithmName != targetChecksumValue.AlgorithmName)
         {
@@ -43,13 +54,6 @@ public class FileChecksumMetadataComparer : IFileComparer
         
         return string.Equals(sourceChecksumValue.ChecksumHexString, targetChecksumValue.ChecksumHexString,
             StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool hasChecksum(SyncFileChecksum? checksum)
-    {
-        return checksum.HasValue &&
-            !string.IsNullOrEmpty(checksum.Value.AlgorithmName) &&
-            !string.IsNullOrEmpty(checksum.Value.ChecksumHexString);
     }
 
     private bool handleCannotCompare()
