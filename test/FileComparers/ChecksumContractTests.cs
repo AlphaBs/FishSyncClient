@@ -15,7 +15,7 @@ public sealed class ChecksumContractTests : IDisposable
 
     public static IEnumerable<object?[]> InvalidChecksums()
     {
-        yield return [null, null]; // Includes default(SyncFileChecksum).
+        yield return [null, null]; // default(SyncFileChecksum)도 포함한다.
         yield return [null, Md5];
         yield return ["", Md5];
         yield return [" ", Md5];
@@ -30,7 +30,7 @@ public sealed class ChecksumContractTests : IDisposable
         yield return ["sha1", new string('a', 41)];
         yield return ["sha1", new string('z', 40)];
         yield return ["unknown", Md5];
-        yield return ["MD5", Md5]; // Algorithm names remain case-sensitive.
+        yield return ["MD5", Md5]; // 알고리즘 이름은 계속 대소문자를 구분한다.
     }
 
     [Theory]
@@ -86,7 +86,7 @@ public sealed class ChecksumContractTests : IDisposable
         if (omitMetadata)
             source.Metadata = null;
 
-        // No target checksum is required or inspected when the source imposes no checksum requirement.
+        // 원본이 체크섬 검증을 요구하지 않으면 대상 체크섬을 요구하거나 검사하지 않는다.
         foreach (var targetChecksum in new SyncFileChecksum?[] { null, default(SyncFileChecksum), new("md5", Md5) })
         {
             var target = Source(targetChecksum);
@@ -173,7 +173,7 @@ public sealed class ChecksumContractTests : IDisposable
         Assert.Single(missing.AddedFiles);
         Assert.Empty(missing.IdenticalFilePairs);
 
-        // The caller's target inventory establishes existence for this metadata-only comparison.
+        // 메타데이터만 비교하므로 호출자가 제공한 대상 목록을 기준으로 존재 여부를 판단한다.
         var target = new VirtualSyncFile(source.Path);
         var existing = await syncer.CompareFiles([source], [target], options);
         Assert.Empty(existing.AddedFiles);
