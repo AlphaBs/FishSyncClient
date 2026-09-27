@@ -452,7 +452,7 @@ public sealed class SyncRulesTests : IDisposable
         }, true));
 
         Assert.Equal(2, calls);
-        Assert.False(File.Exists(Path.Combine(TargetRoot, "added.txt")));
+        Assert.Equal("new", ReadTarget("added.txt"));
         Assert.Empty(_comparer.Paths);
     }
 

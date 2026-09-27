@@ -107,7 +107,7 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
             }
             else
             {
-                await pair.SyncContent(comparer, byteProgress, cancellationToken);
+                await syncContent(pair, comparer, byteProgress, cancellationToken);
                 updatedFiles.Add(pair);
             }
 
@@ -122,6 +122,18 @@ public class ParallelSyncFilePairSyncer : ISyncFilePairSyncer
             updatedFiles.ToList(),
             identicalFiles.ToList()
         );
+
+        static async Task syncContent(
+            SyncFilePair pair,
+            IFileComparer comparer,
+            IProgress<SyncFileByteProgress>? byteProgress,
+            CancellationToken cancellationToken)
+        {
+            await pair.SyncContent(byteProgress, cancellationToken);
+            var areEqual = await comparer.AreEqual(pair, cancellationToken);
+            if (!areEqual)
+                throw new FileIntegrityException(pair.Target.Path.ToString());
+        }
     }
 
     private ExecutionDataflowBlockOptions CreateBlockOptions(CancellationToken cancellationToken)

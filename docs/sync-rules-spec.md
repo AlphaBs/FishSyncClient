@@ -76,7 +76,6 @@ syncer.DeleteLocalFiles(result.DeletedFiles);
 
 비교기 선택은 `CompareFiles`와 `CompareAndSyncFiles`에 동일하게 적용된다. 비교·동기화 시에는 전송 전 비교와 전송 후 검증에 같은 비교기를 사용한다. 전송 후에도 다르다고 판정하면 기존처럼 `FileIntegrityException`이 발생한다.
 
-로컬 대상은 같은 디렉터리의 임시 파일로 전송하고, 임시 파일을 검증한 다음 최종 경로로 교체한다. 전송·검증·취소 실패 시 기존 대상은 유지하고, 새 대상은 설치하지 않는다. 전송 후 비교기의 `pair.Target`은 임시 파일을 가리키므로 경로가 전송 전과 다를 수 있다. 규칙 선택과 진행률의 기준인 `pair.Source`는 그대로이며, 결과의 파일 쌍과 무결성 예외에는 원래 대상 경로를 사용한다. 비교기는 전달받은 대상에서 실제 데이터를 읽어야 한다. 비교기 없는 `SyncContent`/`SyncFilePairs`도 로컬 파일 교체를 전송 완료 이후에 수행하지만 무결성 검사는 추가하지 않는다.
 
 `InstallOnly`의 기존 파일과 `Exclude` 파일에는 비교기를 호출하지 않는다. `InstallOnly`로 설치하는 새 파일에는 선택된 비교기를 적용하여 전송 전후를 확인한다. 비교 전용 API의 새 파일은 기존처럼 `AddedFiles`에만 포함하고 내용 비교를 하지 않는다.
 
