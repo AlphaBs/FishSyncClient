@@ -69,7 +69,7 @@ public class ChecksumSafetyTests
 
     private static VirtualSyncFile Source() => new(RootedPath.FromSubPath("file", new PathOptions()))
     {
-        Metadata = new() { Checksum = new("md5", "expected") }
+        Metadata = new() { Checksum = new("md5", "202cb962ac59075b964b07152d234b70") }
     };
 
     private sealed class TrackingLocalFile(string path, Stream stream)
