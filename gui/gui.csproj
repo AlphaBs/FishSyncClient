@@ -14,6 +14,11 @@
 
     <ItemGroup>
         <AvaloniaResource Include="icon.ico" />
+        <Content Include="../config/config.json" Link="config/config.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+            <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+        </Content>
     </ItemGroup>
 
     <ItemGroup>

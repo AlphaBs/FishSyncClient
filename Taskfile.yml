@@ -1,0 +1,104 @@
+version: '3'
+
+vars:
+  ARCH: '{{default "x64" .ARCH}}'
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - '"{{.TASK_EXE}}" --list'
+
+  build:
+    desc: Publish the GUI for Windows, Linux, and Darwin
+    cmds:
+      - task: windows
+      - task: linux
+      - task: darwin
+
+  windows:
+    desc: Publish a self-contained Windows GUI executable (ARCH=x64 or arm64)
+    cmds:
+      - task: publish
+        vars:
+          RID: 'win-{{.ARCH}}'
+          BINARY: gui.exe
+
+  linux:
+    desc: Publish a self-contained Linux GUI executable (ARCH=x64 or arm64)
+    cmds:
+      - task: publish
+        vars:
+          RID: 'linux-{{.ARCH}}'
+          BINARY: gui
+
+  darwin:
+    desc: Publish a self-contained macOS GUI executable (ARCH=x64 or arm64)
+    cmds:
+      - task: publish
+        vars:
+          RID: 'osx-{{.ARCH}}'
+          BINARY: gui
+
+  publish:
+    internal: true
+    dir: '{{.ROOT_DIR}}'
+    requires:
+      vars: [RID, BINARY]
+    cmds:
+      - >-
+        dotnet publish gui/gui.csproj
+        -c Release
+        -r "{{.RID}}"
+        --self-contained true
+        -p:PublishSingleFile=true
+        -p:IncludeNativeLibrariesForSelfExtract=true
+        -p:DebugType=embedded
+        -p:CopyOutputSymbolsToPublishDirectory=false
+        -o "artifacts/staging/{{.RID}}"
+      - task: package-windows
+        vars:
+          RID: '{{.RID}}'
+          BINARY: '{{.BINARY}}'
+      - task: package-posix
+        vars:
+          RID: '{{.RID}}'
+          BINARY: '{{.BINARY}}'
+
+  package-posix:
+    internal: true
+    platforms: [linux, darwin]
+    dir: '{{.ROOT_DIR}}/artifacts/staging/{{.RID}}'
+    requires:
+      vars: [RID, BINARY]
+    env:
+      GUI_BINARY: '{{.BINARY}}'
+      GUI_OUTPUT: '{{.ROOT_DIR}}/artifacts/publish/{{.RID}}'
+      GUI_ARCHIVE: 'gui-{{.RID}}.zip'
+    cmds:
+      - cmd: |
+          set -eu
+          mkdir -p "$GUI_OUTPUT"
+          cp -p "$GUI_BINARY" "$GUI_OUTPUT/.$GUI_BINARY.tmp"
+          mv -f "$GUI_OUTPUT/.$GUI_BINARY.tmp" "$GUI_OUTPUT/$GUI_BINARY"
+          rm -f "$GUI_OUTPUT/.$GUI_ARCHIVE"
+          zip -q "$GUI_OUTPUT/.$GUI_ARCHIVE" "$GUI_BINARY" config/ config/config.json
+          mv -f "$GUI_OUTPUT/.$GUI_ARCHIVE" "$GUI_OUTPUT/$GUI_ARCHIVE"
+  package-windows:
+    internal: true
+    platforms: [windows]
+    dir: '{{.ROOT_DIR}}/artifacts/staging/{{.RID}}'
+    requires:
+      vars: [RID, BINARY]
+    env:
+      GUI_BINARY: '{{.BINARY}}'
+      GUI_OUTPUT: '{{.ROOT_DIR}}/artifacts/publish/{{.RID}}'
+      GUI_ARCHIVE: 'gui-{{.RID}}.zip'
+    cmds:
+      - cmd: >-
+          powershell.exe -NoProfile -NonInteractive -Command '
+          $ErrorActionPreference = "Stop";
+          New-Item -ItemType Directory -Path $env:GUI_OUTPUT -Force | Out-Null;
+          Copy-Item -LiteralPath $env:GUI_BINARY -Destination (Join-Path $env:GUI_OUTPUT $env:GUI_BINARY) -Force;
+          Compress-Archive -LiteralPath $env:GUI_BINARY, "config" -DestinationPath (Join-Path $env:GUI_OUTPUT $env:GUI_ARCHIVE) -Force
+          '

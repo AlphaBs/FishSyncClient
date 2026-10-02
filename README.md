@@ -64,3 +64,26 @@ dotnet build gui/gui.csproj -c Release
 ```
 
 GUI 테스트는 가짜 HTTP 서버와 Avalonia Headless를 사용하므로 실제 계정이나 서버 파일을 변경하지 않습니다. `FISH_UI_SCREENSHOTS` 환경 변수에 출력 폴더를 지정하면 로그인·작업·미리보기 화면 PNG도 생성합니다.
+
+## 플랫폼별 GUI 배포 빌드
+
+[go-task](https://taskfile.dev/docs/installation)와 .NET SDK를 설치한 뒤 저장소 루트에서 실행합니다.
+배포판에서 실행 파일 이름이 `go-task`인 경우 아래 명령의 `task`를 `go-task`로 바꿉니다.
+ZIP 생성은 빌드를 실행하는 OS에 따라 Linux·macOS에서는 `zip`, Windows에서는 기본 Windows PowerShell의 `Compress-Archive`를 사용합니다. Linux·macOS에는 `zip` 명령이 필요합니다.
+
+```sh
+task windows          # Windows x64
+task linux            # Linux x64
+task darwin           # macOS Intel x64
+task build            # 위 세 플랫폼을 순서대로 빌드
+task darwin ARCH=arm64 # macOS Apple Silicon
+```
+
+모든 플랫폼은 기본 `ARCH=x64`이며 `ARCH=arm64`로 변경할 수 있습니다. 결과는 `artifacts/publish/<RID>/`에 두 파일로 생성됩니다 (`win-x64`, `linux-x64`, `osx-x64` 등).
+
+- 단일 실행 파일: Windows는 `gui.exe`, Linux와 macOS는 `gui`
+- `gui-<RID>.zip`: 실행 파일과 `config/config.json`을 포함하며, 압축을 풀면 실행 파일 옆에 `config/` 디렉토리가 생성됩니다. Linux·macOS에서 `zip`으로 패키징하면 실행 권한도 보존합니다. Windows에서 패키징한 Linux·macOS 바이너리는 압축 해제 후 `chmod +x gui`가 필요할 수 있습니다.
+
+저장소의 `config/config.json`이 배포용 기본 설정입니다. 서버 주소와 경고 패턴을 여기서 변경할 수 있으며, 계정 정보와 토큰은 비워 둡니다. 빌드 중간 파일은 `artifacts/staging/<RID>/`에 생성합니다.
+
+빌드는 .NET 런타임과 네이티브 라이브러리를 포함한 self-contained 단일 실행 파일입니다. 별도 .NET 설치는 필요하지 않으며, 네이티브 라이브러리는 실행 시 임시 폴더에 추출됩니다. 디버그 심볼은 실행 파일에 포함합니다. 실행 후 생성되는 `config/`와 `buckets/`는 실행 파일 옆에 저장됩니다.

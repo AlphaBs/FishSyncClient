@@ -1,0 +1,30 @@
+{
+  "ClientVersion": "1.0.0",
+  "Root": "",
+  "Host": "https://fish2.snowfrost.kr/api",
+  "BucketId": "",
+  "Token": "",
+  "WarningPatterns": [
+    ".fabric/**",
+    ".mixin.out/**",
+    "assets/**",
+    "bin/**",
+    "crash-reports/**",
+    "data/**",
+    "downloads/**",
+    "logs/**",
+    "native/**",
+    "natives/**",
+    "runtime/**",
+    "versions/**/*.dll",
+    "webcache2/**",
+    "clientId.txt",
+    "cml_accounts.json",
+    "launcher_accounts.json",
+    "launcher_log*",
+    "launcher_msa_credentials.bin",
+    "updateSourceCache.json",
+    "usercache.json",
+    "usernamecache.json"
+  ]
+}
