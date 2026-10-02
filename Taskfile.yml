@@ -2,6 +2,8 @@ version: '3'
 
 vars:
   ARCH: '{{default "x64" .ARCH}}'
+  APP_VERSION:
+    sh: dotnet msbuild "{{.ROOT_DIR}}/gui/gui.csproj" -getProperty:ClientVersion -nologo
 
 tasks:
   default:
@@ -10,95 +12,117 @@ tasks:
       - '"{{.TASK_EXE}}" --list'
 
   build:
-    desc: Publish the GUI for Windows, Linux, and Darwin
+    desc: Package Windows, Linux, and macOS for ARCH (default x64)
     cmds:
       - task: windows
+        vars: {ARCH: '{{.ARCH}}'}
       - task: linux
+        vars: {ARCH: '{{.ARCH}}'}
       - task: darwin
+        vars: {ARCH: '{{.ARCH}}'}
+
+  all:
+    desc: Package all six OS and architecture combinations
+    cmds:
+      - task: build
+        vars: {ARCH: x64}
+      - task: build
+        vars: {ARCH: aarch64}
 
   windows:
-    desc: Publish a self-contained Windows GUI executable (ARCH=x64 or arm64)
+    desc: Package Windows (ARCH=x64 or aarch64; arm64 is also accepted)
     cmds:
       - task: publish
-        vars:
-          RID: 'win-{{.ARCH}}'
-          BINARY: gui.exe
+        vars: {ARCH: '{{.ARCH}}', TARGET_OS: windows, RID_OS: win, BINARY: gui.exe}
 
   linux:
-    desc: Publish a self-contained Linux GUI executable (ARCH=x64 or arm64)
+    desc: Package Linux (ARCH=x64 or aarch64)
     cmds:
       - task: publish
-        vars:
-          RID: 'linux-{{.ARCH}}'
-          BINARY: gui
+        vars: {ARCH: '{{.ARCH}}', TARGET_OS: linux, RID_OS: linux, BINARY: gui}
 
   darwin:
-    desc: Publish a self-contained macOS GUI executable (ARCH=x64 or arm64)
+    desc: Package macOS (ARCH=x64 or aarch64)
     cmds:
       - task: publish
-        vars:
-          RID: 'osx-{{.ARCH}}'
-          BINARY: gui
+        vars: {ARCH: '{{.ARCH}}', TARGET_OS: darwin, RID_OS: osx, BINARY: gui}
 
   publish:
     internal: true
     dir: '{{.ROOT_DIR}}'
     requires:
-      vars: [RID, BINARY]
+      vars:
+        - name: ARCH
+          enum: [x64, aarch64, arm64]
+        - TARGET_OS
+        - RID_OS
+        - BINARY
+    preconditions:
+      - sh: '{{if regexMatch "^[0-9]+[.][0-9]+[.][0-9]+$" .APP_VERSION}}true{{else}}false{{end}}'
+        msg: gui.csproj ClientVersion must be a numeric major.minor.patch version
+    vars:
+      RID: '{{.RID_OS}}-{{if eq .ARCH "x64"}}x64{{else}}arm64{{end}}'
+      PACKAGE_ARCH: '{{if eq .ARCH "x64"}}x64{{else}}aarch64{{end}}'
+      ARCHIVE: 'FishSyncClientGui-{{.TARGET_OS}}-{{.PACKAGE_ARCH}}-{{.APP_VERSION}}.zip'
     cmds:
       - >-
-        dotnet publish gui/gui.csproj
-        -c Release
-        -r "{{.RID}}"
-        --self-contained true
-        -p:PublishSingleFile=true
+        dotnet publish gui/gui.csproj -c Release -r "{{.RID}}"
+        --self-contained true -p:PublishSingleFile=true
         -p:IncludeNativeLibrariesForSelfExtract=true
-        -p:DebugType=embedded
-        -p:CopyOutputSymbolsToPublishDirectory=false
+        -p:DebugType=None -p:DebugSymbols=false
         -o "artifacts/staging/{{.RID}}"
       - task: package-windows
-        vars:
-          RID: '{{.RID}}'
-          BINARY: '{{.BINARY}}'
+        vars: {RID: '{{.RID}}', BINARY: '{{.BINARY}}', TARGET_OS: '{{.TARGET_OS}}', ARCHIVE: '{{.ARCHIVE}}'}
       - task: package-posix
-        vars:
-          RID: '{{.RID}}'
-          BINARY: '{{.BINARY}}'
+        vars: {RID: '{{.RID}}', BINARY: '{{.BINARY}}', TARGET_OS: '{{.TARGET_OS}}', ARCHIVE: '{{.ARCHIVE}}'}
 
   package-posix:
     internal: true
     platforms: [linux, darwin]
     dir: '{{.ROOT_DIR}}/artifacts/staging/{{.RID}}'
-    requires:
-      vars: [RID, BINARY]
     env:
       GUI_BINARY: '{{.BINARY}}'
-      GUI_OUTPUT: '{{.ROOT_DIR}}/artifacts/publish/{{.RID}}'
-      GUI_ARCHIVE: 'gui-{{.RID}}.zip'
+      GUI_CONFIG: '{{.ROOT_DIR}}/config/config.json'
+      GUI_OUTPUT: '{{.ROOT_DIR}}/artifacts/releases'
+      GUI_ARCHIVE: '{{.ARCHIVE}}'
     cmds:
-      - cmd: |
-          set -eu
-          mkdir -p "$GUI_OUTPUT"
-          cp -p "$GUI_BINARY" "$GUI_OUTPUT/.$GUI_BINARY.tmp"
-          mv -f "$GUI_OUTPUT/.$GUI_BINARY.tmp" "$GUI_OUTPUT/$GUI_BINARY"
-          rm -f "$GUI_OUTPUT/.$GUI_ARCHIVE"
-          zip -q "$GUI_OUTPUT/.$GUI_ARCHIVE" "$GUI_BINARY" config/ config/config.json
-          mv -f "$GUI_OUTPUT/.$GUI_ARCHIVE" "$GUI_OUTPUT/$GUI_ARCHIVE"
+      - |
+        set -eu
+        mkdir -p "$GUI_OUTPUT" config
+        cp "$GUI_CONFIG" config/config.json
+        chmod 755 "$GUI_BINARY"
+        temporary=$(mktemp -d "$GUI_OUTPUT/.package-XXXXXX")
+        trap 'rm -f "$temporary/$GUI_ARCHIVE"; rmdir "$temporary"' EXIT
+        zip -q "$temporary/$GUI_ARCHIVE" "$GUI_BINARY" config/config.json
+        mv -f "$temporary/$GUI_ARCHIVE" "$GUI_OUTPUT/$GUI_ARCHIVE"
+        printf '%s\n' "$GUI_OUTPUT/$GUI_ARCHIVE"
+
   package-windows:
     internal: true
     platforms: [windows]
     dir: '{{.ROOT_DIR}}/artifacts/staging/{{.RID}}'
-    requires:
-      vars: [RID, BINARY]
     env:
       GUI_BINARY: '{{.BINARY}}'
-      GUI_OUTPUT: '{{.ROOT_DIR}}/artifacts/publish/{{.RID}}'
-      GUI_ARCHIVE: 'gui-{{.RID}}.zip'
+      GUI_CONFIG: '{{.ROOT_DIR}}/config/config.json'
+      GUI_OUTPUT: '{{.ROOT_DIR}}/artifacts/releases'
+      GUI_ARCHIVE: '{{.ARCHIVE}}'
+      GUI_TARGET_OS: '{{.TARGET_OS}}'
     cmds:
-      - cmd: >-
-          powershell.exe -NoProfile -NonInteractive -Command '
-          $ErrorActionPreference = "Stop";
-          New-Item -ItemType Directory -Path $env:GUI_OUTPUT -Force | Out-Null;
-          Copy-Item -LiteralPath $env:GUI_BINARY -Destination (Join-Path $env:GUI_OUTPUT $env:GUI_BINARY) -Force;
-          Compress-Archive -LiteralPath $env:GUI_BINARY, "config" -DestinationPath (Join-Path $env:GUI_OUTPUT $env:GUI_ARCHIVE) -Force
-          '
+      - >-
+        powershell.exe -NoProfile -NonInteractive -Command '
+        $ErrorActionPreference = "Stop";
+        Add-Type -AssemblyName System.IO.Compression; Add-Type -AssemblyName System.IO.Compression.FileSystem;
+        [IO.Directory]::CreateDirectory($env:GUI_OUTPUT) | Out-Null;
+        $temporary = Join-Path $env:GUI_OUTPUT ([Guid]::NewGuid().ToString("N") + ".tmp");
+        try {
+          $zip = [IO.Compression.ZipFile]::Open($temporary, [IO.Compression.ZipArchiveMode]::Create);
+          try {
+            $entry = [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, (Join-Path (Get-Location) $env:GUI_BINARY), $env:GUI_BINARY, [IO.Compression.CompressionLevel]::Optimal);
+            if ($env:GUI_TARGET_OS -ne "windows") { $entry.ExternalAttributes = -2115174400 };
+            [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $env:GUI_CONFIG, "config/config.json", [IO.Compression.CompressionLevel]::Optimal) | Out-Null;
+          } finally { $zip.Dispose() };
+          $destination = Join-Path $env:GUI_OUTPUT $env:GUI_ARCHIVE;
+          Move-Item -LiteralPath $temporary -Destination $destination -Force;
+          Write-Output $destination;
+        } finally { if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force } }
+        '
