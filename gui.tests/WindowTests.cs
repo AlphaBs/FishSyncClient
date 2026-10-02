@@ -228,6 +228,47 @@ public class WindowTests
         void Click(string name) => Get<Button>(name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
     }
 
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task WarningPatternAsksInsteadOfBlocking(bool proceed)
+    {
+        using var directory = new TestDirectory();
+        using var server = new FakeBucketServer();
+        using var http = new HttpClient(server);
+        var config = new ConfigManager(Path.Combine(directory.Path, "config.json"));
+        var confirmations = 0;
+        var window = new MainWindow(directory.Path, http, config, _ => { }, (message, title) =>
+        {
+            confirmations++;
+            Assert.Equal("경고", title);
+            Assert.Contains("logs/debug.txt", message);
+            return Task.FromResult(proceed);
+        });
+        window.Show();
+        try
+        {
+            await Until(() => Get<Button>("btnNext").IsEnabled);
+            Get<TextBox>("txtUsername").Text = "tester";
+            Get<TextBox>("txtPassword").Text = "password";
+            Get<TextBox>("txtBucketId").Text = "bucket";
+            Get<TextBox>("txtHost").Text = "https://api.test/api";
+            Get<Button>("btnNext").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Until(() => Get<Grid>("workspacePanel").IsVisible && !Get<Button>("btnCancel").IsVisible);
+            var logs = Path.Combine(directory.Path, "buckets", "bucket", "logs");
+            Directory.CreateDirectory(logs);
+            await File.WriteAllTextAsync(Path.Combine(logs, "debug.txt"), "log");
+            Get<Button>("btnCompare").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Until(() => !Get<Button>("btnCancel").IsVisible);
+            Assert.Equal(1, confirmations);
+            Assert.Equal(proceed ? 1 : 0, server.SyncCalls);
+            Assert.True(Get<Grid>("workspacePanel").IsVisible);
+            Assert.Equal(proceed ? "서버 업로드 완료." : "동기화를 취소했습니다.", Get<TextBlock>("statusText").Text);
+        }
+        finally { window.Close(); }
+        T Get<T>(string name) where T : Control => window.FindControl<T>(name)!;
+    }
+
     private static void AssertClickKeepsBackground(Window window, ListBox list)
     {
         Dispatcher.UIThread.RunJobs();

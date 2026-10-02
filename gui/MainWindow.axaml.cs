@@ -17,6 +17,8 @@ public partial class MainWindow : Window
     private readonly HttpClient _http;
     private readonly ConfigManager _config;
     private readonly Action<string>? _folderOpener;
+    private readonly Func<string, string, Task<bool>> _confirm;
+    private readonly bool _checkUpdates;
     private readonly ObservableCollection<WorkspaceFileItem> _files = [];
     private readonly CancellationTokenSource _lifetime = new();
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -46,14 +48,18 @@ public partial class MainWindow : Window
     private Dictionary<string, UploadFileItem> _uploadItems = new(WorkspaceFiles.Comparer);
     private ConcurrentQueue<FileUploadProgress> _fileProgress = new();
 
-    public MainWindow() : this(AppContext.BaseDirectory, HttpUtil.HttpClient, ConfigManager.Instance) { }
+    public MainWindow() : this(AppContext.BaseDirectory, HttpUtil.HttpClient, ConfigManager.Instance, checkUpdates: true) { }
 
-    public MainWindow(string applicationDirectory, HttpClient http, ConfigManager config, Action<string>? folderOpener = null)
+    public MainWindow(string applicationDirectory, HttpClient http, ConfigManager config, Action<string>? folderOpener = null,
+        Func<string, string, Task<bool>>? confirm = null, bool checkUpdates = false)
     {
         _applicationDirectory = applicationDirectory;
         _http = http;
         _config = config;
         _folderOpener = folderOpener;
+        _confirm = confirm ?? (async (message, title) =>
+            await MessageBox.Show(message, title, MessageBoxButtons.YesNo) == MessageBoxResult.Yes);
+        _checkUpdates = checkUpdates;
         InitializeComponent();
         fileList.ItemsSource = _files;
         _listTimer.Tick += async (_, _) => await RefreshList();
@@ -71,8 +77,27 @@ public partial class MainWindow : Window
         if (_closed) return;
         txtUsername.Text = config.Username;
         txtBucketId.Text = config.BucketId;
-        txtHost.Text = string.IsNullOrWhiteSpace(config.Host) ? "https://fish.snowfrost.kr/api" : config.Host;
+        txtHost.Text = string.IsNullOrWhiteSpace(config.Host) ? "https://fish2.snowfrost.kr/api" : config.Host;
         btnNext.IsEnabled = true;
+        if (_checkUpdates) await CheckForUpdates();
+    }
+
+    private async Task CheckForUpdates()
+    {
+        try
+        {
+            if (UpdateService.Platform is not { } os || UpdateService.ArchitectureName is not { } arch) return;
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+            timeout.CancelAfter(TimeSpan.FromSeconds(8));
+            var update = await new UpdateService(_http).Check(os, arch, UpdateService.CurrentVersion, timeout.Token);
+            if (update == null || _closed || _busy) return;
+            if (await _confirm($"새 버전 {update.Version}이 있습니다. 다운로드 받을까요?", "업데이트") && !_closed)
+                Process.Start(new ProcessStartInfo(update.Download.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Logger.Instance.LogInformation($"업데이트 확인 또는 다운로드 열기 실패: {ex.Message}");
+        }
     }
 
     private async Task Run(string message, Func<CancellationToken, Task> action)
@@ -439,7 +464,16 @@ public partial class MainWindow : Window
             throw new IOException("파일 수가 버킷 제한을 초과합니다.");
         var patterns = _config.Config.WarningPatterns.Select(DotNet.Globbing.Glob.Parse).ToArray();
         var forbidden = latest.Local.FirstOrDefault(x => !x.IsDirectory && patterns.Any(p => p.IsMatch(x.Path)));
-        if (forbidden != null) throw new IOException($"동기화 제한 패턴에 해당하는 파일입니다: {forbidden.Path}");
+        if (forbidden != null)
+        {
+            var proceed = await _confirm($"동기화 주의 대상 파일이 있습니다.\n\n{forbidden.Path}\n\n그래도 동기화할까요?", "경고");
+            ct.ThrowIfCancellationRequested();
+            if (!proceed)
+            {
+                statusText.Text = "동기화를 취소했습니다.";
+                return;
+            }
+        }
         var queue = _fileProgress;
         var fileProgress = new SynchronousProgress<FileUploadProgress>(queue.Enqueue);
         var result = await Task.Run(() => _session.Push(latest, StatusProgress(), ByteProgress(), ct, fileProgress), ct);

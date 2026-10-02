@@ -10,15 +10,14 @@
         <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
         <ApplicationIcon>icon.ico</ApplicationIcon>
         <RootNamespace>FishSyncClient.Gui</RootNamespace>
+        <ClientVersion>2.0.0</ClientVersion>
+        <Version>$(ClientVersion)</Version>
     </PropertyGroup>
 
     <ItemGroup>
+        <AssemblyMetadata Include="ClientVersion" Value="$(ClientVersion)" />
+        <EmbeddedResource Include="../config/config.json" LogicalName="FishSyncClient.Gui.Defaults.config.json" />
         <AvaloniaResource Include="icon.ico" />
-        <Content Include="../config/config.json" Link="config/config.json">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-            <CopyToPublishDirectory>Always</CopyToPublishDirectory>
-            <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-        </Content>
     </ItemGroup>
 
     <ItemGroup>
@@ -43,4 +42,14 @@
         <ProjectReference Include="..\src\FishSyncClient.csproj" />
     </ItemGroup>
 
+    <Target Name="CreateDefaultBuildConfig" AfterTargets="Build">
+        <MakeDir Directories="$(TargetDir)config" />
+        <Copy SourceFiles="../config/config.json" DestinationFiles="$(TargetDir)config/config.json"
+              Condition="!Exists('$(TargetDir)config/config.json')" />
+    </Target>
+    <Target Name="CreateDefaultPublishConfig" AfterTargets="Publish">
+        <MakeDir Directories="$(PublishDir)config" />
+        <Copy SourceFiles="../config/config.json" DestinationFiles="$(PublishDir)config/config.json"
+              Condition="!Exists('$(PublishDir)config/config.json')" />
+    </Target>
 </Project>

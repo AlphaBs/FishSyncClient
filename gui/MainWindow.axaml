@@ -67,7 +67,7 @@
                 <TextBlock Text="버킷 ID" />
                 <TextBox x:Name="txtBucketId" Watermark="버킷 ID" />
                 <TextBlock Text="서버 API 주소" />
-                <TextBox x:Name="txtHost" Text="https://fish.snowfrost.kr/api" />
+                <TextBox x:Name="txtHost" Text="https://fish2.snowfrost.kr/api" />
                 <Button x:Name="btnNext" Content="다음" IsEnabled="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="Next_Click" />
             </StackPanel>
             </ScrollViewer>

@@ -6,7 +6,7 @@ namespace FishSyncClient.Gui;
 public class Config
 {
     public string? Username { get; set; }
-    public string ClientVersion => "20250101";
+    public string ClientVersion => UpdateService.CurrentVersion;
     public string? Root { get; set; }
     public string? Host { get; set; }
     public string? BucketId { get; set; }
@@ -39,7 +39,9 @@ public class ConfigManager
         {
             Logger.Instance.LogError("설정 불러오기 실패: " + ex.ToString());
             Logger.Instance.LogInformation("설정 파일 초기화");
-            _config = new Config();
+            using var defaults = typeof(Config).Assembly.GetManifestResourceStream("FishSyncClient.Gui.Defaults.config.json")
+                ?? throw new IOException("기본 설정을 찾을 수 없습니다.");
+            _config = await JsonSerializer.DeserializeAsync<Config>(defaults) ?? new Config();
         }
 
         return _config;
