@@ -8,8 +8,8 @@ using System.Text.Json;
 
 namespace FishSyncClient.Cli;
 
-[Verb("push", HelpText = "Upload local files to the bucket.")]
-public class PushCommand : CommandBase
+[Verb("push", HelpText = "Mirror local directory to server bucket; may overwrite and delete server files immediately.")]
+public class PushCommand : SyncCommandBase
 {
     private readonly static JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
     {
@@ -23,7 +23,8 @@ public class PushCommand : CommandBase
     {
         var settings = await GetSettings(BucketId);
 
-        using var httpClient = new HttpClient { Timeout = TimeSpan.FromHours(1) };
+        using var httpClient = CreatePushHttpClient();
+        using var apiHttpClient = CreatePushHttpClient();
         var syncFiles = CliSyncFiles.EnumerateLocalFiles(settings.Root, new PathOptions());
         var syncCollection = new SyncFileCollection(syncFiles);
         var progressAggregator = new ConcurrentByteProgressAggregator();
@@ -38,7 +39,7 @@ public class PushCommand : CommandBase
 
         var handler = new SimpleBucketSyncActionCollectionHandler(6, actionProgress, byteProgress);
         handler.Add(new HttpBucketSyncActionHandler(httpClient));
-        var apiClient = CreateApiClient(settings, httpClient);
+        var apiClient = CreateApiClient(settings, apiHttpClient);
         var syncTask = apiClient.Sync(settings.BucketId, syncCollection, handler);
 
         while (!syncTask.IsCompleted)
@@ -66,6 +67,15 @@ public class PushCommand : CommandBase
             Console.WriteLine(JsonSerializer.Serialize(action.Action.Parameters, _jsonOptions));
         }
 
-        return 0;
+        return result.IsSuccess ? 0 : 1;
+    }
+
+    private static HttpClient CreatePushHttpClient()
+    {
+        var handler = new PushAuthenticationHandler(new HttpClientHandler(), Console.Error);
+        return new HttpClient(handler)
+        {
+            Timeout = TimeSpan.FromHours(1)
+        };
     }
 }

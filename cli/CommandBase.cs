@@ -11,46 +11,52 @@ public abstract class CommandBase
         PropertyNameCaseInsensitive = true,
     };
 
-    [Option("root", HelpText = "Local sync root. Defaults to config root or current directory.")]
-    public string? Root { get; set; }
-
-    [Option("server", HelpText = "Fish server URL. Defaults to config host or FISH_SERVER.")]
+    [Option("server", HelpText = "Server API URL. Priority: --server > config Host > FISH_SERVER. No built-in default.")]
     public string? Server { get; set; }
 
-    [Option("token", HelpText = "API token. Defaults to config token or FISH_TOKEN.")]
-    public string? Token { get; set; }
-
-    [Option("config", Default = "config/config.json", HelpText = "GUI-compatible config file path.")]
+    [Option("config", Default = "config/config.json", HelpText = "JSON settings path, relative to the current working directory. Missing file is allowed.")]
     public string ConfigPath { get; set; } = "config/config.json";
 
     public int Run()
     {
-        return RunAsync().GetAwaiter().GetResult();
+        try
+        {
+            return RunAsync()
+                .GetAwaiter()
+                .GetResult();
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.Error.WriteLine($"서버 요청에 실패했습니다. HTTP 상태: {ex.StatusCode}");
+            return 1;
+        }
+        catch (FishApiException)
+        {
+            Console.Error.WriteLine("서버 요청이 거부되었습니다. 로그인 정보와 서버 주소를 확인해 주세요.");
+            return 1;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return 1;
+        }
     }
 
     protected abstract ValueTask<int> RunAsync();
 
-    protected async Task<CommandSettings> GetSettings(string? bucketId)
+    protected async Task<string> GetServer()
     {
-        var config = await LoadConfig();
-        return new CommandSettings(
-            Root: FirstNotEmpty(Root, config?.Root, Environment.CurrentDirectory) ?? Environment.CurrentDirectory,
-            Host: FirstNotEmpty(Server, config?.Host, Environment.GetEnvironmentVariable("FISH_SERVER"))
-                ?? throw new ArgumentException("host"),
-            BucketId: FirstNotEmpty(bucketId, config?.BucketId)
-                ?? throw new ArgumentException("bucket id"),
-            Token: FirstNotEmpty(Token, config?.Token, Environment.GetEnvironmentVariable("FISH_TOKEN")));
+        return ResolveServer(await LoadConfig());
     }
 
-    protected FishApiClient CreateApiClient(CommandSettings settings, HttpClient httpClient)
+    protected string ResolveServer(CliConfig? config)
     {
-        var apiClient = new FishApiClient(settings.Host, httpClient);
-        if (!string.IsNullOrEmpty(settings.Token))
-            apiClient.ApiKey = settings.Token;
-        return apiClient;
+        var server = FirstNotEmpty(Server, config?.Host, Environment.GetEnvironmentVariable("FISH_SERVER"))
+            ?? throw new ArgumentException("--server, config의 Host 또는 FISH_SERVER로 서버 주소를 지정해 주세요.");
+        return CredentialStore.NormalizeServer(server);
     }
 
-    private async Task<CliConfig?> LoadConfig()
+    protected async Task<CliConfig?> LoadConfig()
     {
         if (string.IsNullOrEmpty(ConfigPath) || !File.Exists(ConfigPath))
             return null;
@@ -59,7 +65,7 @@ public abstract class CommandBase
         return await JsonSerializer.DeserializeAsync<CliConfig>(fs, _jsonOptions);
     }
 
-    private static string? FirstNotEmpty(params string?[] values) =>
+    protected static string? FirstNotEmpty(params string?[] values) =>
         values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 }
 

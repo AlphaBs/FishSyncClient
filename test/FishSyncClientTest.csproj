@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../src/FishSyncClient.csproj" />
+    <ProjectReference Include="../cli/cli.csproj" />
   </ItemGroup>
 
 </Project>

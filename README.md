@@ -22,6 +22,26 @@ checksum을 생략하면 대상 파일의 존재 여부만 확인합니다. 제�
 
 FishSyncServer 와 동기화를 위한 CLI 툴
 
+`--help`는 프로젝트 목적, 로그인 후 동기화하는 예시, 설정 우선순위, 토큰 저장 위치와 종료 코드를 설명합니다. 명령별 설명은 `login --help`, `pull --help`, `push --help`로 확인합니다. 소스에서 실행할 때는 `dotnet run --project cli --no-launch-profile -- --help`를 사용합니다.
+
+`pull`은 서버 상태를 로컬에, `push`는 로컬 상태를 서버에 즉시 반영하며 파일을 덮어쓰거나 삭제할 수 있습니다. 미리보기·확인 프롬프트는 제공하지 않습니다. `--root`에는 절대 경로를 사용합니다. 종료 코드는 성공·도움말·버전 조회 시 `0`, 인자 오류나 작업 실패 시 `1`입니다.
+
+## LOGIN
+
+```sh
+dotnet run --project cli --no-launch-profile -- login my-account --server https://fish2.snowfrost.kr/api
+```
+
+비밀번호는 화면에 표시하지 않고 입력받으며 저장하지 않습니다. 자동화에서는 계정 아이디와 `--password-stdin`을 지정해 표준 입력의 첫 줄로 비밀번호를 전달할 수 있습니다. 로그인 성공 후 `pull`·`push`가 같은 서버에 저장된 토큰을 재사용합니다. 토큰이 만료되면 다시 `login`을 실행합니다.
+
+토큰은 배포용 `config/config.json`과 분리해 사용자별 디렉토리에 서버 주소별로 저장합니다.
+
+- Linux: `${XDG_CONFIG_HOME:-~/.config}/fishsyncclient/credentials/<서버주소 SHA256>.json`
+- Windows: `%LOCALAPPDATA%/FishSyncClient/credentials/<서버주소 SHA256>.json`
+- macOS: `~/Library/Application Support/FishSyncClient/credentials/<서버주소 SHA256>.json`
+
+토큰 파일은 암호화하지 않습니다. Linux·macOS에서는 디렉토리 권한 `700`, 파일 권한 `600`으로 제한하며 Windows에서는 사용자 프로필의 접근 권한을 따릅니다. 비밀번호와 토큰 값은 명령 출력에 표시하지 않습니다. 토큰 우선순위는 `--token`, `FISH_TOKEN`, 해당 서버의 저장된 로그인, 기존 config의 `Token` 순서입니다. 로그인을 해제하려면 해당 서버의 토큰 파일을 삭제합니다.
+
 ## PULL
 
 `pull <bucket-id> --server <server-endpoint> --root <directory-to-sync>`
@@ -30,9 +50,11 @@ FishSyncServer 와 동기화를 위한 CLI 툴
 
 ## PUSH
 
+HTTP 401 또는 403이 반환되면 재로그인 안내를 출력합니다. 같은 서버 주소로 `login <username> --server <서버 API 주소>`를 실행한 뒤 `push`를 다시 시도합니다. 재로그인 후에도 403이 계속되면 해당 계정의 버킷 쓰기 권한을 확인합니다.
+
 `push <bucket-id> --server <server-endpoint> --root <directory-to-sync>`
 
-`pull "my-bucket" --server https://localhost:7128/api --root /home/syncroot`
+`push "my-bucket" --server https://localhost:7128/api --root /home/syncroot`
 
 # FishSyncClient.Gui
 

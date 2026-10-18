@@ -8,8 +8,8 @@ using SyncAction = FishSyncClient.Syncer.SyncAction;
 
 namespace FishSyncClient.Cli;
 
-[Verb("pull", HelpText = "Download bucket files into the local root.")]
-public class PullCommand : CommandBase
+[Verb("pull", HelpText = "Mirror server bucket to local directory; may overwrite and delete local files immediately.")]
+public class PullCommand : SyncCommandBase
 {
     [Value(0, Required = false, MetaName = "bucket-id", HelpText = "Bucket id. Defaults to config BucketId.")]
     public string? BucketId { get; set; }
@@ -19,9 +19,10 @@ public class PullCommand : CommandBase
         var settings = await GetSettings(BucketId);
 
         using var httpClient = new HttpClient { Timeout = TimeSpan.FromHours(1) };
+        using var apiHttpClient = new HttpClient { Timeout = TimeSpan.FromHours(1) };
         var pathOptions = new PathOptions();
 
-        var apiClient = CreateApiClient(settings, httpClient);
+        var apiClient = CreateApiClient(settings, apiHttpClient);
         var bucketFiles = await apiClient.GetBucketFiles(settings.BucketId);
         var syncFiles = bucketFiles.Files.Select(file => CliSyncFiles.CreateHttpFile(file, httpClient, pathOptions)).ToArray();
 
