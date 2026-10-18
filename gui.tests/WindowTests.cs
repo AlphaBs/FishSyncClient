@@ -37,7 +37,12 @@ public class WindowTests
         using var http = new HttpClient(server);
         string? opened = null;
         var config = new ConfigManager(Path.Combine(directory.Path, "config", "config.json"));
-        var window = new MainWindow(directory.Path, http, config, path => opened = path);
+        var window = new MainWindow(
+            directory.Path,
+            http,
+            config,
+            path => opened = path,
+            passwordStore: new FakePasswordStore());
         window.Show();
         try
         {
@@ -124,7 +129,12 @@ public class WindowTests
         using var server = new FakeBucketServer();
         using var http = new HttpClient(server);
         var config = new ConfigManager(Path.Combine(directory.Path, "config.json"));
-        var window = new MainWindow(directory.Path, http, config, _ => { });
+        var window = new MainWindow(
+            directory.Path,
+            http,
+            config,
+            _ => { },
+            passwordStore: new FakePasswordStore());
         FileStream? fileLock = null;
         window.Show();
         try
@@ -188,7 +198,12 @@ public class WindowTests
         using var server = new FakeBucketServer { RequireUpload = true, FailUpload = true,
             UploadHalfwayGate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
         using var http = new HttpClient(server);
-        var window = new MainWindow(directory.Path, http, new ConfigManager(Path.Combine(directory.Path, "config.json")), _ => { });
+        var window = new MainWindow(
+            directory.Path,
+            http,
+            new ConfigManager(Path.Combine(directory.Path, "config.json")),
+            _ => { },
+            passwordStore: new FakePasswordStore());
         window.Show();
         try
         {
@@ -244,7 +259,7 @@ public class WindowTests
             Assert.Equal("경고", title);
             Assert.Contains("logs/debug.txt", message);
             return Task.FromResult(proceed);
-        });
+        }, passwordStore: new FakePasswordStore());
         window.Show();
         try
         {

@@ -64,6 +64,8 @@
                 <TextBox x:Name="txtUsername" Watermark="아이디" />
                 <TextBlock Text="비밀번호" />
                 <TextBox x:Name="txtPassword" PasswordChar="●" Watermark="비밀번호" />
+                <CheckBox x:Name="rememberPassword" Content="OS 키체인에 비밀번호 저장" />
+                <Button x:Name="btnForgetPassword" Content="저장된 비밀번호 삭제" Click="ForgetPassword_Click" />
                 <TextBlock Text="버킷 ID" />
                 <TextBox x:Name="txtBucketId" Watermark="버킷 ID" />
                 <TextBlock Text="서버 API 주소" />
@@ -139,11 +141,12 @@
             </Grid>
         </Grid>
         <Border Grid.Row="2" BorderBrush="#40808080" BorderThickness="0,1,0,0" Padding="0,14,0,0">
-            <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="8" ColumnSpacing="14">
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="8" ColumnSpacing="14">
                 <TextBlock x:Name="statusText" Text="준비되었습니다." TextWrapping="Wrap" />
                 <Button x:Name="btnCancel" Grid.Column="1" Grid.RowSpan="3" Content="취소" IsVisible="False" Click="Cancel_Click" />
                 <ProgressBar x:Name="transferBar" Grid.Row="1" Height="8" Maximum="100" IsVisible="False" />
                 <TextBlock x:Name="transferText" Grid.Row="2" FontSize="12" Opacity="0.7" />
+                <TextBlock x:Name="passwordNotice" Grid.Row="4" TextWrapping="Wrap" Foreground="#A66B00" FontSize="12" />
                 <TextBlock x:Name="postUploadNotice" Grid.Row="3" IsVisible="False" TextWrapping="Wrap" Foreground="#A66B00" FontSize="12" />
             </Grid>
         </Border>

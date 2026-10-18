@@ -50,8 +50,14 @@ public partial class MainWindow : Window
 
     public MainWindow() : this(AppContext.BaseDirectory, HttpUtil.HttpClient, ConfigManager.Instance, checkUpdates: true) { }
 
-    public MainWindow(string applicationDirectory, HttpClient http, ConfigManager config, Action<string>? folderOpener = null,
-        Func<string, string, Task<bool>>? confirm = null, bool checkUpdates = false)
+    public MainWindow(
+        string applicationDirectory,
+        HttpClient http,
+        ConfigManager config,
+        Action<string>? folderOpener = null,
+        Func<string, string, Task<bool>>? confirm = null,
+        bool checkUpdates = false,
+        IPasswordStore? passwordStore = null)
     {
         _applicationDirectory = applicationDirectory;
         _http = http;
@@ -60,7 +66,9 @@ public partial class MainWindow : Window
         _confirm = confirm ?? (async (message, title) =>
             await MessageBox.Show(message, title, MessageBoxButtons.YesNo) == MessageBoxResult.Yes);
         _checkUpdates = checkUpdates;
+        _passwordStore = passwordStore ?? new PasswordStore();
         InitializeComponent();
+        InitializePasswordControls();
         fileList.ItemsSource = _files;
         _listTimer.Tick += async (_, _) => await RefreshList();
         _usageTimer.Tick += async (_, _) => await RefreshUsage();
@@ -78,6 +86,12 @@ public partial class MainWindow : Window
         txtUsername.Text = config.Username;
         txtBucketId.Text = config.BucketId;
         txtHost.Text = string.IsNullOrWhiteSpace(config.Host) ? "https://fish2.snowfrost.kr/api" : config.Host;
+        _credentialsReady = true;
+        await LoadSavedPassword();
+        if (_closed)
+        {
+            return;
+        }
         btnNext.IsEnabled = true;
         if (_checkUpdates) await CheckForUpdates();
     }
@@ -212,11 +226,14 @@ public partial class MainWindow : Window
             statusText.Text = "아이디, 비밀번호, 버킷 ID를 모두 입력해 주세요.";
             return;
         }
+        _passwordRevision++;
+        var remember = rememberPassword.IsChecked == true;
         await Run("로그인하고 버킷을 확인하는 중…", async ct =>
         {
             var host = txtHost.Text?.Trim().TrimEnd('/') ?? "";
             _session = new(host, bucket, _applicationDirectory, _http);
             await _session.Login(username, password, ct);
+            await PersistPassword(host, username, password, remember);
             await _session.ReadRemote(ct);
             var config = _config.Config;
             config.Username = username;

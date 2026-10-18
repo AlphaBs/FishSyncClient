@@ -68,7 +68,7 @@ FishSyncServer 와 동기화를 위한 GUI 툴
 4. **동기화**를 누르면 변경사항 화면에서 최신 서버 목록과 로컬 체크섬을 비교합니다. 추가·삭제·갱신 목록이 나타나고 바로 로컬 상태를 서버에 반영합니다. 이름 변경은 삭제와 추가로 표시됩니다. 변경사항이 없으면 서버 반영 요청을 보내지 않습니다.
 5. 전송용 복사본의 체크섬을 검증한 뒤 업로드합니다. 비교 이후 추가된 파일이나 전송 중 편집한 파일은 다음 동기화 대상으로 남습니다. 실패하거나 취소하면 일부 작업이 반영되었을 수 있으므로 다시 동기화합니다.
 
-계정 아이디와 버킷 ID는 실행 파일 옆 `config/config.json`에 저장합니다. 비밀번호와 로그인 토큰은 저장하지 않습니다. 실행 파일 폴더에 쓰기 권한이 필요합니다. 다른 위치의 기존 로컬 폴더를 자동으로 가져오지는 않습니다.
+계정 아이디와 버킷 ID는 실행 파일 옆 `config/config.json`에 저장합니다. 로그인 토큰은 저장하지 않습니다. [KeySharp](https://www.nuget.org/packages/KeySharp/)를 사용하며, Windows x64와 macOS x64·ARM64에서는 **OS 키체인에 비밀번호 저장**을 선택하면 로그인 성공 후 Windows 자격 증명 관리자 또는 macOS 키체인에 비밀번호를 저장합니다. 비밀번호는 서버 API 주소와 계정별로 구분하며, 다음 실행 시 자동 입력합니다. 저장 옵션을 해제하고 로그인하면 해당 비밀번호를 삭제하며, **저장된 비밀번호 삭제** 버튼으로 즉시 삭제할 수도 있습니다. 비밀번호는 설정 파일에 기록하지 않습니다. 키체인 접근이 실패하면 화면에 안내하고 수동 로그인을 계속 지원합니다. 실행 파일 폴더에 쓰기 권한이 필요합니다. 다른 위치의 기존 로컬 폴더를 자동으로 가져오지는 않습니다.
 
 빌드와 게시 시 `config/config.json`을 결과 폴더의 `config/config.json`으로 생성합니다. 기존 설정 파일은 덮어쓰지 않습니다. 설정 파일이 없는 실행 환경에서도 내장 기본값을 사용합니다. `WarningPatterns`에 일치하는 파일은 업로드 전 경고를 표시하며, 사용자가 동의하면 계속 진행하고 거절하면 목록으로 돌아옵니다. 경고 패턴은 강제 차단 규칙이 아닙니다.
 
@@ -89,7 +89,7 @@ dotnet test test/FishSyncClientTest.csproj
 dotnet build gui/gui.csproj -c Release
 ```
 
-GUI 테스트는 가짜 HTTP 서버와 Avalonia Headless를 사용하므로 실제 계정이나 서버 파일을 변경하지 않습니다. `FISH_UI_SCREENSHOTS` 환경 변수에 출력 폴더를 지정하면 로그인·작업·미리보기 화면 PNG도 생성합니다.
+GUI 테스트는 가짜 HTTP 서버와 Avalonia Headless를 사용하므로 실제 계정이나 서버 파일을 변경하지 않습니다. OS 키체인 통합 테스트는 Windows x64와 macOS x64·ARM64에서 임시 항목을 생성해 저장·갱신·삭제를 확인하고 정리하며, 다른 OS에서는 건너뜁니다. `FISH_UI_SCREENSHOTS` 환경 변수에 출력 폴더를 지정하면 로그인·작업·미리보기 화면 PNG도 생성합니다.
 
 ## 플랫폼별 GUI 배포 빌드
 
@@ -103,6 +103,8 @@ task build                   # Windows/Linux/macOS x64 3개
 task build ARCH=aarch64       # Windows/Linux/macOS ARM64 3개
 task all                     # 전체 6개 조합
 ```
+
+KeySharp 1.0.5의 네이티브 라이브러리는 기존 단일 실행 파일 설정에 포함되어 실행 시 추출됩니다. Windows 비밀번호 저장에는 Microsoft Visual C++ x64 런타임이 필요합니다. Windows ARM64에서는 비밀번호 저장을 비활성화하고 수동 로그인을 지원합니다. macOS ARM64 배포 시에는 KeySharp 문서에 안내된 바이너리 서명 요구사항을 확인해야 합니다.
 
 기본 아키텍처는 `x64`이며 `aarch64`와 호환 별칭 `arm64`를 지원합니다. 버전은 `gui/gui.csproj`의 `ClientVersion`에서 읽습니다. 결과는 `artifacts/releases/FishSyncClientGui-os-arch-version.zip`에 생성됩니다. 예: `FishSyncClientGui-windows-x64-2.0.0.zip`.
 
