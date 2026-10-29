@@ -8,6 +8,7 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import zipfile
 
@@ -129,6 +130,9 @@ def main():
 
 
 if __name__ == "__main__":
+    # Windows에서도 리디렉션된 콘솔에 한글 안내를 기록할 수 있도록 한다.
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
     try:
         main()
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
