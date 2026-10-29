@@ -26,10 +26,21 @@ public abstract class SyncCommandBase : CommandBase
                 Environment.CurrentDirectory) ?? Environment.CurrentDirectory,
             Host: host,
             BucketId: FirstNotEmpty(bucketId, EnvironmentSettings.Get("FISH_BUCKET_ID"), config.BucketId)
-                ?? throw new ArgumentException("버킷 ID 또는 FISH_BUCKET_ID를 지정해 주세요."))
+                ?? throw new ArgumentException(
+                    "Bucket ID is required. Pass it as an argument, or set FISH_BUCKET_ID or config BucketId."))
         {
             WarningPatterns = config.WarningPatterns ?? []
         };
+    }
+
+    protected static void EnsureAbsoluteRoot(CommandSettings settings)
+    {
+        // 상대 경로는 실행 위치에 따라 다른 폴더를 동기화할 수 있으므로 작업 전에 거부한다.
+        if (!Path.IsPathFullyQualified(settings.Root))
+        {
+            throw new ArgumentException(
+                $"Root must be an absolute path (from --root, FISH_ROOT, or config Root): {settings.Root}");
+        }
     }
 
     protected virtual HttpClient CreateHttpClient() => new()
@@ -52,14 +63,16 @@ public abstract class SyncCommandBase : CommandBase
         }
         if (missing.Count > 0)
         {
-            throw new ArgumentException($"환경변수 또는 .env에 {string.Join(", ", missing)}를 설정해 주세요.");
+            throw new ArgumentException(
+                $"Missing credentials: {string.Join(", ", missing)}. "
+                + "Set them as environment variables or in ./.env (current directory).");
         }
 
         var apiClient = new FishApiClient(settings.Host, httpClient);
         var token = await apiClient.Login(username!.Trim(), password!);
         if (string.IsNullOrWhiteSpace(token))
         {
-            throw new InvalidOperationException("서버가 빈 인증 토큰을 반환했습니다.");
+            throw new InvalidOperationException("The server returned an empty authentication token.");
         }
 
         // 토큰은 현재 명령에서만 사용하며 파일이나 키체인에 저장하지 않는다.

@@ -12,6 +12,12 @@ public class PushCommand : SyncCommandBase
     protected override async ValueTask<int> RunAsync()
     {
         var settings = await GetSettings(BucketId);
+        EnsureAbsoluteRoot(settings);
+        // 없는 폴더를 push하면 빈 목록으로 서버 파일이 모두 삭제되므로 막는다.
+        if (!Directory.Exists(settings.Root))
+        {
+            throw new DirectoryNotFoundException($"Root directory does not exist: {settings.Root}");
+        }
 
         using var httpClient = CreateHttpClient();
         using var apiHttpClient = CreateHttpClient();

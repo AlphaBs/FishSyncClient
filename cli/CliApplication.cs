@@ -29,22 +29,17 @@ public static class CliApplication
         var result = root.Parse(args);
         if (result.Errors.Count > 0 || result.UnmatchedTokens.Count > 0)
         {
-            // 인자 오류가 있으면 작업을 실행하지 않고 도움말까지 stderr로 보낸다.
+            // 인자 오류는 작업을 실행하지 않고, 오류가 묻히지 않도록 전체 도움말 대신 사용법만 출력한다.
             foreach (var error in result.Errors)
             {
                 errorOutput.WriteLine(error.Message);
             }
             var commandName = result.CommandResult.Command.Name;
-            string[] helpArguments = commandName is "pull" or "push"
-                ? [commandName, "--help"]
-                : ["--help"];
-            root.Parse(helpArguments)
-                .Invoke(new InvocationConfiguration
-                {
-                    Output = errorOutput,
-                    Error = errorOutput,
-                    EnableDefaultExceptionHandler = false
-                });
+            var helpCommand = commandName is "pull" or "push"
+                ? $"cli {commandName} --help"
+                : "cli --help";
+            errorOutput.WriteLine(CliHelp.GetUsage(commandName));
+            errorOutput.WriteLine($"Run '{helpCommand}' for details.");
             return 1;
         }
         return result.Invoke(configuration);
@@ -55,17 +50,30 @@ public static class CliApplication
         TextWriter errorOutput,
         TextReader? input = null)
     {
-        var root = new RootCommand(CliHelp.Describe(null))
+        var root = new RootCommand(CliHelp.RootDescription)
         {
             TreatUnmatchedTokensAsErrors = true
         };
-        root.Subcommands.Add(CreateSyncCommand("pull", () => new PullCommand(), output, errorOutput, input));
-        root.Subcommands.Add(CreateSyncCommand("push", () => new PushCommand(), output, errorOutput, input));
+        root.Subcommands.Add(CreateSyncCommand(
+            "pull", CliHelp.PullDescription, () => new PullCommand(),
+            output, errorOutput, input));
+        root.Subcommands.Add(CreateSyncCommand(
+            "push", CliHelp.PushDescription, () => new PushCommand(),
+            output, errorOutput, input));
+        // 명령 없이 옵션만 받은 경우 "Required command" 대신 사용법을 안내한다.
+        root.SetAction(_ =>
+        {
+            errorOutput.WriteLine(CliHelp.GetUsage(null));
+            errorOutput.WriteLine("Run 'cli --help' for details.");
+            return 1;
+        });
+        CliHelp.Configure(root);
         return root;
     }
 
     private static Command CreateSyncCommand(
         string name,
+        string description,
         Func<SyncCommandBase> createOperation,
         TextWriter output,
         TextWriter errorOutput,
@@ -73,7 +81,7 @@ public static class CliApplication
     {
         var bucket = new Argument<string?>("bucket-id")
         {
-            Description = "Bucket id. Defaults to FISH_BUCKET_ID or config BucketId.",
+            Description = "Bucket ID. Defaults to FISH_BUCKET_ID, then config BucketId.",
             Arity = ArgumentArity.ZeroOrOne
         };
         bucket.Validators.Add(result =>
@@ -82,35 +90,38 @@ public static class CliApplication
             var value = result.GetValueOrDefault<string?>();
             if (value?.StartsWith('-') == true)
             {
-                result.AddError("버킷 ID 자리에 알 수 없는 옵션이 입력되었습니다. --help로 옵션을 확인해 주세요.");
+                result.AddError($"Unrecognized option '{value}'.");
             }
         });
         var server = new Option<string?>("--server")
         {
-            Description = "Server API URL. Overrides environment, .env, config, and the built-in default."
+            Description = $"Server API URL. Defaults to FISH_SERVER, config Host, then {CliConfig.DefaultServer}",
+            HelpName = "URL"
         };
         var config = new Option<string>("--config")
         {
-            Description = "JSON settings path relative to the current working directory. Missing file is allowed.",
+            Description = "Config JSON path, relative to the current directory (not the executable). A missing file uses built-in defaults.",
+            HelpName = "FILE",
             DefaultValueFactory = _ => "config/config.json"
         };
         var localRoot = new Option<string?>("--root")
         {
-            Description = "Absolute local directory. Overrides FISH_ROOT, config Root, and current working directory."
+            Description = "Absolute local directory. Defaults to FISH_ROOT, config Root, then the current directory.",
+            HelpName = "DIR"
         };
         var yes = new Option<bool>("--yes", "-y")
         {
-            Description = "Log WarningPatterns matches and continue without asking [Y/n]."
+            Description = "Skip the [Y/n] prompt for WarningPatterns matches (they are still listed)."
         };
 
-        var command = new Command(name, CliHelp.Describe(name))
+        var command = new Command(name, description)
         {
             TreatUnmatchedTokensAsErrors = true
         };
         command.Arguments.Add(bucket);
+        command.Options.Add(localRoot);
         command.Options.Add(server);
         command.Options.Add(config);
-        command.Options.Add(localRoot);
         command.Options.Add(yes);
         command.SetAction(result =>
         {

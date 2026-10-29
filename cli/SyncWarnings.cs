@@ -29,25 +29,25 @@ public static class SyncWarnings
             return true;
         }
 
-        output.WriteLine("경고: WarningPatterns에 일치하는 파일이 있습니다. 계속하면 동기화에 포함됩니다.");
+        output.WriteLine("Warning: these files match WarningPatterns and will be synced if you continue:");
         foreach (var path in matches)
         {
             output.WriteLine($"  {path}");
         }
         if (assumeYes)
         {
-            output.WriteLine("-y: 확인 입력을 생략하고 계속합니다.");
+            output.WriteLine("-y: continuing without confirmation.");
             return true;
         }
 
         while (true)
         {
-            output.Write("계속하시겠습니까? [Y/n] ");
+            output.Write("Continue? [Y/n] ");
             output.Flush();
             var answer = input.ReadLine();
             if (answer == null)
             {
-                output.WriteLine("입력이 종료되어 동기화를 취소했습니다. 자동화에서는 -y를 지정해 주세요.");
+                output.WriteLine("Input closed; sync cancelled. Pass -y for unattended runs.");
                 return false;
             }
             answer = answer.Trim();
@@ -59,10 +59,10 @@ public static class SyncWarnings
             if (answer.Equals("n", StringComparison.OrdinalIgnoreCase)
                 || answer.Equals("no", StringComparison.OrdinalIgnoreCase))
             {
-                output.WriteLine("동기화를 취소했습니다.");
+                output.WriteLine("Sync cancelled.");
                 return false;
             }
-            output.WriteLine("Y 또는 n을 입력해 주세요.");
+            output.WriteLine("Please answer Y or n.");
         }
     }
 }

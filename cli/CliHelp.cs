@@ -1,90 +1,94 @@
+using System.CommandLine;
+using System.CommandLine.Help;
+using System.CommandLine.Invocation;
+
 namespace FishSyncClient.Cli;
 
 public static class CliHelp
 {
-    public static string Describe(string? command) =>
-        GetIntroduction(command) + "\n" + Settings + "\n" + ExecutionNotes;
+    public const string RootDescription =
+        "Sync a local directory with a FishSyncServer bucket. Changes apply immediately; there is no dry-run.";
 
-    private static string GetIntroduction(string? command)
+    public const string PullDescription =
+        "Mirror the server bucket into the local directory (server -> local). Deletes local-only files.";
+
+    public const string PushDescription =
+        "Mirror the local directory into the server bucket (local -> server). Deletes server-only files.";
+
+    public static string GetUsage(string? command) => command switch
     {
-        return command switch
+        "pull" or "push" => $"Usage: cli {command} [bucket-id] [options]",
+        _ => "Usage: cli <pull|push> [bucket-id] [options]"
+    };
+
+    public static void Configure(RootCommand root)
+    {
+        var help = root.Options
+            .OfType<HelpOption>()
+            .Single();
+        if (help.Action is HelpAction action)
         {
-            "pull" => """
-                PULL: Mirror a server bucket into a local directory (server -> local).
-                Usage: cli pull [bucket-id] [--root ABSOLUTE_DIR] [--server URL] [--config FILE] [-y]
+            help.Action = new DetailedHelpAction(action);
+        }
+    }
 
-                Example (set FISH_USERNAME and FISH_PASSWORD in the environment or .env first):
-                  cli pull my-bucket --root /absolute/path/files
-                Windows root example: --root "C:\sync\files"
-                Authenticates automatically for each command; tokens are kept in memory only.
-                WARNING: Applies changes immediately, overwrites changed local files, and deletes local-only files.
-                The server bucket is not modified. WarningPatterns matches are logged and require [Y/n] (use -y to continue).
+    // 기본 도움말(설명·사용법·옵션) 뒤에 예시와 설정 요약을 한 번만 덧붙인다.
+    private sealed class DetailedHelpAction(HelpAction inner) : SynchronousCommandLineAction
+    {
+        public override int Invoke(ParseResult parseResult)
+        {
+            var result = inner.Invoke(parseResult);
+            parseResult.InvocationConfiguration.Output.Write(
+                GetDetails(parseResult.CommandResult.Command.Name));
+            return result;
+        }
+    }
 
-                """,
-            "push" => """
-                PUSH: Mirror a local directory into a server bucket (local -> server).
-                Usage: cli push [bucket-id] [--root ABSOLUTE_DIR] [--server URL] [--config FILE] [-y]
-
-                Example (set FISH_USERNAME and FISH_PASSWORD in the environment or .env first):
-                  cli push my-bucket --root /absolute/path/files
-                Windows root example: --root "C:\sync\files"
-                Authenticates automatically for each command; tokens are kept in memory only.
-                WARNING: Applies changes immediately, overwrites changed server files, and deletes server-only files.
-                WarningPatterns matches are logged and require [Y/n] (use -y to continue). Check the local directory before push.
-                HTTP 401/403: verify FISH_USERNAME, FISH_PASSWORD, the API URL, and the account's bucket write permission.
-
-                """,
-            _ => """
-                FishSyncClient CLI synchronizes a local directory with a FishSyncServer bucket.
-                A bucket ID identifies the server-side collection of files you want to synchronize.
-
-                Usage: cli <pull|push> [arguments] [options]
-                Use 'cli <command> --help' or 'cli help <command>' for command-specific details.
-                From source, replace 'cli' with 'dotnet run --project cli --no-launch-profile --'.
-
-                QUICK START:
-                  Set FISH_USERNAME and FISH_PASSWORD in the environment or current-directory .env.
-                  cli pull my-bucket --root /absolute/path/files
-                  cli push my-bucket --root /absolute/path/files
-                Windows root example: --root "C:\sync\files"
-                Each command authenticates automatically. Tokens stay in memory; no token file or keychain is used.
-                These are separate operations: pull downloads server state, push uploads local state.
-                WARNING: Both sync commands can overwrite and delete files immediately.
-                WarningPatterns matches require [Y/n]; -y skips the prompt but keeps the warning log. No dry-run is available.
-
-                COMMANDS:
+    private static string GetDetails(string command)
+    {
+        string[] sections = command switch
+        {
+            "pull" => [
                 """
+                Example:
+                  cli pull my-bucket --root /absolute/path/files
+                Changed local files are overwritten. The server bucket is not modified.
+                """,
+                Settings
+            ],
+            "push" => [
+                """
+                Example:
+                  cli push my-bucket --root /absolute/path/files
+                Changed server files are overwritten. Pushing an empty directory deletes every server file.
+                HTTP 401/403: check FISH_USERNAME, FISH_PASSWORD, the server URL, and write permission for the bucket.
+                """,
+                Settings
+            ],
+            _ => [
+                """
+                Quick start:
+                  1. Set FISH_USERNAME and FISH_PASSWORD as environment variables or in ./.env
+                  2. cli pull my-bucket --root /absolute/path/files
+                  3. Edit files, then: cli push my-bucket --root /absolute/path/files
+
+                Run 'cli <command> --help' for settings and exit codes.
+                """
+            ]
         };
+        return string.Join(Environment.NewLine + Environment.NewLine, sections) + Environment.NewLine + Environment.NewLine;
     }
 
     private const string Settings = """
+        Settings:
+          Credentials  FISH_USERNAME and FISH_PASSWORD are required, from environment variables or ./.env.
+                       A token is obtained on every run and kept in memory only.
+          Priority     command-line > environment variable > ./.env > config file > default.
+                       Variables: FISH_BUCKET_ID, FISH_ROOT, FISH_SERVER. Config keys: BucketId, Root, Host.
+          Warnings     Paths matching config WarningPatterns are listed and need [Y/n] (n or EOF cancels).
+                       They are not exclusions: every file under the root is synced.
 
-        SETTINGS:
-          --config defaults to config/config.json relative to the CURRENT WORKING DIRECTORY, not the executable.
-          A missing config file uses bundled defaults. Default API URL: https://fish2.snowfrost.kr/api.
-          Server priority: --server > FISH_SERVER (environment > .env) > config Host > built-in default.
-          Current-directory .env is read with DotNetEnv; parent directories are not searched.
-          Existing process environment variables override .env; process variables are not modified.
-          Supported variables: FISH_SERVER, FISH_ROOT, FISH_BUCKET_ID, FISH_USERNAME, FISH_PASSWORD.
-          FISH_USERNAME and FISH_PASSWORD are required; missing/blank values fail with setup instructions.
-          Authentication tokens are never saved, printed, or loaded from config/files/environment/keychain.
-          Blank settings values are ignored. Command-line options override environment/.env and config.
-          Bucket priority: positional bucket-id > FISH_BUCKET_ID (environment/.env) > config BucketId. One is required.
-          Root priority: --root > FISH_ROOT (environment/.env) > config Root > current working directory. Use an absolute path.
-          Sync includes all files under the root. WarningPatterns are warnings, not exclusion rules.
-          Pull checks remote and local paths (including possible deletions); push checks local paths.
-          [Y/n]: Enter or Y continues, n or EOF cancels with exit code 1; invalid answers are asked again.
-          -y / --yes bypasses confirmation and still logs all matching paths.
-          Example config (use C:/sync/files for Root on Windows):
-            {"Host":"https://fish2.snowfrost.kr/api","BucketId":"my-bucket","Root":"/absolute/path/files"}
-        """;
-
-    private const string ExecutionNotes = """
-
-        AUTOMATION AND EXIT CODES:
-          0 = successful operation, help, or version. 1 = invalid arguments or failed operation.
-          Help is written to stdout; errors and push HTTP 401/403 notices are written to stderr.
-          Progress and operation summaries are human-readable; there is no JSON output mode.
-          Failed sync may have applied some changes. Inspect the result before retrying.
+        Exit codes: 0 = success, 1 = invalid arguments, failure, or cancellation.
+          A failed sync may have applied some changes; inspect the result before retrying.
         """;
 }

@@ -45,7 +45,7 @@ public sealed class CliEnvironment
         catch (Exception)
         {
             // 파서 오류 메시지에는 비밀번호를 포함한 원문이 들어갈 수 있다.
-            throw new FormatException(".env 파일을 읽지 못했습니다. 파일 권한과 KEY=value 문법을 확인해 주세요.");
+            throw new FormatException("Could not read .env. Check the file permissions and KEY=value syntax.");
         }
     }
 }

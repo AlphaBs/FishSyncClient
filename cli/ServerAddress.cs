@@ -10,7 +10,8 @@ public static class ServerAddress
             || !string.IsNullOrEmpty(uri.Query)
             || !string.IsNullOrEmpty(uri.Fragment))
         {
-            throw new ArgumentException("올바른 서버 API 주소를 입력해 주세요.");
+            throw new ArgumentException("Invalid server API URL. Use an absolute http(s) URL without credentials, query, or fragment, "
+                + $"for example {CliConfig.DefaultServer}");
         }
 
         return uri.AbsoluteUri.TrimEnd('/');

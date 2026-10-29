@@ -12,6 +12,7 @@ public class PullCommand : SyncCommandBase
     protected override async ValueTask<int> RunAsync()
     {
         var settings = await GetSettings(BucketId);
+        EnsureAbsoluteRoot(settings);
 
         using var httpClient = CreateHttpClient();
         using var apiHttpClient = CreateHttpClient();

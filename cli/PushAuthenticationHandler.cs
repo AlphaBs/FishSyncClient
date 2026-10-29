@@ -17,8 +17,8 @@ public sealed class PushAuthenticationHandler(
             && Interlocked.Exchange(ref _noticeWritten, 1) == 0)
         {
             errorOutput.WriteLine(
-                $"HTTP {(int)response.StatusCode}: 인증 정보를 확인해 주세요. "
-                + "FISH_USERNAME, FISH_PASSWORD와 버킷 쓰기 권한을 확인한 뒤 push를 다시 시도해 주세요.");
+                $"HTTP {(int)response.StatusCode}: authentication failed. "
+                + "Check FISH_USERNAME, FISH_PASSWORD, and write permission for the bucket, then run push again.");
         }
 
         return response;

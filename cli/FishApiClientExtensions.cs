@@ -18,7 +18,7 @@ public static class FishApiClientExtensions
             Path = file.Path.SubPath,
             Checksum = Md5Checksum.FromHexString(
                 file.Metadata?.Checksum?.ChecksumHexString
-                ?? throw new InvalidDataException($"파일의 MD5 체크섬이 없습니다: {file.Path.SubPath}")),
+                ?? throw new InvalidDataException($"File has no MD5 checksum: {file.Path.SubPath}")),
             Size = file.Metadata?.Size ?? 0,
         });
         return await apiClient.Sync(id, bucketSyncFiles, cancellationToken);

@@ -34,7 +34,7 @@ public sealed class CliAuthenticationTests : IDisposable
         {
             Assert.Contains(alsoMissing, error.Message);
         }
-        Assert.Contains("설정해 주세요", error.Message);
+        Assert.Contains("Missing credentials", error.Message);
         Assert.DoesNotContain("secret", error.Message);
         Assert.Equal(0, handler.Requests);
     }

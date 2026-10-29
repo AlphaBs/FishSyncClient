@@ -22,7 +22,7 @@ public sealed class PushAuthenticationTests
         Assert.Equal(status, second.StatusCode);
         var notice = output.ToString();
         Assert.Contains($"HTTP {(int)status}", notice);
-        Assert.Contains("인증 정보를 확인", notice);
+        Assert.Contains("authentication failed", notice);
         Assert.Contains("FISH_USERNAME, FISH_PASSWORD", notice);
         Assert.DoesNotContain("login --server", notice);
         Assert.Contains("push", notice);

@@ -14,6 +14,9 @@ public abstract class CommandBase
 
     public string ConfigPath { get; set; } = "config/config.json";
 
+    // 연결 오류 메시지에 실제로 선택된 서버 주소를 보여주기 위해 보관한다.
+    protected string? ResolvedServer { get; private set; }
+
     public int Run(TextReader? input = null, TextWriter? output = null, TextWriter? errorOutput = null)
     {
         Input = input ?? Console.In;
@@ -25,14 +28,20 @@ public abstract class CommandBase
                 .GetAwaiter()
                 .GetResult();
         }
+        catch (HttpRequestException ex) when (ex.StatusCode is { } status)
+        {
+            ErrorOutput.WriteLine($"Server request failed: HTTP {(int)status} {status} ({ResolvedServer}).");
+            return 1;
+        }
         catch (HttpRequestException ex)
         {
-            ErrorOutput.WriteLine($"서버 요청에 실패했습니다. HTTP 상태: {ex.StatusCode}");
+            ErrorOutput.WriteLine($"Could not reach the server {ResolvedServer}: {ex.Message}");
             return 1;
         }
         catch (FishApiException)
         {
-            ErrorOutput.WriteLine("서버 요청이 거부되었습니다. 로그인 정보와 서버 주소를 확인해 주세요.");
+            ErrorOutput.WriteLine(
+                $"The server rejected the request ({ResolvedServer}). Check FISH_USERNAME, FISH_PASSWORD, and the server URL.");
             return 1;
         }
         catch (Exception ex)
@@ -51,25 +60,36 @@ public abstract class CommandBase
             EnvironmentSettings.Get("FISH_SERVER"),
             config?.Host,
             CliConfig.DefaultServer)!;
-        return ServerAddress.Normalize(server);
+        ResolvedServer = ServerAddress.Normalize(server);
+        return ResolvedServer;
     }
 
     protected async Task<CliConfig> LoadConfig()
     {
         Stream stream;
+        string source;
         if (!string.IsNullOrEmpty(ConfigPath) && File.Exists(ConfigPath))
         {
             stream = File.OpenRead(ConfigPath);
+            source = ConfigPath;
         }
         else
         {
             stream = typeof(CliConfig).Assembly.GetManifestResourceStream("FishSyncClient.Cli.Defaults.config.json")
-                ?? throw new InvalidOperationException("내장 기본 설정을 찾을 수 없습니다.");
+                ?? throw new InvalidOperationException("Built-in default config is missing.");
+            source = "built-in default config";
         }
         await using (stream)
         {
-            return await JsonSerializer.DeserializeAsync(stream, CliJsonContext.Default.CliConfig)
-                ?? throw new FormatException("설정 파일은 JSON 객체여야 합니다.");
+            try
+            {
+                return await JsonSerializer.DeserializeAsync(stream, CliJsonContext.Default.CliConfig)
+                    ?? throw new FormatException($"Config file must contain a JSON object: {source}");
+            }
+            catch (JsonException ex)
+            {
+                throw new FormatException($"Could not parse config file {source}: {ex.Message}");
+            }
         }
     }
 

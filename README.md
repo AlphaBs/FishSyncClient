@@ -1,142 +1,76 @@
 # FishSyncClient
 
-FishSyncClient 는 파일 동기화를 위한 .NET 라이브러리입니다. 
+파일 동기화용 .NET 라이브러리와 FishSyncServer용 CLI·GUI 클라이언트입니다.
 
-## 주요 기능
+- 로컬·원격 파일 목록 비교, 크기·체크섬 비교
+- 동기화에 필요한 파일 복사·삭제
+- FishSyncServer와 PULL(서버 → 로컬), PUSH(로컬 → 서버)
 
-- 파일 목록 비교
-- 파일 내용 비교 (파일 크기, 체크섬 비교)
-- 동기화를 위한 파일 복사, 삭제
-
-checksum을 생략하면 대상 파일의 존재 여부만 확인합니다. 제공된 checksum의 검증 규칙과 비교기별 책임은 [checksum 계약](docs/checksum-policy.md)에 정리되어 있습니다.
-
-기대 Metadata는 생성 시 고정하는 불변 record이며, HTTP 응답 크기는 Metadata를 변경하지 않고 진행률에 반영합니다. API 변경사항과 동등성 규칙은 [불변 Metadata와 HTTP 진행률](docs/immutable-metadata.md)을 참고하세요.
-
-## FishSyncServer 연동
-
-- 서버에서 파일 목록, 내용 비교
-- PULL: 동기화가 필요한 파일 서버에서 다운로드
-- PUSH: 동기화가 필요한 파일 서버로 업로드
+비교 규칙은 [checksum 계약](docs/checksum-policy.md)과 [불변 Metadata와 HTTP 진행률](docs/immutable-metadata.md)을 참고하세요.
 
 # FishSyncClient.Cli
 
-FishSyncServer 와 동기화를 위한 CLI 툴
+FishSyncServer와 동기화하는 CLI입니다. 사용법·설정·주의사항은 배포 ZIP에 함께 들어가는 [CLI README](docs/cli-readme.md)와 `--help`에 있습니다.
 
-`--help`는 프로젝트 목적, 환경변수로 인증하고 동기화하는 예시, 설정 우선순위와 종료 코드를 설명합니다. 명령별 설명은 `pull --help`, `push --help`로 확인합니다. 소스에서 실행할 때는 `dotnet run --project cli --no-launch-profile -- --help`를 사용합니다.
-
-`pull`은 서버 상태를 로컬에, `push`는 로컬 상태를 서버에 즉시 반영하며 파일을 덮어쓰거나 삭제할 수 있습니다. 미리보기는 제공하지 않습니다. `WarningPatterns`에 일치하는 파일은 목록을 출력하고 `[Y/n]`으로 계속할지 확인합니다. Enter 또는 Y는 계속, n 또는 입력 종료(EOF)는 취소하며 취소 시 종료 코드 `1`을 반환합니다. `-y` 또는 `--yes`를 지정하면 경고 로그를 남기고 확인 입력을 생략합니다. 경고 패턴은 실제 파일 제외 규칙이 아닙니다. pull은 원격 파일과 로컬 파일(삭제될 수 있는 파일 포함)을 확인하고, push는 로컬 파일을 확인합니다. `--root`에는 절대 경로를 사용합니다. 종료 코드는 성공·도움말·버전 조회 시 `0`, 인자 오류나 작업 실패 시 `1`입니다.
-
-## 설정과 .env
-
-기본 API 서버는 `https://fish2.snowfrost.kr/api`입니다. 현재 작업 디렉토리의 `config/config.json`이 없으면 내장 기본 설정(서버 주소와 `WarningPatterns`)을 사용합니다. `--config`로 다른 JSON 파일을 지정할 수 있습니다.
-
-서버·로컬 경로·버킷 ID의 우선순위는 **명령행 옵션 → 프로세스 환경변수 → .env → config → 기본값**입니다. `.env`는 현재 작업 디렉토리에서만 읽고 상위 폴더는 검색하지 않으며, 프로세스 환경변수를 덮어쓰지 않습니다. `.env`와 `.env.*`는 기본 경고 패턴에도 포함됩니다.
-
-[.env.example](.env.example)을 `.env`로 복사해 값을 채울 수 있습니다. `.env`는 Git에서 제외합니다.
-
-```dotenv
-FISH_USERNAME=my-account
-FISH_PASSWORD='my-password'
-FISH_BUCKET_ID=my-bucket
-FISH_ROOT=/absolute/path/files
-# FISH_SERVER=https://fish2.snowfrost.kr/api
-```
-
-지원 변수는 `FISH_USERNAME`, `FISH_PASSWORD`, `FISH_SERVER`, `FISH_BUCKET_ID`, `FISH_ROOT`입니다. `.env` 값의 따옴표, 주석, `export` 문법은 DotNetEnv로 처리합니다. 환경변수로 설정해도 동일하게 동작합니다.
-
-## 인증
-
-`pull`·`push`를 실행할 때마다 프로세스 환경변수 또는 현재 작업 디렉토리의 `.env`에서 `FISH_USERNAME`, `FISH_PASSWORD`를 읽어 서버에 인증합니다. 둘 중 하나라도 없거나 공백이면 해당 환경변수를 설정하라는 오류를 출력하고 종료 코드 `1`을 반환합니다. 인증 토큰은 현재 명령의 메모리에서만 사용하며, 비밀번호와 토큰을 파일이나 키체인에 저장하지 않습니다. 기존 토큰 파일, config `Token`, `FISH_TOKEN`도 사용하지 않습니다.
+소스에서 실행할 때는 `cli` 대신 `dotnet run --project cli --no-launch-profile --`를 씁니다. 인증 정보는 [.env.example](.env.example)을 `.env`로 복사해 채웁니다(`.env`는 Git에서 제외).
 
 ```sh
+dotnet run --project cli --no-launch-profile -- --help
 dotnet run --project cli --no-launch-profile -- pull my-bucket --root /absolute/path/files
-dotnet run --project cli --no-launch-profile -- push my-bucket --root /absolute/path/files -y
 ```
-
-## PULL
-
-`pull <bucket-id> --server <server-endpoint> --root <directory-to-sync>`
-
-`pull "my-bucket" --server https://localhost:7128/api --root /home/syncroot`
-
-## PUSH
-
-HTTP 401 또는 403이 반환되면 `FISH_USERNAME`, `FISH_PASSWORD`, 서버 API 주소와 해당 계정의 버킷 쓰기 권한을 확인하라는 안내를 출력합니다. 값을 수정한 뒤 `push`를 다시 실행하면 새로 인증합니다.
-
-`push <bucket-id> --server <server-endpoint> --root <directory-to-sync>`
-
-`push "my-bucket" --server https://localhost:7128/api --root /home/syncroot -y`
 
 ## CLI 배포 ZIP 생성
 
-.NET 10 SDK, Python 3과 해당 OS의 NativeAOT 빌드 도구를 준비한 뒤 실행합니다. 스크립트는 어느 작업 폴더에서 실행해도 저장소 경로를 기준으로 동작합니다. Windows에서는 `python3` 대신 `python`을 사용할 수 있습니다.
+.NET 10 SDK, Python 3, 대상 OS의 NativeAOT 빌드 도구가 필요합니다. 다른 OS용은 해당 OS에서 빌드해야 합니다.
 
 ```sh
-python3 scripts/release-cli.py
-python3 scripts/release-cli.py --rid linux-x64
-# go-task가 있다면: task cli
+python3 scripts/release-cli.py                  # 현재 OS·아키텍처
+python3 scripts/release-cli.py --rid linux-x64  # win-x64, win-arm64, linux-x64, linux-arm64, osx-x64, osx-arm64
+# 또는: task cli
 ```
 
-기본 대상은 현재 OS·아키텍처입니다. `--rid`는 `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64`를 지원하며 대상 OS에서 빌드해야 합니다. 다른 아키텍처는 해당 타깃용 네이티브 도구가 필요합니다. 버전은 `cli/cli.csproj`의 `Version`에서 읽으며 현재 기본값은 `1.0.0`입니다.
+버전은 `cli/cli.csproj`의 `Version`을 따릅니다. 결과는 `artifacts/releases/FishSyncClientCli-<RID>-<Version>.zip`이며, 실행 파일·[CLI README](docs/cli-readme.md)·인증 정보가 없는 `config/config.json`이 들어갑니다.
 
-결과는 `artifacts/releases/FishSyncClientCli-<RID>-<Version>.zip`에 생성하고, 압축 전 파일은 `artifacts/staging/cli/<RID>/`에 모읍니다. ZIP에는 `cli`(Windows는 `cli.exe`), 독립 실행용 [README.md](docs/cli-readme.md), `config/config.json`을 포함합니다. config에는 공통 설정의 서버 주소와 경고 패턴 및 빈 bucket·루트만 넣으며 인증 정보와 디버그 심볼은 포함하지 않습니다. Linux/macOS 실행 권한을 ZIP에 기록합니다.
-
-## .NET 10과 NativeAOT 검사
-
-솔루션은 .NET 10 SDK를 사용합니다. CLI는 System.CommandLine 2.0.14와 FishBucket·FishBucket.ApiClient·FishBucket.SyncClient 0.1.0을 사용하며 `PublishAot=true`를 설정했습니다. GUI는 일반 .NET 게시를 유지합니다. Linux x64에서 Release 빌드와 CLI AOT 게시 모두 경고 0개로 통과했고, 실제 AOT 실행 파일의 인증·파일 다운로드·업로드도 로컬 서버로 검증했습니다. [검사 결과와 재현 명령](docs/nativeaot-audit.md)을 확인해 주세요.
+CLI는 `PublishAot=true`로 게시합니다. 검사 결과와 재현 명령은 [NativeAOT 검사](docs/nativeaot-audit.md)를 참고하세요.
 
 # FishSyncClient.Gui
 
-FishSyncServer 와 동기화를 위한 GUI 툴
+FishSyncServer와 동기화하는 GUI 앱입니다.
 
-## 작업 흐름
+## 사용법
 
-1. 계정 아이디, 비밀번호, 버킷 ID를 입력하고 **다음**을 누릅니다. 기본 서버는 `https://fish2.snowfrost.kr/api`이며 로그인 화면의 서버 API 주소에서 변경할 수 있습니다.
-2. 서버 파일을 비교하고 실행 파일 옆 `buckets/<버킷ID>`로 내려받습니다. **다음을 누를 때마다 서버 기준으로 초기화하며, 업로드하지 않은 로컬 수정은 덮어쓰고 로컬에만 있는 파일은 삭제합니다.** 다운로드와 체크섬 검증에 실패하면 삭제를 시작하지 않습니다.
-3. 완료하면 파일 탐색기가 열리고 파일 리스트가 나타납니다. 파일 감시 이벤트와 5초 주기 재탐색으로 갱신합니다. 초록은 추가, 빨강은 삭제 예정, 노랑은 실제 체크섬 또는 크기가 다른 파일입니다. 삭제 예정 파일은 서버 반영 전까지 리스트에 남습니다.
-4. **동기화**를 누르면 변경사항 화면에서 최신 서버 목록과 로컬 체크섬을 비교합니다. 추가·삭제·갱신 목록이 나타나고 바로 로컬 상태를 서버에 반영합니다. 이름 변경은 삭제와 추가로 표시됩니다. 변경사항이 없으면 서버 반영 요청을 보내지 않습니다.
-5. 전송용 복사본의 체크섬을 검증한 뒤 업로드합니다. 비교 이후 추가된 파일이나 전송 중 편집한 파일은 다음 동기화 대상으로 남습니다. 실패하거나 취소하면 일부 작업이 반영되었을 수 있으므로 다시 동기화합니다.
+1. 계정 아이디, 비밀번호, 버킷 ID를 입력하고 **다음**을 누릅니다. 서버 주소는 로그인 화면에서 바꿀 수 있습니다(기본 `https://fish2.snowfrost.kr/api`).
+2. 서버 파일을 실행 파일 옆 `buckets/<버킷ID>`로 내려받습니다. **다음을 누를 때마다 서버 기준으로 초기화하므로, 업로드하지 않은 로컬 수정은 덮어쓰고 로컬에만 있는 파일은 삭제합니다.**
+3. 파일 탐색기가 열리면 파일을 편집합니다. 목록에서 초록은 추가, 빨강은 삭제, 노랑은 변경된 파일입니다.
+4. **동기화**를 누르면 변경사항을 보여주고 로컬 상태를 서버에 반영합니다. 실패하거나 취소하면 일부만 반영되었을 수 있으니 다시 동기화하세요.
 
-계정 아이디와 버킷 ID는 실행 파일 옆 `config/config.json`에 저장합니다. 로그인 토큰은 저장하지 않습니다. [KeySharp](https://www.nuget.org/packages/KeySharp/)를 사용하며, Windows x64와 macOS x64·ARM64에서는 **OS 키체인에 비밀번호 저장**을 선택하면 로그인 성공 후 Windows 자격 증명 관리자 또는 macOS 키체인에 비밀번호를 저장합니다. 비밀번호는 서버 API 주소와 계정별로 구분하며, 다음 실행 시 자동 입력합니다. 저장 옵션을 해제하고 로그인하면 해당 비밀번호를 삭제하며, **저장된 비밀번호 삭제** 버튼으로 즉시 삭제할 수도 있습니다. 비밀번호는 설정 파일에 기록하지 않습니다. 키체인 접근이 실패하면 화면에 안내하고 수동 로그인을 계속 지원합니다. 실행 파일 폴더에 쓰기 권한이 필요합니다. 다른 위치의 기존 로컬 폴더를 자동으로 가져오지는 않습니다.
+- 계정 아이디와 버킷 ID는 실행 파일 옆 `config/config.json`에 저장하므로 실행 폴더에 쓰기 권한이 필요합니다.
+- Windows x64와 macOS에서는 **OS 키체인에 비밀번호 저장**을 선택할 수 있습니다. Windows에서는 Microsoft Visual C++ x64 런타임이 필요하고, 다른 플랫폼에서는 매번 직접 로그인합니다.
+- `WarningPatterns`에 일치하는 파일은 업로드 전에 경고합니다. 경고일 뿐 업로드를 막지는 않습니다.
+- 작업 화면에서 서버 용량·파일 수 사용률, 월 동기화 잔여 횟수, 만료일, 읽기 전용 여부를 볼 수 있습니다. 한도를 넘으면 업로드 전에 중단합니다.
+- 실행할 때 새 버전을 확인하고, 있으면 다운로드 페이지를 열지 묻습니다. 자동으로 업데이트하지는 않습니다.
 
-빌드와 게시 시 `config/config.json`을 결과 폴더의 `config/config.json`으로 생성합니다. 기존 설정 파일은 덮어쓰지 않습니다. 설정 파일이 없는 실행 환경에서도 내장 기본값을 사용합니다. `WarningPatterns`에 일치하는 파일은 업로드 전 경고를 표시하며, 사용자가 동의하면 계속 진행하고 거절하면 목록으로 돌아옵니다. 경고 패턴은 강제 차단 규칙이 아닙니다.
+## 개발
 
-앱 실행 시 `https://update.snowfrost.kr/v1/apps/FishSyncClientGui/{os}/{arch}/latest`를 확인합니다. OS는 `windows`, `darwin`, `linux`, 아키텍처는 실행 프로세스 기준 `x64`, `aarch64`이며 ZIP 다운로드를 사용합니다. 최신 버전이 더 높으면 다운로드 여부를 묻고, 동의하면 기본 브라우저에서 ZIP 다운로드 주소를 엽니다. 앱을 자동 교체하거나 업데이트를 강제하지 않습니다. 미등록(404), 조회 실패, 지원하지 않는 플랫폼에서는 기존 앱을 계속 사용할 수 있습니다. 현재 버전은 `gui.csproj`의 `ClientVersion`에 `2.0.0`으로 고정되어 있습니다. 새 릴리즈에서는 이 값을 변경하며 앱과 ZIP 파일명에 같은 버전이 적용됩니다.
-
-작업 화면은 서버 용량과 파일 개수의 사용률 바, 월 동기화 잔여 횟수, 만료일까지 남은 기간, 읽기 전용 여부를 표시합니다. 진입 시, 동기화 완료 후, 60초마다, 새로고침 버튼으로 조회합니다. 조회 실패 시 마지막 값과 실패 상태를 유지합니다. 바는 로컬 총 용량과 파일 수를 서버의 각 한도로 나눈 비율이며, 로컬 목록 갱신 시 함께 갱신합니다. 한도를 초과한 바는 빨간색으로 표시하고 한도 이내로 돌아오면 원래 색으로 복원합니다. 로컬 파일 수·총 용량·파일당 크기가 양수로 지정된 제한을 초과하면 비교 후 업로드 전에 중단하고 하단에 오류를 표시합니다. 제한과 정확히 같은 경우는 허용합니다. 제한값의 특수값은 무제한으로 추정하지 않고 반환된 값을 표시하며 최종 제한 검증은 서버가 수행합니다.
-
-파일 리스트와 동기화 모두 실제 MD5 체크섬을 비교하며 수정 시각으로 변경 여부를 판단하지 않습니다. 초기 PULL은 적용 전후 로컬 체크섬을 다시 검사하고, 도중에 변경된 파일을 최대 3회 재처리합니다. 임시 다운로드는 버킷과 같은 볼륨의 별도 폴더에 짧은 이름으로 보관합니다. 서버 업로드 성공 후 목록 조회·갱신이 실패해도 성공 결과는 유지하고 갱신 문제를 별도로 표시합니다.
-
-버킷 폴더의 심볼릭 링크·정션과 버킷 밖 경로는 허용하지 않습니다. 폴더는 별도 항목으로 표시하지 않으며 파일의 상대 경로를 한 줄씩 표시합니다. 화면은 라이트 테마로 고정합니다.
-
-## 실행 및 검증
-
-```powershell
+```sh
 dotnet run --project gui/gui.csproj
-dotnet test gui.tests/gui.tests.csproj
 dotnet test test/FishSyncClientTest.csproj
-dotnet build gui/gui.csproj -c Release
+dotnet test gui.tests/gui.tests.csproj   # 가짜 서버 사용, 실제 계정·파일은 건드리지 않음
 ```
 
-GUI 테스트는 가짜 HTTP 서버와 Avalonia Headless를 사용하므로 실제 계정이나 서버 파일을 변경하지 않습니다. OS 키체인 통합 테스트는 Windows x64와 macOS x64·ARM64에서 임시 항목을 생성해 저장·갱신·삭제를 확인하고 정리하며, 다른 OS에서는 건너뜁니다. `FISH_UI_SCREENSHOTS` 환경 변수에 출력 폴더를 지정하면 로그인·작업·미리보기 화면 PNG도 생성합니다.
+`FISH_UI_SCREENSHOTS`에 폴더를 지정하면 GUI 테스트가 화면 PNG를 저장합니다.
 
-## 플랫폼별 GUI 배포 빌드
+## GUI 배포 ZIP 생성
 
-[go-task](https://taskfile.dev/docs/installation)와 .NET SDK를 설치한 뒤 저장소 루트에서 실행합니다. 배포판에서 실행 파일 이름이 `go-task`인 경우 `task` 대신 `go-task`를 사용합니다. 별도 pwsh 스크립트나 PowerShell 7 설치는 필요하지 않습니다. ZIP 생성에는 Windows의 기본 Windows PowerShell과 .NET 압축 API, Linux/macOS의 `zip` 명령을 사용합니다.
+[go-task](https://taskfile.dev/docs/installation)와 .NET SDK가 필요합니다. 배포판에 따라 `task` 대신 `go-task`일 수 있습니다.
 
 ```sh
 task windows                 # Windows x64
 task linux                   # Linux x64
-task darwin ARCH=aarch64      # macOS Apple Silicon
-task build                   # Windows/Linux/macOS x64 3개
-task build ARCH=aarch64       # Windows/Linux/macOS ARM64 3개
-task all                     # 전체 6개 조합
+task darwin ARCH=aarch64     # macOS Apple Silicon
+task build                   # Windows/Linux/macOS x64
+task build ARCH=aarch64      # Windows/Linux/macOS ARM64
+task all                     # 전체 6개
 ```
 
-KeySharp 1.0.5의 네이티브 라이브러리는 기존 단일 실행 파일 설정에 포함되어 실행 시 추출됩니다. Windows 비밀번호 저장에는 Microsoft Visual C++ x64 런타임이 필요합니다. Windows ARM64에서는 비밀번호 저장을 비활성화하고 수동 로그인을 지원합니다. macOS ARM64 배포 시에는 KeySharp 문서에 안내된 바이너리 서명 요구사항을 확인해야 합니다.
-
-기본 아키텍처는 `x64`이며 `aarch64`와 호환 별칭 `arm64`를 지원합니다. 버전은 `gui/gui.csproj`의 `ClientVersion`에서 읽습니다. 결과는 `artifacts/releases/FishSyncClientGui-os-arch-version.zip`에 생성됩니다. 예: `FishSyncClientGui-windows-x64-2.0.0.zip`.
-
-각 ZIP에는 self-contained 단일 실행 파일(`gui.exe` 또는 `gui`)과 저장소의 기본 `config/config.json`만 포함합니다. 기존 staging 폴더의 개인 설정이나 다른 파일은 포함하지 않습니다. macOS/Linux 실행 파일의 실행 권한도 ZIP에 기록합니다. 중간 빌드 파일은 `artifacts/staging/<RID>/`에 생성합니다.
-
-별도 .NET 설치는 필요하지 않으며 네이티브 라이브러리는 실행 시 임시 폴더에 추출됩니다. 디버그 심볼은 배포에서 제외합니다. 실행 후 생성되는 `config/`와 `buckets/`는 실행 파일 옆에 저장됩니다. 다른 OS에서의 실제 실행 검증 및 macOS 서명·공증은 별도입니다.
+버전은 `gui/gui.csproj`의 `ClientVersion`을 따르며, 결과는 `artifacts/releases/FishSyncClientGui-<os>-<arch>-<version>.zip`입니다(예: `FishSyncClientGui-windows-x64-2.0.0.zip`). ZIP에는 .NET 설치 없이 실행되는 단일 실행 파일과 기본 `config/config.json`이 들어갑니다. macOS 서명·공증은 별도로 해야 합니다.

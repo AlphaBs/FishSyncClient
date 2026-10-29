@@ -14,16 +14,17 @@ public sealed class CliHelpTests
 
         Assert.Equal(0, result.ExitCode);
         Assert.Empty(result.Error);
-        Assert.Contains("FishSyncClient CLI synchronizes", result.Output);
+        Assert.Contains("FishSyncServer bucket", result.Output);
         Assert.DoesNotContain("cli login", result.Output);
         Assert.Contains("cli pull my-bucket", result.Output);
         Assert.Contains("cli push my-bucket", result.Output);
-        Assert.Contains("overwrite and delete", result.Output);
-        Assert.Contains("CURRENT WORKING DIRECTORY", result.Output);
-        Assert.Contains("--server > FISH_SERVER (environment > .env) > config Host", result.Output);
+        Assert.Contains("Deletes local-only files", result.Output);
+        Assert.Contains("Deletes server-only files", result.Output);
+        Assert.Contains("no dry-run", result.Output);
         Assert.Contains("FISH_USERNAME and FISH_PASSWORD", result.Output);
-        Assert.Contains("0 = successful", result.Output);
-        Assert.Contains("1 = invalid arguments or failed operation", result.Output);
+        // 명령 설명과 설정 요약은 최상위 도움말에서 반복하지 않는다.
+        Assert.DoesNotContain("Settings:", result.Output);
+        Assert.Single(result.Output.Split("Deletes local-only files")[1..]);
     }
 
     [Theory]
@@ -40,7 +41,11 @@ public sealed class CliHelpTests
         Assert.Empty(alias.Error);
         Assert.Contains(expected, direct.Output);
         Assert.Contains(expected, alias.Output);
-        Assert.Contains("tokens are kept in memory only", direct.Output);
+        Assert.Contains("kept in memory only", direct.Output);
+        Assert.Contains("command-line > environment variable > ./.env > config file > default", direct.Output);
+        Assert.Contains("0 = success", direct.Output);
+        Assert.Contains("1 = invalid arguments, failure, or cancellation", direct.Output);
+        Assert.Single(direct.Output.Split("Settings:")[1..]);
     }
 
     [Fact]
@@ -58,8 +63,8 @@ public sealed class CliHelpTests
     {
         var result = Run("push", "--help");
 
-        Assert.Contains("deletes server-only files", result.Output);
-        Assert.Contains("WarningPatterns matches are logged", result.Output);
+        Assert.Contains("Deletes server-only files", result.Output);
+        Assert.Contains("WarningPatterns", result.Output);
         Assert.Contains("HTTP 401/403", result.Output);
         Assert.Contains("FISH_USERNAME, FISH_PASSWORD", result.Output);
         Assert.DoesNotContain("--token", result.Output);
@@ -73,7 +78,7 @@ public sealed class CliHelpTests
 
         Assert.Equal(0, result.ExitCode);
         Assert.Empty(result.Error);
-        Assert.Contains("QUICK START", result.Output);
+        Assert.Contains("Quick start", result.Output);
     }
 
     [Theory]
@@ -89,14 +94,38 @@ public sealed class CliHelpTests
     [InlineData("pull", "bucket", "--root")]
     [InlineData("push", "bucket", "--config")]
     [InlineData("help", "unknown-command")]
-    public void InvalidArgumentsWriteHelpToStderrAndFail(params string[] args)
+    public void InvalidArgumentsWriteUsageToStderrAndFail(params string[] args)
     {
         var result = Run(args);
 
         Assert.Equal(1, result.ExitCode);
         Assert.Empty(result.Output);
-        Assert.NotEmpty(result.Error);
-        Assert.Contains("Usage:", result.Error);
+        Assert.Contains("Usage: cli ", result.Error);
+        Assert.Contains("--help' for details.", result.Error);
+        // 오류가 묻히지 않도록 전체 도움말은 출력하지 않는다.
+        Assert.DoesNotContain("Options:", result.Error);
+        Assert.DoesNotContain("Required command", result.Error);
+    }
+
+    [Theory]
+    [InlineData("pull")]
+    [InlineData("push")]
+    public void RelativeRootFailsBeforeAuthentication(string command)
+    {
+        var result = Run(command, "bucket", "--root", "relative/dir", "--server", "http://127.0.0.1:9");
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Root must be an absolute path", result.Error);
+    }
+
+    [Fact]
+    public void PushOfMissingRootFailsInsteadOfDeletingServerFiles()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "fish-missing-" + Guid.NewGuid());
+        var result = Run("push", "bucket", "--root", root, "--server", "http://127.0.0.1:9");
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Root directory does not exist", result.Error);
     }
 
     [Fact]
@@ -107,7 +136,7 @@ public sealed class CliHelpTests
         Assert.Equal(0, result.ExitCode);
         Assert.NotEmpty(result.Output);
         Assert.Empty(result.Error);
-        Assert.DoesNotContain("QUICK START", result.Output);
+        Assert.DoesNotContain("Quick start", result.Output);
     }
 
     private static (int ExitCode, string Output, string Error) Run(params string[] args)
