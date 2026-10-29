@@ -5,6 +5,8 @@
   "BucketId": "",
   "Token": "",
   "WarningPatterns": [
+    ".env",
+    ".env.*",
     ".fabric/**",
     ".mixin.out/**",
     "assets/**",

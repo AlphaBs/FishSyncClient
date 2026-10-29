@@ -17,8 +17,8 @@ public sealed class PushAuthenticationHandler(
             && Interlocked.Exchange(ref _noticeWritten, 1) == 0)
         {
             errorOutput.WriteLine(
-                $"HTTP {(int)response.StatusCode}: 재로그인이 필요합니다. "
-                + "login <username> --server <서버 API 주소>를 실행한 뒤 push를 다시 시도해 주세요.");
+                $"HTTP {(int)response.StatusCode}: 인증 정보를 확인해 주세요. "
+                + "FISH_USERNAME, FISH_PASSWORD와 버킷 쓰기 권한을 확인한 뒤 push를 다시 시도해 주세요.");
         }
 
         return response;

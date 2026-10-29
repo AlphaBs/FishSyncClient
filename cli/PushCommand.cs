@@ -1,4 +1,3 @@
-using CommandLine;
 using FishBucket;
 using FishBucket.ApiClient;
 using FishBucket.SyncClient;
@@ -8,29 +7,28 @@ using System.Text.Json;
 
 namespace FishSyncClient.Cli;
 
-[Verb("push", HelpText = "Mirror local directory to server bucket; may overwrite and delete server files immediately.")]
 public class PushCommand : SyncCommandBase
 {
-    private readonly static JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
-    {
-        WriteIndented = true
-    };
-
-    [Value(0, Required = false, MetaName = "bucket-id", HelpText = "Bucket id. Defaults to config BucketId.")]
-    public string? BucketId { get; set; }
-
     protected override async ValueTask<int> RunAsync()
     {
         var settings = await GetSettings(BucketId);
 
-        using var httpClient = CreatePushHttpClient();
-        using var apiHttpClient = CreatePushHttpClient();
-        var syncFiles = CliSyncFiles.EnumerateLocalFiles(settings.Root, new PathOptions());
+        using var httpClient = CreateHttpClient();
+        using var apiHttpClient = CreateHttpClient();
+        var paths = RootedPath.FromDirectory(settings.Root, new PathOptions())
+            .ToArray();
+        if (!ConfirmWarnings(paths.Select(path => path.SubPath), settings))
+        {
+            return 1;
+        }
+        var syncFiles = paths
+            .Select(CliSyncFiles.CreateLocalFile)
+            .ToArray();
         var syncCollection = new SyncFileCollection(syncFiles);
         var progressAggregator = new ConcurrentByteProgressAggregator();
         var actionProgress = new SyncProgress<SyncActionProgress>(e =>
         {
-            Console.WriteLine($"{e.EventType}: {e.Action.Path}");
+            Output.WriteLine($"{e.EventType}: {e.Action.Path}");
         });
         var byteProgress = new SyncProgress<SyncActionByteProgress>(e =>
         {
@@ -39,40 +37,40 @@ public class PushCommand : SyncCommandBase
 
         var handler = new SimpleBucketSyncActionCollectionHandler(6, actionProgress, byteProgress);
         handler.Add(new HttpBucketSyncActionHandler(httpClient));
-        var apiClient = CreateApiClient(settings, apiHttpClient);
+        var apiClient = await CreateApiClient(settings, apiHttpClient);
         var syncTask = apiClient.Sync(settings.BucketId, syncCollection, handler);
 
         while (!syncTask.IsCompleted)
         {
             await Task.WhenAny(Task.Delay(100), syncTask);
             var progress = progressAggregator.AggregateProgress();
-            Console.WriteLine($"{progress.GetRatio():p} ( {progress.ProgressedBytes:#,##} / {progress.TotalBytes:#,##} )");
+            Output.WriteLine($"{progress.GetRatio():p} ( {progress.ProgressedBytes:#,##} / {progress.TotalBytes:#,##} )");
         }
 
         var result = await syncTask;
         if (result.IsSuccess)
         {
-            Console.WriteLine("Success! updated at " + result.UpdatedAt);
-            Console.WriteLine();
+            Output.WriteLine("Success! updated at " + result.UpdatedAt);
+            Output.WriteLine();
         }
         else
         {
-            Console.WriteLine("Fail!");
-            Console.WriteLine();
+            Output.WriteLine("Fail!");
+            Output.WriteLine();
         }
 
         foreach (var action in result.RequiredActions)
         {
-            Console.WriteLine($"{action.Path}: {action.Action.Type}");
-            Console.WriteLine(JsonSerializer.Serialize(action.Action.Parameters, _jsonOptions));
+            Output.WriteLine($"{action.Path}: {action.Action.Type}");
+            Output.WriteLine(JsonSerializer.Serialize(action.Action.Parameters, CliJsonContext.Default.IReadOnlyDictionaryStringString));
         }
 
         return result.IsSuccess ? 0 : 1;
     }
 
-    private static HttpClient CreatePushHttpClient()
+    protected override HttpClient CreateHttpClient()
     {
-        var handler = new PushAuthenticationHandler(new HttpClientHandler(), Console.Error);
+        var handler = new PushAuthenticationHandler(new HttpClientHandler(), ErrorOutput);
         return new HttpClient(handler)
         {
             Timeout = TimeSpan.FromHours(1)

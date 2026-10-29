@@ -398,3 +398,8 @@ FodyWeavers.xsd
 *.sln.iml
 # FISH GUI runtime config
 gui/config/
+
+# Local CLI environment secrets
+.env
+.env.*
+!.env.example

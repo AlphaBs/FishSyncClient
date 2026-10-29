@@ -9,7 +9,7 @@ public sealed class PushAuthenticationTests
     [Theory]
     [InlineData(HttpStatusCode.Unauthorized)]
     [InlineData(HttpStatusCode.Forbidden)]
-    public async Task AuthenticationFailurePrintsReloginInstructionsOnce(HttpStatusCode status)
+    public async Task AuthenticationFailurePrintsEnvironmentInstructionsOnce(HttpStatusCode status)
     {
         using var output = new StringWriter();
         using var handler = new PushAuthenticationHandler(new ResponseHandler(status), output);
@@ -22,8 +22,9 @@ public sealed class PushAuthenticationTests
         Assert.Equal(status, second.StatusCode);
         var notice = output.ToString();
         Assert.Contains($"HTTP {(int)status}", notice);
-        Assert.Contains("재로그인이 필요합니다", notice);
-        Assert.Contains("login <username> --server", notice);
+        Assert.Contains("인증 정보를 확인", notice);
+        Assert.Contains("FISH_USERNAME, FISH_PASSWORD", notice);
+        Assert.DoesNotContain("login --server", notice);
         Assert.Contains("push", notice);
         Assert.Single(notice.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries));
     }
@@ -32,7 +33,7 @@ public sealed class PushAuthenticationTests
     [InlineData(HttpStatusCode.OK)]
     [InlineData(HttpStatusCode.BadRequest)]
     [InlineData(HttpStatusCode.InternalServerError)]
-    public async Task OtherResponsesDoNotRequestRelogin(HttpStatusCode status)
+    public async Task OtherResponsesDoNotPrintAuthenticationNotice(HttpStatusCode status)
     {
         using var output = new StringWriter();
         using var handler = new PushAuthenticationHandler(new ResponseHandler(status), output);

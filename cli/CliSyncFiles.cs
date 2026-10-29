@@ -34,7 +34,7 @@ public static class CliSyncFiles
             Metadata = new SyncFileMetadata
             {
                 Size = file.Metadata.Size,
-                Checksum = new SyncFileChecksum(ChecksumAlgorithmNames.MD5, file.Metadata.Checksum)
+                Checksum = new SyncFileChecksum(ChecksumAlgorithmNames.MD5, file.Metadata.Checksum.ToHexString())
             }
         };
     }

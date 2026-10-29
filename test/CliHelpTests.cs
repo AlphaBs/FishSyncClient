@@ -15,19 +15,18 @@ public sealed class CliHelpTests
         Assert.Equal(0, result.ExitCode);
         Assert.Empty(result.Error);
         Assert.Contains("FishSyncClient CLI synchronizes", result.Output);
-        Assert.Contains("cli login my-account", result.Output);
+        Assert.DoesNotContain("cli login", result.Output);
         Assert.Contains("cli pull my-bucket", result.Output);
         Assert.Contains("cli push my-bucket", result.Output);
         Assert.Contains("overwrite and delete", result.Output);
         Assert.Contains("CURRENT WORKING DIRECTORY", result.Output);
-        Assert.Contains("--server > config Host > FISH_SERVER", result.Output);
-        Assert.Contains("--token > FISH_TOKEN > saved login", result.Output);
+        Assert.Contains("--server > FISH_SERVER (environment > .env) > config Host", result.Output);
+        Assert.Contains("FISH_USERNAME and FISH_PASSWORD", result.Output);
         Assert.Contains("0 = successful", result.Output);
         Assert.Contains("1 = invalid arguments or failed operation", result.Output);
     }
 
     [Theory]
-    [InlineData("login", "LOGIN:")]
     [InlineData("pull", "server -> local")]
     [InlineData("push", "local -> server")]
     public void BothCommandHelpFormsDescribeTheSelectedCommand(string command, string expected)
@@ -41,31 +40,29 @@ public sealed class CliHelpTests
         Assert.Empty(alias.Error);
         Assert.Contains(expected, direct.Output);
         Assert.Contains(expected, alias.Output);
-        Assert.Contains("credentials/", direct.Output);
+        Assert.Contains("tokens are kept in memory only", direct.Output);
     }
 
     [Fact]
-    public void LoginHelpShowsOnlyLoginOptions()
+    public void LoginCommandIsNoLongerSupported()
     {
-        var result = Run("login", "--help");
-
-        Assert.DoesNotContain("--root", result.Output);
-        Assert.DoesNotContain("Token override.", result.Output);
-        Assert.Contains("--password-stdin", result.Output);
-        Assert.Contains("password input is hidden", result.Output);
-        Assert.Contains("The password is never saved", result.Output);
-        Assert.Contains("Failed login preserves", result.Output);
+        var result = Run("login");
+        Assert.Equal(1, result.ExitCode);
+        Assert.Empty(result.Output);
+        Assert.DoesNotContain("cli login", result.Error);
+        Assert.Contains("cli <pull|push>", result.Error);
     }
 
     [Fact]
-    public void PushHelpExplainsDeletionAndReloginRecovery()
+    public void PushHelpExplainsDeletionAndEnvironmentAuthentication()
     {
         var result = Run("push", "--help");
 
         Assert.Contains("deletes server-only files", result.Output);
-        Assert.Contains("No dry-run or confirmation", result.Output);
+        Assert.Contains("WarningPatterns matches are logged", result.Output);
         Assert.Contains("HTTP 401/403", result.Output);
-        Assert.Contains("cli login <username> --server", result.Output);
+        Assert.Contains("FISH_USERNAME, FISH_PASSWORD", result.Output);
+        Assert.DoesNotContain("--token", result.Output);
         Assert.Contains("write permission", result.Output);
     }
 
@@ -80,9 +77,17 @@ public sealed class CliHelpTests
     }
 
     [Theory]
+    [InlineData("pull", "--token", "unused")]
+    [InlineData("push", "--token", "unused")]
+    [InlineData("login", "--password-stdin")]
+    [InlineData("login", "--remember-password")]
     [InlineData("login", "--root", "/tmp/files")]
     [InlineData("login", "--token", "unused")]
     [InlineData("push", "--unknown")]
+    [InlineData("pull", "--unknown")]
+    [InlineData("push", "bucket", "--unknown")]
+    [InlineData("pull", "bucket", "--root")]
+    [InlineData("push", "bucket", "--config")]
     [InlineData("help", "unknown-command")]
     public void InvalidArgumentsWriteHelpToStderrAndFail(params string[] args)
     {

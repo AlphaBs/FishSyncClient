@@ -24,7 +24,7 @@ public abstract class SyncFile
         return Path.ToString();
     }
 
-    public override bool Equals(object obj)
+    public override bool Equals(object? obj)
     {
         if (obj is SyncFile syncFile)
         {

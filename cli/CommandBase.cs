@@ -1,4 +1,3 @@
-using CommandLine;
 using FishBucket.ApiClient;
 using System.Text.Json;
 
@@ -6,19 +5,20 @@ namespace FishSyncClient.Cli;
 
 public abstract class CommandBase
 {
-    private static readonly JsonSerializerOptions _jsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
+    public CliEnvironment EnvironmentSettings { get; set; } = new();
+    protected TextReader Input { get; private set; } = Console.In;
+    protected TextWriter Output { get; private set; } = Console.Out;
+    protected TextWriter ErrorOutput { get; private set; } = Console.Error;
 
-    [Option("server", HelpText = "Server API URL. Priority: --server > config Host > FISH_SERVER. No built-in default.")]
     public string? Server { get; set; }
 
-    [Option("config", Default = "config/config.json", HelpText = "JSON settings path, relative to the current working directory. Missing file is allowed.")]
     public string ConfigPath { get; set; } = "config/config.json";
 
-    public int Run()
+    public int Run(TextReader? input = null, TextWriter? output = null, TextWriter? errorOutput = null)
     {
+        Input = input ?? Console.In;
+        Output = output ?? Console.Out;
+        ErrorOutput = errorOutput ?? Console.Error;
         try
         {
             return RunAsync()
@@ -27,54 +27,66 @@ public abstract class CommandBase
         }
         catch (HttpRequestException ex)
         {
-            Console.Error.WriteLine($"서버 요청에 실패했습니다. HTTP 상태: {ex.StatusCode}");
+            ErrorOutput.WriteLine($"서버 요청에 실패했습니다. HTTP 상태: {ex.StatusCode}");
             return 1;
         }
         catch (FishApiException)
         {
-            Console.Error.WriteLine("서버 요청이 거부되었습니다. 로그인 정보와 서버 주소를 확인해 주세요.");
+            ErrorOutput.WriteLine("서버 요청이 거부되었습니다. 로그인 정보와 서버 주소를 확인해 주세요.");
             return 1;
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine(ex.Message);
+            ErrorOutput.WriteLine(ex.Message);
             return 1;
         }
     }
 
     protected abstract ValueTask<int> RunAsync();
 
-    protected async Task<string> GetServer()
-    {
-        return ResolveServer(await LoadConfig());
-    }
-
     protected string ResolveServer(CliConfig? config)
     {
-        var server = FirstNotEmpty(Server, config?.Host, Environment.GetEnvironmentVariable("FISH_SERVER"))
-            ?? throw new ArgumentException("--server, config의 Host 또는 FISH_SERVER로 서버 주소를 지정해 주세요.");
-        return CredentialStore.NormalizeServer(server);
+        var server = FirstNotEmpty(
+            Server,
+            EnvironmentSettings.Get("FISH_SERVER"),
+            config?.Host,
+            CliConfig.DefaultServer)!;
+        return ServerAddress.Normalize(server);
     }
 
-    protected async Task<CliConfig?> LoadConfig()
+    protected async Task<CliConfig> LoadConfig()
     {
-        if (string.IsNullOrEmpty(ConfigPath) || !File.Exists(ConfigPath))
-            return null;
-
-        await using var fs = File.OpenRead(ConfigPath);
-        return await JsonSerializer.DeserializeAsync<CliConfig>(fs, _jsonOptions);
+        Stream stream;
+        if (!string.IsNullOrEmpty(ConfigPath) && File.Exists(ConfigPath))
+        {
+            stream = File.OpenRead(ConfigPath);
+        }
+        else
+        {
+            stream = typeof(CliConfig).Assembly.GetManifestResourceStream("FishSyncClient.Cli.Defaults.config.json")
+                ?? throw new InvalidOperationException("내장 기본 설정을 찾을 수 없습니다.");
+        }
+        await using (stream)
+        {
+            return await JsonSerializer.DeserializeAsync(stream, CliJsonContext.Default.CliConfig)
+                ?? throw new FormatException("설정 파일은 JSON 객체여야 합니다.");
+        }
     }
 
     protected static string? FirstNotEmpty(params string?[] values) =>
         values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 }
 
-public record CommandSettings(string Root, string Host, string BucketId, string? Token);
+public record CommandSettings(string Root, string Host, string BucketId)
+{
+    public IReadOnlyList<string> WarningPatterns { get; init; } = [];
+}
 
 public class CliConfig
 {
+    public const string DefaultServer = "https://fish2.snowfrost.kr/api";
+    public List<string> WarningPatterns { get; set; } = [];
     public string? Root { get; set; }
     public string? Host { get; set; }
     public string? BucketId { get; set; }
-    public string? Token { get; set; }
 }

@@ -22,25 +22,36 @@ checksum을 생략하면 대상 파일의 존재 여부만 확인합니다. 제�
 
 FishSyncServer 와 동기화를 위한 CLI 툴
 
-`--help`는 프로젝트 목적, 로그인 후 동기화하는 예시, 설정 우선순위, 토큰 저장 위치와 종료 코드를 설명합니다. 명령별 설명은 `login --help`, `pull --help`, `push --help`로 확인합니다. 소스에서 실행할 때는 `dotnet run --project cli --no-launch-profile -- --help`를 사용합니다.
+`--help`는 프로젝트 목적, 환경변수로 인증하고 동기화하는 예시, 설정 우선순위와 종료 코드를 설명합니다. 명령별 설명은 `pull --help`, `push --help`로 확인합니다. 소스에서 실행할 때는 `dotnet run --project cli --no-launch-profile -- --help`를 사용합니다.
 
-`pull`은 서버 상태를 로컬에, `push`는 로컬 상태를 서버에 즉시 반영하며 파일을 덮어쓰거나 삭제할 수 있습니다. 미리보기·확인 프롬프트는 제공하지 않습니다. `--root`에는 절대 경로를 사용합니다. 종료 코드는 성공·도움말·버전 조회 시 `0`, 인자 오류나 작업 실패 시 `1`입니다.
+`pull`은 서버 상태를 로컬에, `push`는 로컬 상태를 서버에 즉시 반영하며 파일을 덮어쓰거나 삭제할 수 있습니다. 미리보기는 제공하지 않습니다. `WarningPatterns`에 일치하는 파일은 목록을 출력하고 `[Y/n]`으로 계속할지 확인합니다. Enter 또는 Y는 계속, n 또는 입력 종료(EOF)는 취소하며 취소 시 종료 코드 `1`을 반환합니다. `-y` 또는 `--yes`를 지정하면 경고 로그를 남기고 확인 입력을 생략합니다. 경고 패턴은 실제 파일 제외 규칙이 아닙니다. pull은 원격 파일과 로컬 파일(삭제될 수 있는 파일 포함)을 확인하고, push는 로컬 파일을 확인합니다. `--root`에는 절대 경로를 사용합니다. 종료 코드는 성공·도움말·버전 조회 시 `0`, 인자 오류나 작업 실패 시 `1`입니다.
 
-## LOGIN
+## 설정과 .env
 
-```sh
-dotnet run --project cli --no-launch-profile -- login my-account --server https://fish2.snowfrost.kr/api
+기본 API 서버는 `https://fish2.snowfrost.kr/api`입니다. 현재 작업 디렉토리의 `config/config.json`이 없으면 내장 기본 설정(서버 주소와 `WarningPatterns`)을 사용합니다. `--config`로 다른 JSON 파일을 지정할 수 있습니다.
+
+서버·로컬 경로·버킷 ID의 우선순위는 **명령행 옵션 → 프로세스 환경변수 → .env → config → 기본값**입니다. `.env`는 현재 작업 디렉토리에서만 읽고 상위 폴더는 검색하지 않으며, 프로세스 환경변수를 덮어쓰지 않습니다. `.env`와 `.env.*`는 기본 경고 패턴에도 포함됩니다.
+
+[.env.example](.env.example)을 `.env`로 복사해 값을 채울 수 있습니다. `.env`는 Git에서 제외합니다.
+
+```dotenv
+FISH_USERNAME=my-account
+FISH_PASSWORD='my-password'
+FISH_BUCKET_ID=my-bucket
+FISH_ROOT=/absolute/path/files
+# FISH_SERVER=https://fish2.snowfrost.kr/api
 ```
 
-비밀번호는 화면에 표시하지 않고 입력받으며 저장하지 않습니다. 자동화에서는 계정 아이디와 `--password-stdin`을 지정해 표준 입력의 첫 줄로 비밀번호를 전달할 수 있습니다. 로그인 성공 후 `pull`·`push`가 같은 서버에 저장된 토큰을 재사용합니다. 토큰이 만료되면 다시 `login`을 실행합니다.
+지원 변수는 `FISH_USERNAME`, `FISH_PASSWORD`, `FISH_SERVER`, `FISH_BUCKET_ID`, `FISH_ROOT`입니다. `.env` 값의 따옴표, 주석, `export` 문법은 DotNetEnv로 처리합니다. 환경변수로 설정해도 동일하게 동작합니다.
 
-토큰은 배포용 `config/config.json`과 분리해 사용자별 디렉토리에 서버 주소별로 저장합니다.
+## 인증
 
-- Linux: `${XDG_CONFIG_HOME:-~/.config}/fishsyncclient/credentials/<서버주소 SHA256>.json`
-- Windows: `%LOCALAPPDATA%/FishSyncClient/credentials/<서버주소 SHA256>.json`
-- macOS: `~/Library/Application Support/FishSyncClient/credentials/<서버주소 SHA256>.json`
+`pull`·`push`를 실행할 때마다 프로세스 환경변수 또는 현재 작업 디렉토리의 `.env`에서 `FISH_USERNAME`, `FISH_PASSWORD`를 읽어 서버에 인증합니다. 둘 중 하나라도 없거나 공백이면 해당 환경변수를 설정하라는 오류를 출력하고 종료 코드 `1`을 반환합니다. 인증 토큰은 현재 명령의 메모리에서만 사용하며, 비밀번호와 토큰을 파일이나 키체인에 저장하지 않습니다. 기존 토큰 파일, config `Token`, `FISH_TOKEN`도 사용하지 않습니다.
 
-토큰 파일은 암호화하지 않습니다. Linux·macOS에서는 디렉토리 권한 `700`, 파일 권한 `600`으로 제한하며 Windows에서는 사용자 프로필의 접근 권한을 따릅니다. 비밀번호와 토큰 값은 명령 출력에 표시하지 않습니다. 토큰 우선순위는 `--token`, `FISH_TOKEN`, 해당 서버의 저장된 로그인, 기존 config의 `Token` 순서입니다. 로그인을 해제하려면 해당 서버의 토큰 파일을 삭제합니다.
+```sh
+dotnet run --project cli --no-launch-profile -- pull my-bucket --root /absolute/path/files
+dotnet run --project cli --no-launch-profile -- push my-bucket --root /absolute/path/files -y
+```
 
 ## PULL
 
@@ -50,11 +61,11 @@ dotnet run --project cli --no-launch-profile -- login my-account --server https:
 
 ## PUSH
 
-HTTP 401 또는 403이 반환되면 재로그인 안내를 출력합니다. 같은 서버 주소로 `login <username> --server <서버 API 주소>`를 실행한 뒤 `push`를 다시 시도합니다. 재로그인 후에도 403이 계속되면 해당 계정의 버킷 쓰기 권한을 확인합니다.
+HTTP 401 또는 403이 반환되면 `FISH_USERNAME`, `FISH_PASSWORD`, 서버 API 주소와 해당 계정의 버킷 쓰기 권한을 확인하라는 안내를 출력합니다. 값을 수정한 뒤 `push`를 다시 실행하면 새로 인증합니다.
 
 `push <bucket-id> --server <server-endpoint> --root <directory-to-sync>`
 
-`push "my-bucket" --server https://localhost:7128/api --root /home/syncroot`
+`push "my-bucket" --server https://localhost:7128/api --root /home/syncroot -y`
 
 # FishSyncClient.Gui
 
