@@ -8,18 +8,20 @@ public static class CliApplication
         string[] args,
         TextWriter output,
         TextWriter errorOutput,
-        TextReader? input = null)
+        TextReader? input = null,
+        Action<TextWriter>? checkForUpdates = null,
+        Func<TextWriter, int>? showLatestUpdate = null)
     {
         if (args.Length == 0 || args is ["help"])
         {
             args = ["--help"];
         }
-        else if (args is ["help", "pull" or "push"])
+        else if (args is ["help", "pull" or "push" or "update"])
         {
             args = [args[1], "--help"];
         }
 
-        var root = CreateRootCommand(output, errorOutput, input);
+        var root = CreateRootCommand(output, errorOutput, input, checkForUpdates, showLatestUpdate);
         var configuration = new InvocationConfiguration
         {
             Output = output,
@@ -35,7 +37,7 @@ public static class CliApplication
                 errorOutput.WriteLine(error.Message);
             }
             var commandName = result.CommandResult.Command.Name;
-            var helpCommand = commandName is "pull" or "push"
+            var helpCommand = commandName is "pull" or "push" or "update"
                 ? $"cli {commandName} --help"
                 : "cli --help";
             errorOutput.WriteLine(CliHelp.GetUsage(commandName));
@@ -48,7 +50,9 @@ public static class CliApplication
     public static RootCommand CreateRootCommand(
         TextWriter output,
         TextWriter errorOutput,
-        TextReader? input = null)
+        TextReader? input = null,
+        Action<TextWriter>? checkForUpdates = null,
+        Func<TextWriter, int>? showLatestUpdate = null)
     {
         var root = new RootCommand(CliHelp.RootDescription)
         {
@@ -56,10 +60,16 @@ public static class CliApplication
         };
         root.Subcommands.Add(CreateSyncCommand(
             "pull", CliHelp.PullDescription, () => new PullCommand(),
-            output, errorOutput, input));
+            output, errorOutput, input, checkForUpdates));
         root.Subcommands.Add(CreateSyncCommand(
             "push", CliHelp.PushDescription, () => new PushCommand(),
-            output, errorOutput, input));
+            output, errorOutput, input, checkForUpdates));
+        var update = new Command("update", "Check for updates now and print the latest version's download URL.")
+        {
+            TreatUnmatchedTokensAsErrors = true
+        };
+        update.SetAction(_ => (showLatestUpdate ?? CliUpdateService.ShowLatest)(output));
+        root.Subcommands.Add(update);
         // 명령 없이 옵션만 받은 경우 "Required command" 대신 사용법을 안내한다.
         root.SetAction(_ =>
         {
@@ -77,7 +87,8 @@ public static class CliApplication
         Func<SyncCommandBase> createOperation,
         TextWriter output,
         TextWriter errorOutput,
-        TextReader? input)
+        TextReader? input,
+        Action<TextWriter>? checkForUpdates)
     {
         var bucket = new Argument<string?>("bucket-id")
         {
@@ -125,6 +136,7 @@ public static class CliApplication
         command.Options.Add(yes);
         command.SetAction(result =>
         {
+            checkForUpdates?.Invoke(output);
             // 파싱 결과를 직접 전달하므로 명령 생성에 리플렉션이 필요하지 않다.
             var operation = createOperation();
             operation.BucketId = result.GetValue(bucket);

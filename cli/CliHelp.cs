@@ -18,7 +18,8 @@ public static class CliHelp
     public static string GetUsage(string? command) => command switch
     {
         "pull" or "push" => $"Usage: cli {command} [bucket-id] [options]",
-        _ => "Usage: cli <pull|push> [bucket-id] [options]"
+        "update" => "Usage: cli update",
+        _ => "Usage: cli <pull|push> [bucket-id] [options]\n       cli update"
     };
 
     public static void Configure(RootCommand root)
@@ -65,6 +66,7 @@ public static class CliHelp
                 """,
                 Settings
             ],
+            "update" => [],
             _ => [
                 """
                 Quick start:
