@@ -19,8 +19,8 @@ jobs:
           - os: ubuntu-24.04
             rid: linux-x64
             binary: cli
-          - os: macos-15-intel
-            rid: osx-x64
+          - os: macos-15
+            rid: osx-arm64
             binary: cli
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -49,6 +49,9 @@ jobs:
         run: |
           artifacts/staging/cli/${{ matrix.rid }}/${{ matrix.binary }} --version
           python scripts/smoke-cli.py artifacts/staging/cli/${{ matrix.rid }}/${{ matrix.binary }} --report artifacts/nativeaot/ci/${{ matrix.rid }}/smoke.json
+      - name: Check macOS architecture
+        if: runner.os == 'macOS'
+        run: test "$(lipo -archs artifacts/staging/cli/osx-arm64/cli)" = arm64
       - name: Upload ZIP
         uses: actions/upload-artifact@v4
         with:
