@@ -16,7 +16,7 @@ public static class CliApplication
         {
             args = ["--help"];
         }
-        else if (args is ["help", "pull" or "push" or "update"])
+        else if (args is ["help", "pull" or "push" or "files" or "update"])
         {
             args = [args[1], "--help"];
         }
@@ -37,7 +37,7 @@ public static class CliApplication
                 errorOutput.WriteLine(error.Message);
             }
             var commandName = result.CommandResult.Command.Name;
-            var helpCommand = commandName is "pull" or "push" or "update"
+            var helpCommand = commandName is "pull" or "push" or "files" or "update"
                 ? $"cli {commandName} --help"
                 : "cli --help";
             errorOutput.WriteLine(CliHelp.GetUsage(commandName));
@@ -58,12 +58,15 @@ public static class CliApplication
         {
             TreatUnmatchedTokensAsErrors = true
         };
-        root.Subcommands.Add(CreateSyncCommand(
+        root.Subcommands.Add(CreateBucketCommand(
             "pull", CliHelp.PullDescription, () => new PullCommand(),
             output, errorOutput, input, checkForUpdates));
-        root.Subcommands.Add(CreateSyncCommand(
+        root.Subcommands.Add(CreateBucketCommand(
             "push", CliHelp.PushDescription, () => new PushCommand(),
             output, errorOutput, input, checkForUpdates));
+        root.Subcommands.Add(CreateBucketCommand(
+            "files", "List files in a server bucket.", () => new FilesCommand(),
+            output, errorOutput, input, checkForUpdates, syncFiles: false));
         var update = new Command("update", "Check for updates now and print the latest version's download URL.")
         {
             TreatUnmatchedTokensAsErrors = true
@@ -81,14 +84,15 @@ public static class CliApplication
         return root;
     }
 
-    private static Command CreateSyncCommand(
+    private static Command CreateBucketCommand(
         string name,
         string description,
         Func<SyncCommandBase> createOperation,
         TextWriter output,
         TextWriter errorOutput,
         TextReader? input,
-        Action<TextWriter>? checkForUpdates)
+        Action<TextWriter>? checkForUpdates,
+        bool syncFiles = true)
     {
         var bucket = new Argument<string?>("bucket-id")
         {
@@ -130,10 +134,13 @@ public static class CliApplication
             TreatUnmatchedTokensAsErrors = true
         };
         command.Arguments.Add(bucket);
-        command.Options.Add(localRoot);
         command.Options.Add(server);
         command.Options.Add(config);
-        command.Options.Add(yes);
+        if (syncFiles)
+        {
+            command.Options.Add(localRoot);
+            command.Options.Add(yes);
+        }
         command.SetAction(result =>
         {
             checkForUpdates?.Invoke(output);
@@ -142,8 +149,11 @@ public static class CliApplication
             operation.BucketId = result.GetValue(bucket);
             operation.Server = result.GetValue(server);
             operation.ConfigPath = result.GetRequiredValue(config);
-            operation.Root = result.GetValue(localRoot);
-            operation.AssumeYes = result.GetValue(yes);
+            if (syncFiles)
+            {
+                operation.Root = result.GetValue(localRoot);
+                operation.AssumeYes = result.GetValue(yes);
+            }
             return operation.Run(input, output, errorOutput);
         });
         return command;

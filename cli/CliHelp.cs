@@ -18,8 +18,9 @@ public static class CliHelp
     public static string GetUsage(string? command) => command switch
     {
         "pull" or "push" => $"Usage: cli {command} [bucket-id] [options]",
+        "files" => "Usage: cli files [bucket-id] [options]",
         "update" => "Usage: cli update",
-        _ => "Usage: cli <pull|push> [bucket-id] [options]\n       cli update"
+        _ => "Usage: cli <pull|push> [bucket-id] [options]\n       cli files [bucket-id] [options]\n       cli update"
     };
 
     public static void Configure(RootCommand root)
@@ -67,6 +68,16 @@ public static class CliHelp
                 Settings
             ],
             "update" => [],
+            "files" => [
+                """
+                Example:
+                  cli files my-bucket
+                Lists file paths, sizes in bytes, and MD5 checksums.
+                Set FISH_USERNAME and FISH_PASSWORD as environment variables or in ./.env.
+                Bucket defaults to FISH_BUCKET_ID, then config BucketId.
+                Exit codes: 0 = success, 1 = invalid arguments or failure.
+                """
+            ],
             _ => [
                 """
                 Quick start:

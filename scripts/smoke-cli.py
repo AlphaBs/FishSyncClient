@@ -55,6 +55,9 @@ class BucketServer(http.server.BaseHTTPRequestHandler):
             self.wfile.write(content)
             return
         if self.path == "/api/buckets/common/bucket/files":
+            if self.headers.get("Authorization") != "Bearer local-smoke-token":
+                self.send_error(401)
+                return
             self.respond({
                 "id": "bucket",
                 "lastUpdated": "2026-10-30T00:00:00Z",
@@ -138,6 +141,11 @@ def main():
                 f"FISH_SERVER=http://127.0.0.1:{server.server_port}/api\n"
                 f"FISH_ROOT='{workspace}'\nFISH_BUCKET_ID=bucket\n"
             )
+            before = len(server.requests)
+            files = run("files", ["files", "bucket"], 0)
+            assert "docs/readme.txt\t5\t" + checksum(b"hello") in files.stdout
+            assert server.requests[before:] == ["/api/auth/login", "/api/buckets/common/bucket/files"]
+            assert not list(workspace.iterdir())
             run("pull", ["pull"], 0)
             target = workspace / "docs/readme.txt"
             assert target.read_bytes() == b"hello"
