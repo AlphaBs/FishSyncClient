@@ -31,6 +31,8 @@ python3 scripts/release-cli.py --rid linux-x64  # win-x64, win-arm64, linux-x64,
 
 버전은 `cli/cli.csproj`의 `Version`을 따릅니다. 결과는 `artifacts/releases/FishSyncClientCli-<RID>-<Version>.zip`이며, 실행 파일·[CLI README](docs/cli-readme.md)·인증 정보가 없는 `config/config.json`이 들어갑니다.
 
+Windows·Linux·macOS x64를 한 번에 빌드하려면 GitHub Actions의 **CLI NativeAOT packages** 워크플로를 실행합니다. 각 OS에서 ZIP을 만들고 파일 목록 조회·다운로드·업로드를 검사합니다. 완료 후 실행 페이지의 `cli-release-<RID>` 아티팩트에서 ZIP을 받을 수 있습니다.
+
 CLI는 `PublishAot=true`로 게시합니다. 검사 결과와 재현 명령은 [NativeAOT 검사](docs/nativeaot-audit.md)를 참고하세요.
 
 # FishSyncClient.Gui

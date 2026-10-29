@@ -1,0 +1,64 @@
+name: CLI NativeAOT packages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package ${{ matrix.rid }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            rid: win-x64
+            binary: cli.exe
+          - os: ubuntu-24.04
+            rid: linux-x64
+            binary: cli
+          - os: macos-15-intel
+            rid: osx-x64
+            binary: cli
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Linux native build tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang zlib1g-dev
+      - name: Build NativeAOT ZIP
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/nativeaot/ci/${{ matrix.rid }}
+          python scripts/release-cli.py --rid ${{ matrix.rid }} 2>&1 | tee artifacts/nativeaot/ci/${{ matrix.rid }}/publish.log
+      - name: Check packaged executable
+        run: |
+          artifacts/staging/cli/${{ matrix.rid }}/${{ matrix.binary }} --version
+          python scripts/smoke-cli.py artifacts/staging/cli/${{ matrix.rid }}/${{ matrix.binary }} --report artifacts/nativeaot/ci/${{ matrix.rid }}/smoke.json
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-release-${{ matrix.rid }}
+          path: artifacts/releases/*.zip
+          if-no-files-found: error
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-build-logs-${{ matrix.rid }}
+          path: artifacts/nativeaot/ci/${{ matrix.rid }}/
+          if-no-files-found: ignore
