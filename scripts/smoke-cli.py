@@ -117,7 +117,8 @@ def main():
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
         with tempfile.TemporaryDirectory(prefix="fish-cli-smoke-") as directory:
-            base = Path(directory)
+            # macOS의 /var 별칭을 실제 경로로 바꿔 심볼릭 링크가 없는 루트를 검사한다.
+            base = Path(directory).resolve()
             workspace = base / "workspace"
             workspace.mkdir()
             environment = {key: value for key, value in os.environ.items() if not key.startswith("FISH_")}
