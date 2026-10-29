@@ -67,6 +67,24 @@ HTTP 401 또는 403이 반환되면 `FISH_USERNAME`, `FISH_PASSWORD`, 서버 API
 
 `push "my-bucket" --server https://localhost:7128/api --root /home/syncroot -y`
 
+## CLI 배포 ZIP 생성
+
+.NET 10 SDK, Python 3과 해당 OS의 NativeAOT 빌드 도구를 준비한 뒤 실행합니다. 스크립트는 어느 작업 폴더에서 실행해도 저장소 경로를 기준으로 동작합니다. Windows에서는 `python3` 대신 `python`을 사용할 수 있습니다.
+
+```sh
+python3 scripts/release-cli.py
+python3 scripts/release-cli.py --rid linux-x64
+# go-task가 있다면: task cli
+```
+
+기본 대상은 현재 OS·아키텍처입니다. `--rid`는 `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64`를 지원하며 대상 OS에서 빌드해야 합니다. 다른 아키텍처는 해당 타깃용 네이티브 도구가 필요합니다. 버전은 `cli/cli.csproj`의 `Version`에서 읽으며 현재 기본값은 `1.0.0`입니다.
+
+결과는 `artifacts/releases/FishSyncClientCli-<RID>-<Version>.zip`에 생성하고, 압축 전 파일은 `artifacts/staging/cli/<RID>/`에 모읍니다. ZIP에는 `cli`(Windows는 `cli.exe`), 독립 실행용 [README.md](docs/cli-readme.md), `config/config.json`을 포함합니다. config에는 공통 설정의 서버 주소와 경고 패턴 및 빈 bucket·루트만 넣으며 인증 정보와 디버그 심볼은 포함하지 않습니다. Linux/macOS 실행 권한을 ZIP에 기록합니다.
+
+## .NET 10과 NativeAOT 검사
+
+솔루션은 .NET 10 SDK를 사용합니다. CLI는 System.CommandLine 2.0.14와 FishBucket·FishBucket.ApiClient·FishBucket.SyncClient 0.1.0을 사용하며 `PublishAot=true`를 설정했습니다. GUI는 일반 .NET 게시를 유지합니다. Linux x64에서 Release 빌드와 CLI AOT 게시 모두 경고 0개로 통과했고, 실제 AOT 실행 파일의 인증·파일 다운로드·업로드도 로컬 서버로 검증했습니다. [검사 결과와 재현 명령](docs/nativeaot-audit.md)을 확인해 주세요.
+
 # FishSyncClient.Gui
 
 FishSyncServer 와 동기화를 위한 GUI 툴

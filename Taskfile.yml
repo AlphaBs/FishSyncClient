@@ -6,6 +6,12 @@ vars:
     sh: dotnet msbuild "{{.ROOT_DIR}}/gui/gui.csproj" -getProperty:ClientVersion -nologo
 
 tasks:
+  cli:
+    desc: Package CLI Release NativeAOT for the current host (requires Python 3)
+    dir: '{{.ROOT_DIR}}'
+    cmds:
+      - 'python3 scripts/release-cli.py {{.CLI_ARGS}}'
+
   default:
     desc: List available tasks
     cmds:
