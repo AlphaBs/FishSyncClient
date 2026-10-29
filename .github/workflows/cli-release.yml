@@ -49,9 +49,11 @@ jobs:
         run: |
           artifacts/staging/cli/${{ matrix.rid }}/${{ matrix.binary }} --version
           python scripts/smoke-cli.py artifacts/staging/cli/${{ matrix.rid }}/${{ matrix.binary }} --report artifacts/nativeaot/ci/${{ matrix.rid }}/smoke.json
-      - name: Check macOS architecture
+      - name: Check macOS architecture and update channel
         if: runner.os == 'macOS'
-        run: test "$(lipo -archs artifacts/staging/cli/osx-arm64/cli)" = arm64
+        run: |
+          test "$(lipo -archs artifacts/staging/cli/osx-arm64/cli)" = arm64
+          test -f "$HOME/Library/Application Support/FishSyncClientCli/update-check-darwin-aarch64.json"
       - name: Upload ZIP
         uses: actions/upload-artifact@v4
         with:
