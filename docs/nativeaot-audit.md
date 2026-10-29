@@ -1,6 +1,7 @@
 # .NET 10 / CLI NativeAOT 검사
 
-2026-10-30, Linux x64, .NET SDK 10.0.112에서 검사했습니다.
+2026-10-30, CLI 1.1.0을 Windows·Linux·macOS x64의 GitHub Actions 환경에서 검사했습니다.
+로컬 CLI 단위 테스트는 Linux x64, .NET SDK 10.0.112에서 실행했습니다.
 GUI는 .NET 10 일반 게시를 유지하고, CLI에만 `PublishAot=true`를 설정했습니다.
 
 ## 결과
@@ -8,16 +9,17 @@ GUI는 .NET 10 일반 게시를 유지하고, CLI에만 `PublishAot=true`를 설
 | 검사 | 결과 |
 |---|---|
 | 솔루션 Release 빌드 | 성공, 경고 0개 / 오류 0개 |
-| CLI·핵심 라이브러리 테스트 | 341개 통과, Windows 전용 12개 제외 |
+| CLI·핵심 라이브러리 테스트 | 389개 통과, Windows 전용 12개 제외 |
 | GUI 테스트 | 57개 통과, Windows/macOS 키체인 검사 1개 제외 |
-| CLI Linux x64 NativeAOT 게시 | 성공, 경고 0개 / 오류 0개 |
-| 실제 AOT 실행 검사 | 배포 ZIP에서 추출한 실행 파일로 7개 통과 |
+| CLI Windows·Linux·macOS x64 NativeAOT 게시 | 모두 성공, 경고 0개 / 오류 0개 |
+| 실제 AOT 실행 검사 | 각 OS에서 8개씩 통과 |
 | CLI 배포 ZIP | 실행 파일, README.md, config/config.json 포함 |
 
 실제 AOT 실행 파일을 임시 `.env`와 로컬 가짜 HTTP 서버로 검사했습니다.
 실제 계정이나 외부 서버의 파일은 사용하지 않았습니다.
 
 - 도움말 출력 및 계정 환경변수 누락 오류.
+- `files` 명령으로 인증된 버킷 파일 목록을 조회하며 로컬 파일을 변경하지 않는지 확인.
 - 환경변수·`.env` 설정을 통한 서버 인증과 MD5 검증을 포함한 파일 다운로드.
 - 수정한 파일과 경고 대상 파일의 실제 HTTP 업로드 및 동기화 완료.
 - `-y`·`--yes` 사용 시 경고 로그를 유지하고 계속 진행.
@@ -57,10 +59,14 @@ python3 scripts/release-cli.py --rid linux-x64
 
 Windows에서는 Python 명령에 `artifacts/nativeaot/cli/cli.exe`를 전달합니다.
 NativeAOT 게시에는 대상 OS와 일치하는 빌드 호스트 및 네이티브 도구 체인이 필요합니다.
-Windows/macOS의 실제 NativeAOT 게시는 이번 검사에 포함하지 않았습니다.
+세 OS의 실제 NativeAOT 게시와 파일 조회·다운로드·업로드 검사는
+[CLI NativeAOT packages 실행](https://github.com/AlphaBs/FishSyncClient/actions/runs/40929700376)에서 모두 통과했습니다.
+Windows는 windows-2022, Linux는 ubuntu-24.04, macOS는 macos-15-intel 호스트를 사용했습니다.
 
-SyncClient 0.1.0 갱신 후 로그는 `artifacts/nativeaot/`의
-`build-syncclient-0.1.0.log`, `release-syncclient-0.1.0.log`,
-`tests-cli-syncclient-0.1.0.log`, `tests-gui-syncclient-0.1.0.log`,
-실행 결과는 `smoke-release-syncclient-0.1.0.json`에 남겼습니다.
-배포물은 `artifacts/releases/FishSyncClientCli-linux-x64-1.0.0.zip`입니다. 생성물은 Git에서 제외합니다.
+최종 빌드 로그와 실행 결과는 `artifacts/ci/40929700376/logs/<RID>/`에 내려받았습니다.
+요약과 ZIP의 SHA256은 `artifacts/nativeaot/release-1.1.0-platforms.json`에 기록했습니다.
+배포물은 다음과 같습니다. 생성물은 Git에서 제외합니다.
+
+- `artifacts/releases/FishSyncClientCli-win-x64-1.1.0.zip`
+- `artifacts/releases/FishSyncClientCli-linux-x64-1.1.0.zip`
+- `artifacts/releases/FishSyncClientCli-osx-x64-1.1.0.zip`
