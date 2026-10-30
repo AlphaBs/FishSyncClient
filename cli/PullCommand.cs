@@ -66,6 +66,9 @@ public class PullCommand : SyncCommandBase
         }
 
         var syncResult = await syncTask;
+        // 다운로드와 무결성 검사가 모두 성공한 뒤 로컬 전용 파일을 삭제한다.
+        syncer.DeleteLocalFiles(syncResult.DeletedFiles);
+
         Output.WriteLine($"\nIdentical files ({syncResult.IdenticalFilePairs.Count}): ");
         foreach (var identical in syncResult.IdenticalFilePairs)
         {

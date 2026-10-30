@@ -147,7 +147,11 @@ def main():
             assert "docs/readme.txt\t5\t" + checksum(b"hello") in files.stdout
             assert server.requests[before:] == ["/api/auth/login", "/api/buckets/common/bucket/files"]
             assert not list(workspace.iterdir())
-            run("pull", ["pull"], 0)
+            local_only = workspace / "local-only.txt"
+            local_only.write_bytes(b"remove after successful pull")
+            pulled = run("pull-removes-local-only-file", ["pull"], 0)
+            assert not local_only.exists(), "pull reported deletion but retained a local-only file"
+            assert "Deleted files (1)" in pulled.stdout
             target = workspace / "docs/readme.txt"
             assert target.read_bytes() == b"hello"
             target.write_bytes(b"changed content")
